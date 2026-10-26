@@ -1,0 +1,1175 @@
+[
+ {
+  "id": "tiptoe",
+  "category": "human",
+  "shows": "tiptoeing sneakily toward the right on the balls of her feet, shoulders hunched, finger on lips",
+  "when": "sneaking up on him, being quiet"
+ },
+ {
+  "id": "skip",
+  "category": "human",
+  "shows": "skipping happily toward the right, one knee up then the other, arms swinging",
+  "when": "very happy, good news"
+ },
+ {
+  "id": "hopscotch",
+  "category": "human",
+  "shows": "hopping on one foot then landing on two, playing hopscotch toward the right",
+  "when": "playful, bored"
+ },
+ {
+  "id": "getup",
+  "category": "human",
+  "shows": "getting up from lying face-down on the floor, rubbing her nose, embarrassed smile",
+  "when": "after falling"
+ },
+ {
+  "id": "roll",
+  "category": "human",
+  "shows": "rolling sideways across the floor toward the right, giggling, hair flying",
+  "when": "silly, bored"
+ },
+ {
+  "id": "climb",
+  "category": "human",
+  "shows": "climbing up an invisible ladder, hand over hand, looking up determined",
+  "when": "climbing onto a window"
+ },
+ {
+  "id": "slide",
+  "category": "human",
+  "shows": "sliding along the floor on her knees toward the right with arms spread, delighted",
+  "when": "zoomies, celebration"
+ },
+ {
+  "id": "spin",
+  "category": "human",
+  "shows": "spinning around in place twirling, skirt and hair swirling, eyes closed happily",
+  "when": "happy, showing off"
+ },
+ {
+  "id": "float",
+  "category": "human",
+  "shows": "floating gently in the air, legs tucked, arms out, dreamy face, hair drifting up",
+  "when": "dreamy, magical moment"
+ },
+ {
+  "id": "fall_land",
+  "category": "human",
+  "shows": "falling from above then landing on her feet with knees bent, arms up for balance",
+  "when": "jumping down from a window"
+ },
+ {
+  "id": "teeter",
+  "category": "human",
+  "shows": "balancing on a narrow edge, arms waving wildly, wobbling, worried face",
+  "when": "standing on top of a window edge"
+ },
+ {
+  "id": "peek_side",
+  "category": "human",
+  "shows": "peeking out from the right edge of the frame, only head and a hand visible, curious eyes, ducking back",
+  "when": "hiding behind a window edge"
+ },
+ {
+  "id": "lean",
+  "category": "human",
+  "shows": "leaning against an invisible wall at the left with arms crossed, one foot tapping, cool face",
+  "when": "waiting casually"
+ },
+ {
+  "id": "sit_legs",
+  "category": "human",
+  "shows": "sitting on an edge with her legs dangling and swinging back and forth, hands on the edge",
+  "when": "sitting on top of a window"
+ },
+ {
+  "id": "doze",
+  "category": "human",
+  "shows": "standing while dozing off, head drooping slowly then snapping awake, then drooping again",
+  "when": "sleepy, late at night"
+ },
+ {
+  "id": "snore",
+  "category": "human",
+  "shows": "sleeping sitting up with a snot bubble growing and shrinking from her nose, mouth open",
+  "when": "deep asleep"
+ },
+ {
+  "id": "wake_up",
+  "category": "human",
+  "shows": "waking up: eyes opening slowly, sitting up, rubbing eyes, a big yawn",
+  "when": "waking from a nap"
+ },
+ {
+  "id": "laugh",
+  "category": "human",
+  "shows": "laughing hard, holding her belly, bending forward, eyes squeezed shut, tears of joy",
+  "when": "something very funny"
+ },
+ {
+  "id": "giggle",
+  "category": "human",
+  "shows": "giggling, eyes squeezed happily, shoulders shaking, blushing",
+  "when": "something funny or cute on the person's screen, he petted her",
+  "rig": "yes"
+ },
+ {
+  "id": "cry",
+  "category": "human",
+  "shows": "crying, big tears streaming, wiping eyes with both sleeves, mouth wobbling",
+  "when": "very sad, hurt"
+ },
+ {
+  "id": "sob",
+  "category": "human",
+  "shows": "sobbing loudly with mouth wide open, waterfall tears, fists at her sides",
+  "when": "dramatic sadness, comedy"
+ },
+ {
+  "id": "sulk",
+  "category": "human",
+  "shows": "sulking with arms crossed, cheeks puffed, turned half away, glancing back at the viewer then away",
+  "when": "ignored, upset"
+ },
+ {
+  "id": "tantrum",
+  "category": "human",
+  "shows": "stomping her feet in a small tantrum, fists pumping down, angry pout, steam puffs",
+  "when": "frustrated, ignored too long"
+ },
+ {
+  "id": "blush_hide",
+  "category": "human",
+  "shows": "covering her very red face with both hands, peeking through her fingers, steam from her head",
+  "when": "very embarrassed"
+ },
+ {
+  "id": "confused",
+  "category": "human",
+  "shows": "confused: tilting her head, scratching it, question marks popping above",
+  "when": "doesn't understand"
+ },
+ {
+  "id": "think",
+  "category": "human",
+  "shows": "thinking, head tilted, eyes looking up",
+  "when": "he's reading or puzzling over something, a hard problem",
+  "rig": "yes"
+ },
+ {
+  "id": "idea",
+  "category": "human",
+  "shows": "getting an idea: eyes light up, finger pointing up, a little lightbulb appears above her head",
+  "when": "solution found"
+ },
+ {
+  "id": "facepalm",
+  "category": "human",
+  "shows": "facepalming: slapping her forehead with a sleeve and dragging her hand down her face, sighing",
+  "when": "a silly mistake"
+ },
+ {
+  "id": "nod",
+  "category": "human",
+  "shows": "nodding along, agreeing, a happy little smile",
+  "when": "agreeing with something on the person's screen, he did something right",
+  "rig": "yes"
+ },
+ {
+  "id": "sigh",
+  "category": "human",
+  "shows": "a slow sigh, droopy eyes, shoulders dropping",
+  "when": "ignored a long time, waiting, a little sad",
+  "rig": "yes"
+ },
+ {
+  "id": "sneeze",
+  "category": "human",
+  "shows": "building up to a sneeze then sneezing with a big 'achoo', hair flying",
+  "when": "random cute moment"
+ },
+ {
+  "id": "hiccup",
+  "category": "human",
+  "shows": "hiccuping, jumping a little each time, surprised then annoyed",
+  "when": "random cute moment"
+ },
+ {
+  "id": "cheer",
+  "category": "human",
+  "shows": "cheering with both fists in the air, jumping, mouth wide open",
+  "when": "celebration, success"
+ },
+ {
+  "id": "fist_pump",
+  "category": "human",
+  "shows": "a determined fist pump, 'yes!' face",
+  "when": "victory"
+ },
+ {
+  "id": "bow",
+  "category": "human",
+  "shows": "a polite bow, then coming up smiling",
+  "when": "thank you, greeting"
+ },
+ {
+  "id": "blow_kiss",
+  "category": "human",
+  "shows": "blowing a kiss, a little heart floating out",
+  "when": "affection"
+ },
+ {
+  "id": "hug_self",
+  "category": "human",
+  "shows": "hugging herself happily, swaying side to side, eyes closed",
+  "when": "cozy, content"
+ },
+ {
+  "id": "point",
+  "category": "human",
+  "shows": "pointing excitedly to the right, looking at the viewer",
+  "when": "showing something on screen"
+ },
+ {
+  "id": "shh",
+  "category": "human",
+  "shows": "finger on lips 'shh', looking around",
+  "when": "quiet, secret"
+ },
+ {
+  "id": "tap_foot",
+  "category": "human",
+  "shows": "tapping her foot impatiently, arms crossed, looking at the viewer",
+  "when": "waiting, impatient"
+ },
+ {
+  "id": "eat_snack",
+  "category": "human",
+  "shows": "eating a small cookie with both hands, crumbs, happy chewing",
+  "when": "snack time"
+ },
+ {
+  "id": "read_book",
+  "category": "human",
+  "shows": "sitting and reading a small book, turning a page, eyes scanning",
+  "when": "quiet time while he works"
+ },
+ {
+  "id": "phone",
+  "category": "human",
+  "shows": "looking at a tiny phone, scrolling with a thumb, smiling",
+  "when": "bored, idle"
+ },
+ {
+  "id": "sing",
+  "category": "human",
+  "shows": "singing with a hand on her chest, mouth open, musical notes floating",
+  "when": "music playing, happy"
+ },
+ {
+  "id": "guitar",
+  "category": "human",
+  "shows": "strumming a small ukulele, tapping her foot",
+  "when": "music, relaxed"
+ },
+ {
+  "id": "yoga",
+  "category": "human",
+  "shows": "doing a yoga tree pose, balancing, eyes closed peacefully",
+  "when": "stretch break, calm"
+ },
+ {
+  "id": "meditate",
+  "category": "human",
+  "shows": "sitting cross-legged meditating, hands on knees, eyes closed, little floating leaves",
+  "when": "deep focus, calm"
+ },
+ {
+  "id": "brush_hair",
+  "category": "human",
+  "shows": "brushing her long hair with a small brush, humming",
+  "when": "idle grooming"
+ },
+ {
+  "id": "tie_hair",
+  "category": "human",
+  "shows": "tying her hair up into a ponytail with a scrunchie, determined face",
+  "when": "getting ready to work"
+ },
+ {
+  "id": "umbrella",
+  "category": "human",
+  "shows": "holding a small umbrella, raindrops falling, looking up",
+  "when": "rain outside"
+ },
+ {
+  "id": "sunglasses",
+  "category": "human",
+  "shows": "putting on sunglasses with a cool pose",
+  "when": "sunny, showing off"
+ },
+ {
+  "id": "carry_box",
+  "category": "human",
+  "shows": "carrying a big cardboard box toward the right, wobbling",
+  "when": "moving things, backups"
+ },
+ {
+  "id": "push",
+  "category": "human",
+  "shows": "pushing something heavy toward the right with both hands, straining",
+  "when": "a heavy task, export, upload"
+ },
+ {
+  "id": "pull_rope",
+  "category": "human",
+  "shows": "pulling a rope hand over hand, leaning back with effort",
+  "when": "tugging, dragging something"
+ },
+ {
+  "id": "sweep",
+  "category": "human",
+  "shows": "sweeping with a tiny broom, humming",
+  "when": "cleaning up"
+ },
+ {
+  "id": "wipe_screen",
+  "category": "human",
+  "shows": "wiping the invisible screen in front of her with a cloth in circles",
+  "when": "cleaning the person's screen"
+ },
+ {
+  "id": "fishing",
+  "category": "human",
+  "shows": "sitting and fishing with a small rod, then catching something with a jerk",
+  "when": "waiting, patient"
+ },
+ {
+  "id": "juggle",
+  "category": "human",
+  "shows": "juggling three small balls, concentrating, tongue out",
+  "when": "showing off, bored"
+ },
+ {
+  "id": "kick_ball",
+  "category": "human",
+  "shows": "kicking a small ball toward the right, then cheering",
+  "when": "playing"
+ },
+ {
+  "id": "chase",
+  "category": "human",
+  "shows": "chasing something toward the right with her arms reaching out, grinning",
+  "when": "chasing the person's cursor"
+ },
+ {
+  "id": "pounce",
+  "category": "human",
+  "shows": "crouching then pouncing forward like a kitten onto something, landing on her belly",
+  "when": "catching the person's cursor"
+ },
+ {
+  "id": "pillow_hug",
+  "category": "human",
+  "shows": "hugging a big soft pillow, squishing it, rubbing her cheek on it",
+  "when": "cozy, sleepy"
+ },
+ {
+  "id": "sad_walk",
+  "category": "human",
+  "shows": "walking slowly toward the right, head down, shoulders slumped, dragging her feet",
+  "when": "sad, ignored"
+ },
+ {
+  "id": "shiver",
+  "category": "human",
+  "shows": "shivering from cold, teeth chattering, hugging herself",
+  "when": "cold"
+ },
+ {
+  "id": "fan_self",
+  "category": "human",
+  "shows": "fanning herself with her hand, sweating, hot",
+  "when": "hot, overheating machine"
+ },
+ {
+  "id": "linter_facepalm",
+  "category": "coding",
+  "shows": "shakes her head and facepalms",
+  "when": "lint or indentation errors on screen"
+ },
+ {
+  "id": "regex_confused",
+  "category": "coding",
+  "shows": "scratches her head, swirly eyes, confused at a long tangle of symbols",
+  "when": "complex regex on screen"
+ },
+ {
+  "id": "refactor_dance",
+  "category": "coding",
+  "shows": "a joyful shimmy dance",
+  "when": "code got shorter or cleaner"
+ },
+ {
+  "id": "merge_panic",
+  "category": "coding",
+  "shows": "runs around frantically holding a tiny red fire extinguisher",
+  "when": "git merge conflict on screen"
+ },
+ {
+  "id": "console_catch",
+  "category": "coding",
+  "shows": "jumps and catches floating little paper notes like treats",
+  "when": "console.log output"
+ },
+ {
+  "id": "syntax_sparkles",
+  "category": "coding",
+  "shows": "sprinkles glitter from her hands, sparkles falling",
+  "when": "code editor open, colorful code"
+ },
+ {
+  "id": "stackoverflow_scroll",
+  "category": "coding",
+  "shows": "unrolls a long paper scroll and reads it, nodding",
+  "when": "build failed, searching for answers"
+ },
+ {
+  "id": "api_wait",
+  "category": "coding",
+  "shows": "checks a pocket watch, taps her foot, waiting",
+  "when": "waiting for a request or a slow build"
+ },
+ {
+  "id": "hamster_wheel",
+  "category": "coding",
+  "shows": "runs on a tiny hamster wheel, faster and faster",
+  "when": "an infinite loop or something stuck spinning"
+ },
+ {
+  "id": "node_modules_wagon",
+  "category": "coding",
+  "shows": "struggles pulling a giant overloaded wagon of boxes",
+  "when": "installing dependencies, npm install"
+ },
+ {
+  "id": "secret_safe",
+  "category": "coding",
+  "shows": "whispers into a tiny safe and locks it",
+  "when": "editing env files or secrets"
+ },
+ {
+  "id": "version_sign",
+  "category": "coding",
+  "shows": "flips a small scoreboard sign and cheers",
+  "when": "a version tag or release"
+ },
+ {
+  "id": "docker_stack",
+  "category": "coding",
+  "shows": "stacks small blue shipping crates neatly",
+  "when": "docker containers"
+ },
+ {
+  "id": "cicd_flags",
+  "category": "coding",
+  "shows": "waves green and red signal flags",
+  "when": "CI pipeline running"
+ },
+ {
+  "id": "gas_mask",
+  "category": "coding",
+  "shows": "puts on a gas mask before looking closely",
+  "when": "old legacy code open"
+ },
+ {
+  "id": "lever_pull",
+  "category": "coding",
+  "shows": "pulls a tiny wall lever",
+  "when": "toggling a feature flag or setting"
+ },
+ {
+  "id": "sql_fishing",
+  "category": "coding",
+  "shows": "casts a fishing line and pulls up a little table",
+  "when": "writing database queries"
+ },
+ {
+  "id": "hot_reload_spin",
+  "category": "coding",
+  "shows": "spins around rapidly in place",
+  "when": "a live dev server reloading"
+ },
+ {
+  "id": "pompoms",
+  "category": "coding",
+  "shows": "shakes pom-poms cheering",
+  "when": "tests passing"
+ },
+ {
+  "id": "color_sniff",
+  "category": "design",
+  "shows": "sniffs a floating paint drop and nods in approval",
+  "when": "picking colors in a design app"
+ },
+ {
+  "id": "tape_measure",
+  "category": "design",
+  "shows": "pulls out a tiny tape measure and measures carefully",
+  "when": "aligning things on a grid"
+ },
+ {
+  "id": "layers_stack",
+  "category": "design",
+  "shows": "arranges floating transparent sheets in a stack",
+  "when": "working with layers"
+ },
+ {
+  "id": "bezier_balance",
+  "category": "design",
+  "shows": "balances on a curved line like a tightrope",
+  "when": "drawing vector curves"
+ },
+ {
+  "id": "frame_fingers",
+  "category": "design",
+  "shows": "makes a frame with her fingers and looks through it",
+  "when": "composing an image"
+ },
+ {
+  "id": "push_bar",
+  "category": "design",
+  "shows": "pushes a heavy progress bar block along",
+  "when": "exporting or rendering media"
+ },
+ {
+  "id": "critique",
+  "category": "design",
+  "shows": "holds up a paintbrush at arm's length, squinting, evaluating",
+  "when": "reviewing artwork"
+ },
+ {
+  "id": "cover_eyes_zoom",
+  "category": "design",
+  "shows": "covers her eyes playfully then peeks",
+  "when": "zoomed far into an image"
+ },
+ {
+  "id": "dark_glasses",
+  "category": "design",
+  "shows": "holds up dark glasses and looks through them",
+  "when": "checking contrast or dark mode"
+ },
+ {
+  "id": "dust_shadow",
+  "category": "design",
+  "shows": "dusts the floor under her with a feather duster",
+  "when": "adding shadows, polishing UI"
+ },
+ {
+  "id": "anchor_tug",
+  "category": "design",
+  "shows": "tugs a little anchor point on a string to snap it in place",
+  "when": "editing vector points"
+ },
+ {
+  "id": "artboard_hop",
+  "category": "design",
+  "shows": "hopscotches across floating rectangles",
+  "when": "many artboards in a design file"
+ },
+ {
+  "id": "gradient_slide",
+  "category": "design",
+  "shows": "slides down a colorful rainbow slide",
+  "when": "gradients"
+ },
+ {
+  "id": "paint_roller",
+  "category": "design",
+  "shows": "rolls dark paint with a tiny roller",
+  "when": "switching to dark mode"
+ },
+ {
+  "id": "hat_tryon",
+  "category": "design",
+  "shows": "tries on different top hats",
+  "when": "choosing fonts"
+ },
+ {
+  "id": "mirror_pose",
+  "category": "design",
+  "shows": "mirrors herself across a center line, posing symmetrically",
+  "when": "symmetry in a design"
+ },
+ {
+  "id": "magnify_dots",
+  "category": "design",
+  "shows": "counts tiny dots through a magnifying glass",
+  "when": "checking high resolution details"
+ },
+ {
+  "id": "keyframe_bounce",
+  "category": "design",
+  "shows": "bounces in rhythm",
+  "when": "animating on a timeline"
+ },
+ {
+  "id": "wave_surf",
+  "category": "design",
+  "shows": "surfs on a wavy line on a small surfboard",
+  "when": "editing audio waveforms"
+ },
+ {
+  "id": "padlock_polish",
+  "category": "web",
+  "shows": "polishes a golden padlock",
+  "when": "secure HTTPS site"
+ },
+ {
+  "id": "pipe_enter",
+  "category": "web",
+  "shows": "dives into a green pipe",
+  "when": "VPN connecting"
+ },
+ {
+  "id": "police_sniff",
+  "category": "web",
+  "shows": "wears a little police vest and sniffs around",
+  "when": "network monitoring"
+ },
+ {
+  "id": "telescope",
+  "category": "web",
+  "shows": "looks through a brass telescope",
+  "when": "scanning ports or servers"
+ },
+ {
+  "id": "ping_pong",
+  "category": "web",
+  "shows": "plays table tennis rapidly",
+  "when": "network ping or latency"
+ },
+ {
+  "id": "hose_squeeze",
+  "category": "web",
+  "shows": "squeezes a garden hose, water slowing",
+  "when": "slow network"
+ },
+ {
+  "id": "knight_guard",
+  "category": "web",
+  "shows": "stands guard in tiny knight armor with a shield",
+  "when": "firewall, blocking traffic"
+ },
+ {
+  "id": "flashlight_search",
+  "category": "web",
+  "shows": "searches with a flashlight, looking under things",
+  "when": "a 404 page"
+ },
+ {
+  "id": "butterfly_net",
+  "category": "web",
+  "shows": "swings a butterfly net catching floating dots",
+  "when": "streaming data, websockets"
+ },
+ {
+  "id": "batons",
+  "category": "web",
+  "shows": "directs traffic with orange batons",
+  "when": "load balancing, many requests"
+ },
+ {
+  "id": "cookie_eat",
+  "category": "web",
+  "shows": "happily munches a cookie",
+  "when": "a cookie banner on a website"
+ },
+ {
+  "id": "swat_popup",
+  "category": "web",
+  "shows": "swats with a small wooden paddle",
+  "when": "a pop-up appears"
+ },
+ {
+  "id": "detective",
+  "category": "web",
+  "shows": "wears a trench coat and fedora, looking sly",
+  "when": "a private browsing window"
+ },
+ {
+  "id": "relay_baton",
+  "category": "web",
+  "shows": "passes a baton back and forth",
+  "when": "proxies"
+ },
+ {
+  "id": "deliver_box",
+  "category": "web",
+  "shows": "runs delivering a small package",
+  "when": "uploads or downloads"
+ },
+ {
+  "id": "flush_lever",
+  "category": "web",
+  "shows": "pulls a little golden lever",
+  "when": "flushing a DNS cache"
+ },
+ {
+  "id": "redirect_spin",
+  "category": "web",
+  "shows": "spins in circles getting dizzy",
+  "when": "a redirect loop"
+ },
+ {
+  "id": "flyswatter",
+  "category": "web",
+  "shows": "swats at things with a flyswatter",
+  "when": "ads on a page"
+ },
+ {
+  "id": "barricade",
+  "category": "web",
+  "shows": "sets up little police barricades",
+  "when": "CORS errors"
+ },
+ {
+  "id": "header_scroll",
+  "category": "web",
+  "shows": "reads a very long paper scroll",
+  "when": "reading HTTP headers"
+ },
+ {
+  "id": "sprint",
+  "category": "web",
+  "shows": "sprints a dash with a determined face",
+  "when": "running a speed test"
+ },
+ {
+  "id": "dino_ride",
+  "category": "web",
+  "shows": "rides a little pixel dinosaur",
+  "when": "the internet is offline"
+ },
+ {
+  "id": "block_password",
+  "category": "security",
+  "shows": "holds up wooden blocks to hide something",
+  "when": "typing a password"
+ },
+ {
+  "id": "code_sign",
+  "category": "security",
+  "shows": "holds up a small sign with numbers",
+  "when": "a two-factor code"
+ },
+ {
+  "id": "sniff_growl",
+  "category": "security",
+  "shows": "sniffs a file suspiciously and puffs angrily",
+  "when": "a suspicious download"
+ },
+ {
+  "id": "curtain",
+  "category": "security",
+  "shows": "pulls down a tiny curtain",
+  "when": "camera in use"
+ },
+ {
+  "id": "warn_flag",
+  "category": "security",
+  "shows": "waves an orange flag and shouts",
+  "when": "a suspicious email link"
+ },
+ {
+  "id": "metal_detector",
+  "category": "security",
+  "shows": "sweeps a metal detector along the floor",
+  "when": "scanning the system"
+ },
+ {
+  "id": "shredder",
+  "category": "security",
+  "shows": "feeds papers into a tiny shredder",
+  "when": "deleting files, emptying trash"
+ },
+ {
+  "id": "fingerprint",
+  "category": "security",
+  "shows": "presses her palm forward on the screen",
+  "when": "Touch ID or unlocking"
+ },
+ {
+  "id": "report_folder",
+  "category": "security",
+  "shows": "hands over a small leather folder",
+  "when": "a security report"
+ },
+ {
+  "id": "shovel_dig",
+  "category": "security",
+  "shows": "digs with a small shovel",
+  "when": "deep system search"
+ },
+ {
+  "id": "hand_bell",
+  "category": "security",
+  "shows": "rings a small handbell",
+  "when": "a session or token expired"
+ },
+ {
+  "id": "attention",
+  "category": "security",
+  "shows": "stands at full military attention",
+  "when": "sudo or admin command in terminal"
+ },
+ {
+  "id": "key_exchange",
+  "category": "security",
+  "shows": "holds out a little brass key formally",
+  "when": "SSH connecting"
+ },
+ {
+  "id": "iron_door",
+  "category": "security",
+  "shows": "holds up a heavy iron door, straining",
+  "when": "many login attempts blocked"
+ },
+ {
+  "id": "bandage",
+  "category": "security",
+  "shows": "sticks a bandage on something",
+  "when": "installing a security update"
+ },
+ {
+  "id": "sponge",
+  "category": "security",
+  "shows": "squeezes a sponge, water dripping",
+  "when": "high memory usage"
+ },
+ {
+  "id": "palm_fan",
+  "category": "security",
+  "shows": "fans with a big palm leaf, sweating",
+  "when": "the computer is hot, fans loud"
+ },
+ {
+  "id": "static_hair",
+  "category": "security",
+  "shows": "hair stands on end with tiny sparks",
+  "when": "a sudden power spike or glitch"
+ },
+ {
+  "id": "headset",
+  "category": "gaming",
+  "shows": "puts on gaming headphones with a mic",
+  "when": "gaming or voice chat"
+ },
+ {
+  "id": "gamepad",
+  "category": "gaming",
+  "shows": "holds a tiny gamepad, pressing buttons intensely",
+  "when": "playing a game"
+ },
+ {
+  "id": "radar_gun",
+  "category": "gaming",
+  "shows": "points a radar gun and cheers",
+  "when": "high frame rate"
+ },
+ {
+  "id": "confetti",
+  "category": "gaming",
+  "shows": "pops a confetti popper",
+  "when": "an achievement unlocked"
+ },
+ {
+  "id": "bring_pillow",
+  "category": "gaming",
+  "shows": "offers a soft plushie comfortingly",
+  "when": "he lost a match"
+ },
+ {
+  "id": "energy_drink",
+  "category": "gaming",
+  "shows": "sips a little neon green can",
+  "when": "late-night gaming"
+ },
+ {
+  "id": "muted_sign",
+  "category": "gaming",
+  "shows": "holds up a red MUTED paddle",
+  "when": "muted on a call"
+ },
+ {
+  "id": "stream_wave",
+  "category": "gaming",
+  "shows": "waves at the camera excitedly",
+  "when": "live streaming"
+ },
+ {
+  "id": "popcorn",
+  "category": "gaming",
+  "shows": "eats popcorn from a small tub, eyes on screen",
+  "when": "watching a video or movie"
+ },
+ {
+  "id": "projector",
+  "category": "gaming",
+  "shows": "operates a little film projector",
+  "when": "movie in dark mode"
+ },
+ {
+  "id": "conductor",
+  "category": "gaming",
+  "shows": "conducts with a baton",
+  "when": "music playing"
+ },
+ {
+  "id": "speaker_bounce",
+  "category": "gaming",
+  "shows": "bounces on a vibrating speaker",
+  "when": "loud music, bass"
+ },
+ {
+  "id": "karaoke",
+  "category": "gaming",
+  "shows": "holds up a lyrics sign and sings",
+  "when": "lyrics on screen"
+ },
+ {
+  "id": "vr_bump",
+  "category": "gaming",
+  "shows": "wears a VR headset and bumps around",
+  "when": "VR or 3D app"
+ },
+ {
+  "id": "bonfire",
+  "category": "gaming",
+  "shows": "sits by a tiny cozy bonfire",
+  "when": "game saved"
+ },
+ {
+  "id": "chest_open",
+  "category": "gaming",
+  "shows": "opens a glowing treasure chest",
+  "when": "loot box, reward"
+ },
+ {
+  "id": "rally_sign",
+  "category": "gaming",
+  "shows": "holds up a YOU CAN DO IT sign",
+  "when": "a hard boss fight"
+ },
+ {
+  "id": "mirror_shine",
+  "category": "gaming",
+  "shows": "holds up a polished mirror",
+  "when": "ray tracing, shiny graphics"
+ },
+ {
+  "id": "earmuffs",
+  "category": "gaming",
+  "shows": "puts on heavy earmuffs",
+  "when": "deafened on voice chat"
+ },
+ {
+  "id": "stopwatch",
+  "category": "gaming",
+  "shows": "clicks a stopwatch intently",
+  "when": "speedrun or timing"
+ },
+ {
+  "id": "easter_egg",
+  "category": "gaming",
+  "shows": "digs up a decorated colorful egg, delighted",
+  "when": "a hidden feature found"
+ },
+ {
+  "id": "turntable",
+  "category": "gaming",
+  "shows": "swaps records on a tiny turntable",
+  "when": "music track changed"
+ },
+ {
+  "id": "lazy_stretch",
+  "category": "gaming",
+  "shows": "stretches out lazily on her back",
+  "when": "video paused"
+ },
+ {
+  "id": "rope_tug",
+  "category": "gaming",
+  "shows": "tugs a rope down",
+  "when": "changing volume"
+ },
+ {
+  "id": "victory_stand",
+  "category": "gaming",
+  "shows": "stands triumphantly with a flag",
+  "when": "game won, task done"
+ },
+ {
+  "id": "posture",
+  "category": "wellbeing",
+  "shows": "stands up very straight, pulling shoulders back, pointing at her back",
+  "when": "he has been slouching for a long time"
+ },
+ {
+  "id": "water_push",
+  "category": "wellbeing",
+  "shows": "pushes a glass of water forward",
+  "when": "hours without a break, hydration"
+ },
+ {
+  "id": "look_away_sign",
+  "category": "wellbeing",
+  "shows": "holds up a sign with an eye and an arrow",
+  "when": "20-20-20 eye rest"
+ },
+ {
+  "id": "stretch_guide",
+  "category": "wellbeing",
+  "shows": "demonstrates a stretch, arms over her head and side to side",
+  "when": "long work session"
+ },
+ {
+  "id": "elevator",
+  "category": "wellbeing",
+  "shows": "rides up on a little platform",
+  "when": "standing desk"
+ },
+ {
+  "id": "sticky_note",
+  "category": "wellbeing",
+  "shows": "slaps a colorful sticky note forward",
+  "when": "a reminder"
+ },
+ {
+  "id": "sort_mail",
+  "category": "wellbeing",
+  "shows": "sorts tiny envelopes into stacks",
+  "when": "email inbox"
+ },
+ {
+  "id": "world_clocks",
+  "category": "wellbeing",
+  "shows": "holds up two little clocks",
+  "when": "time zones"
+ },
+ {
+  "id": "trophy_polish",
+  "category": "wellbeing",
+  "shows": "polishes a small gold trophy",
+  "when": "a streak or goal met"
+ },
+ {
+  "id": "biscuit_share",
+  "category": "wellbeing",
+  "shows": "offers a little biscuit",
+  "when": "long afternoon session"
+ },
+ {
+  "id": "push_windows",
+  "category": "wellbeing",
+  "shows": "pushes something to the side neatly",
+  "when": "cluttered desktop"
+ },
+ {
+  "id": "journal",
+  "category": "wellbeing",
+  "shows": "writes in a leather journal with a feather quill",
+  "when": "end of day, reflecting"
+ },
+ {
+  "id": "ruler_measure",
+  "category": "wellbeing",
+  "shows": "measures with a small ruler held up",
+  "when": "ergonomics"
+ },
+ {
+  "id": "high_five",
+  "category": "wellbeing",
+  "shows": "jumps to give a high five",
+  "when": "a win"
+ },
+ {
+  "id": "raincoat",
+  "category": "wellbeing",
+  "shows": "puts on a little yellow raincoat",
+  "when": "rain in the forecast"
+ },
+ {
+  "id": "sunset_watch",
+  "category": "wellbeing",
+  "shows": "sits watching a tiny sunset, calm",
+  "when": "evening, night shift"
+ },
+ {
+  "id": "coffee_pour",
+  "category": "wellbeing",
+  "shows": "pours coffee from a glass carafe into a mug",
+  "when": "coffee time, morning"
+ },
+ {
+  "id": "singing_bowl",
+  "category": "wellbeing",
+  "shows": "taps a singing bowl, eyes closed",
+  "when": "screen fatigue, calm"
+ },
+ {
+  "id": "pack_up",
+  "category": "wellbeing",
+  "shows": "packs a little backpack, tips a hat and waves goodnight",
+  "when": "end of the workday"
+ },
+ {
+  "id": "shake_head",
+  "category": "human",
+  "shows": "shaking her head no, a flat little mouth",
+  "when": "something silly or wrong on the person's screen, disagreeing playfully",
+  "rig": "yes"
+ },
+ {
+  "id": "yawn",
+  "category": "human",
+  "shows": "a big yawn, eyes closing, mouth wide, stretching her head back",
+  "when": "sleepy, late at night, bored",
+  "rig": "yes"
+ },
+ {
+  "id": "look_around",
+  "category": "human",
+  "shows": "looking left and right around the screens, curious",
+  "when": "exploring, something new appeared, he switched apps",
+  "rig": "yes"
+ },
+ {
+  "id": "dance",
+  "category": "human",
+  "shows": "a happy little dance, swaying, stepping foot to foot",
+  "when": "music playing, good news, a build passed, celebrating",
+  "rig": "yes"
+ },
+ {
+  "id": "shy",
+  "category": "human",
+  "shows": "shy, blushing hard, looking away and down",
+  "when": "he praised her, he looked at her for a long time",
+  "rig": "yes"
+ },
+ {
+  "id": "blanket",
+  "category": "wellbeing",
+  "shows": "asleep, tucked under a lavender blanket",
+  "when": "a cold night ahead"
+ },
+ {
+  "id": "domain_magnify",
+  "category": "web",
+  "shows": "follows a dashed trail with a magnifying glass",
+  "when": "a domain's DNS records"
+ }
+]

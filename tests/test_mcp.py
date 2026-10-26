@@ -140,3 +140,10 @@ def test_claude_code_hook_never_blocks_claude(tmp_path, monkeypatch):
 def test_listen_returns_what_was_said_to_her(iris):
     assert tool("iris_listen", seconds=3)[0] == "Said to her: what's the weather"
     assert iris[-1][1:] == ("/ears/next", {"timeout": 3.0})
+
+
+def test_codex_notify_reacts_to_a_finished_turn(iris):
+    import codex_notify
+    assert codex_notify.react({"type": "agent-turn-complete", "last-assistant-message": "All tests pass."}) == "notice"
+    assert iris[-1][1:] == ("/iris/notice", {"title": "Codex: All tests pass."})
+    assert codex_notify.react({"type": "something-else"}) == ""

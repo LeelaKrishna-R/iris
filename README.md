@@ -45,6 +45,18 @@ interface on purpose.
 claude mcp add iris -- python3 /path/to/iris/agents/iris_mcp.py
 ```
 
+```toml
+# Codex: ~/.codex/config.toml
+[mcp_servers.iris]
+command = "python3"
+args = ["/path/to/iris/agents/iris_mcp.py"]
+```
+
+```json
+// Cursor: ~/.cursor/mcp.json
+{"mcpServers": {"iris": {"command": "python3", "args": ["/path/to/iris/agents/iris_mcp.py"]}}}
+```
+
 The server is one Python file with no dependencies beyond the standard library.
 
 ### Talk to your agent through her

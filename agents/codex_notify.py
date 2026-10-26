@@ -3,7 +3,7 @@
 
     agent-turn-complete   Codex finished its turn → she glances up ("!") at what it said last, no words
 
-In ~/.codex/config.toml:
+In your user-level ~/.codex/config.toml (Codex ignores notify in a project-local .codex/config.toml):
 
     notify = ["python3", "/path/to/iris/agents/codex_notify.py"]
 

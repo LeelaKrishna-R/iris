@@ -3,7 +3,7 @@
 
     iris say "Build finished"          aloud (macOS voice) with her lips moving; --bubble for her speech bubble only
     iris notice "tests failed"         a glance and a small "!", no words
-    iris react wave                    one of her animations (`iris animations` lists them)
+    iris react giggle                  one of her animations (`iris animations` lists them)
     iris come [cursor|other_screen]    she comes over
     iris listen [seconds]              prints what's said to her by name next (up to 25 s), or nothing
 

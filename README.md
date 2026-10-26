@@ -19,7 +19,8 @@ Agents connect in one of three ways:
 | Way | For | Status |
 |---|---|---|
 | **MCP server** (`agents/iris_mcp.py`) | Claude Code, Codex, Cursor and any MCP client | shipped |
-| **Agent hooks** (e.g. Claude Code hooks: react when a task ends, a test fails, an approval waits) | coding agents | planned |
+| **Claude Code hook** (`agents/claude_code_hook.py`): she glances up when Claude finishes, comes over when it needs you | Claude Code | shipped |
+| **Hooks for other agents** (Codex, Cursor) | coding agents | planned |
 | **HTTP API + `iris` CLI** | custom agents, scripts | planned |
 
 ### MCP tools
@@ -48,7 +49,7 @@ The server is one Python file with no dependencies beyond the standard library.
 1. **MCP server** for any agent: shipped (`agents/iris_mcp.py`, tests in `tests/`).
 2. **The Iris app itself**, neutral and installable: her body, animations and senses, with no
    assumptions about who you are. Your name, her wake word and her personality are your settings.
-3. **Agent hooks**: ready-made Claude Code / Codex / Cursor hooks so she reacts to your agent's work.
+3. **Agent hooks**: Claude Code shipped (`agents/claude_code_hook.py`); Codex and Cursor next.
 4. **HTTP API docs + `iris` CLI** for custom agents.
 5. **First-run setup** that explains each macOS permission (screen recording, microphone,
    accessibility), and works with any of them refused.

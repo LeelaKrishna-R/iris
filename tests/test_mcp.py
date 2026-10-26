@@ -115,3 +115,21 @@ def test_stdio_round_trip():
     p = subprocess.run([sys.executable, str(Path(iris_mcp.__file__))], capture_output=True, text=True, timeout=20,
                        input=json.dumps({"jsonrpc": "2.0", "id": 7, "method": "ping"}) + "\n")
     assert json.loads(p.stdout.strip()) == {"jsonrpc": "2.0", "id": 7, "result": {}}
+
+
+def test_claude_code_hook_reacts_to_stop_and_notification(iris):
+    import claude_code_hook as hook
+    assert hook.react({"hook_event_name": "Stop"}) == "notice"
+    assert iris[-1][1:] == ("/iris/notice", {"title": "Claude finished"})
+    assert hook.react({"hook_event_name": "Notification", "message": "Claude needs your permission to use Bash"}) == "needs_you"
+    assert [p for _m, p, _b in iris[-2:]] == ["/iris/come", "/mouth/show"]
+    assert iris[-1][2]["text"] == "Claude needs your permission to use Bash"
+    assert hook.react({"hook_event_name": "PreToolUse"}) == ""
+
+
+def test_claude_code_hook_never_blocks_claude(tmp_path, monkeypatch):
+    import subprocess
+    p = subprocess.run([sys.executable, str(Path(iris_mcp.__file__).parent / "claude_code_hook.py")],
+                       input='{"hook_event_name": "Stop"}', capture_output=True, text=True, timeout=20,
+                       env={"IRIS_URL": "http://127.0.0.1:9", "IRIS_KEY_FILE": str(tmp_path / "none"), "PATH": "/usr/bin"})
+    assert p.returncode == 0 and p.stdout == ""

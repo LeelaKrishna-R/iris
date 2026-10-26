@@ -18,7 +18,7 @@ Agents connect in one of three ways:
 
 | Way | For | Status |
 |---|---|---|
-| **MCP server** (`agents/iris_mcp.py`) | Claude Code, Codex, Cursor and any MCP client | shipped |
+| **MCP server** (`agents/iris_mcp.py`) | Claude Code, Codex, Cursor, OpenClaw and any MCP client | shipped |
 | **Claude Code hook** (`agents/claude_code_hook.py`): she glances up when Claude finishes, comes over when it needs you | Claude Code | shipped |
 | **Codex notify** (`agents/codex_notify.py`): she glances up when Codex finishes a turn | OpenAI Codex CLI | shipped |
 | **Cursor hook** (`agents/cursor_hook.py`): she glances up when Cursor's agent finishes (or stops on an error) | Cursor | shipped |
@@ -55,6 +55,11 @@ args = ["/path/to/iris/agents/iris_mcp.py"]
 ```json
 // Cursor: ~/.cursor/mcp.json
 {"mcpServers": {"iris": {"command": "python3", "args": ["/path/to/iris/agents/iris_mcp.py"]}}}
+```
+
+```json5
+// OpenClaw: its config, under mcp.servers (OpenClaw's tool policy still applies to her tools)
+mcp: { servers: { iris: { command: "python3", args: ["/path/to/iris/agents/iris_mcp.py"] } } }
 ```
 
 The server is one Python file with no dependencies beyond the standard library.

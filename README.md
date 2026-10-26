@@ -57,6 +57,34 @@ The server is one Python file with no dependencies beyond the standard library.
 5. **First-run setup** that explains each macOS permission (screen recording, microphone,
    accessibility), and works with any of them refused.
 
+## Install (from source)
+
+```sh
+git clone <this repo> iris && cd iris/app
+./build.sh --launch          # builds, signs, installs to ~/Applications/Iris.app and starts her
+```
+
+macOS asks for three permissions, each optional; she does less without each one:
+
+| Permission | What she uses it for | Without it |
+|---|---|---|
+| Screen Recording | reacting to what's on your screens; `iris_screen` if you allow agents | she can't see your screens |
+| Microphone + Speech Recognition | hearing her name ("Iris, …") so an agent can answer you out loud | she can't hear you; her Ask box (⌃⌥Space) still works |
+| Accessibility | knowing where your typing goes | she knows less about what you're doing |
+
+Settings (all optional):
+
+```sh
+defaults write app.iris.companion agentName "Claude"     # who she speaks for, in her menu
+defaults write app.iris.companion wakeWords -array iris  # the names that wake her
+```
+
+## Where she came from
+
+Iris began as the desktop companion of Friday, one person's own assistant, and grew up on his Mac.
+This repository is her own home now. Her code still carries notes from those days, written about "him",
+and they'll be tidied as she ships here.
+
 ## Requirements
 
 macOS 14 or later. The MCP server needs Python 3.9+.

@@ -151,7 +151,7 @@ TOOLS = {
                  {"text": {"type": "string", "description": "What she says."},
                   "speak": {"type": "boolean", "description": "Aloud (default) or bubble only."},
                   "seconds": {"type": "number", "description": "How long the bubble stays."}}, ["text"]),
-    "iris_react": (t_react, "Play one of Iris's animations (a reaction such as a wave, a happy hop or a think). "
+    "iris_react": (t_react, "Play one of Iris's animations (a reaction such as think, nod or giggle). "
                             "Use iris_animations for the names.",
                    {"animation": {"type": "string"}, "seconds": {"type": "number"}}, ["animation"]),
     "iris_animations": (t_animations, "List Iris's animations by name.", {}, []),

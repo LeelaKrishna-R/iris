@@ -3,7 +3,7 @@
   "id": "tiptoe",
   "category": "human",
   "shows": "tiptoeing sneakily toward the right on the balls of her feet, shoulders hunched, finger on lips",
-  "when": "sneaking up on him, being quiet"
+  "when": "sneaking up on them, being quiet"
  },
  {
   "id": "skip",
@@ -111,7 +111,7 @@
   "id": "giggle",
   "category": "human",
   "shows": "giggling, eyes squeezed happily, shoulders shaking, blushing",
-  "when": "something funny or cute on the person's screen, he petted her",
+  "when": "something funny or cute on the person's screen, the person petted her",
   "rig": "yes"
  },
  {
@@ -154,7 +154,7 @@
   "id": "think",
   "category": "human",
   "shows": "thinking, head tilted, eyes looking up",
-  "when": "he's reading or puzzling over something, a hard problem",
+  "when": "they're reading or puzzling over something, a hard problem",
   "rig": "yes"
  },
  {
@@ -173,7 +173,7 @@
   "id": "nod",
   "category": "human",
   "shows": "nodding along, agreeing, a happy little smile",
-  "when": "agreeing with something on the person's screen, he did something right",
+  "when": "agreeing with something on the person's screen, the person did something right",
   "rig": "yes"
  },
  {
@@ -253,7 +253,7 @@
   "id": "read_book",
   "category": "human",
   "shows": "sitting and reading a small book, turning a page, eyes scanning",
-  "when": "quiet time while he works"
+  "when": "quiet time while the person works"
  },
  {
   "id": "phone",
@@ -889,7 +889,7 @@
   "id": "bring_pillow",
   "category": "gaming",
   "shows": "offers a soft plushie comfortingly",
-  "when": "he lost a match"
+  "when": "the person lost a match"
  },
  {
   "id": "energy_drink",
@@ -1015,7 +1015,7 @@
   "id": "posture",
   "category": "wellbeing",
   "shows": "stands up very straight, pulling shoulders back, pointing at her back",
-  "when": "he has been slouching for a long time"
+  "when": "they have been slouching for a long time"
  },
  {
   "id": "water_push",
@@ -1143,7 +1143,7 @@
   "id": "look_around",
   "category": "human",
   "shows": "looking left and right around the screens, curious",
-  "when": "exploring, something new appeared, he switched apps",
+  "when": "exploring, something new appeared, the person switched apps",
   "rig": "yes"
  },
  {
@@ -1157,7 +1157,7 @@
   "id": "shy",
   "category": "human",
   "shows": "shy, blushing hard, looking away and down",
-  "when": "he praised her, he looked at her for a long time",
+  "when": "the person praised her, the person looked at her for a long time",
   "rig": "yes"
  },
  {

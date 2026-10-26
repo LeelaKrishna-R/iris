@@ -20,10 +20,20 @@ import sys
 from pathlib import Path
 
 PUBLIC_ONLY = {"Config.swift", "Welcome.swift"}
+# Words that must never reach this repo (names, places, accounts), one per line. The list itself is private, so it
+# lives beside this file, untracked; without it only Friday's own domain is checked.
+PRIVATE_WORDS = Path(__file__).with_name("private_words.txt")
 
 
 class SyncError(Exception):
     pass
+
+
+def private_words() -> str:
+    words = ["heyfriday"]
+    if PRIVATE_WORDS.exists():
+        words += [w.strip() for w in PRIVATE_WORDS.read_text(encoding="utf-8").splitlines() if w.strip()]
+    return "|".join(re.escape(w) for w in words)
 
 
 def _sub(text: str, old: str, new: str, where: str, regex: bool = False) -> str:
@@ -60,6 +70,18 @@ def scrub_comments(text: str) -> str:
     return "\n".join(out)
 
 
+PERSON = [(r"\bhis\b", "the person's"), (r"\bhimself\b", "themselves"), (r"\bhim\b", "them"),
+          (r"\bhe's\b", "they're"), (r"\bhe is\b", "they are"), (r"\bhe was\b", "they were"), (r"\bhe has\b", "they have"),
+          (r"\bhe\b", "the person")]
+
+
+def neutral_person(text: str) -> str:
+    """The catalog's 'when' notes were written about one man; say them about whoever is at the Mac."""
+    for old, new in PERSON:
+        text = re.sub(old, new, text)
+    return text
+
+
 def sync(src: Path, dst: Path) -> None:
     """src: Friday's iris/ folder. dst: this repo's app/ folder."""
     s_src, s_dst = src / "Sources/Iris", dst / "Sources/Iris"
@@ -79,7 +101,7 @@ def sync(src: Path, dst: Path) -> None:
         for e in cat:
             for k in ("shows", "when"):
                 if isinstance(e.get(k), str):
-                    e[k] = re.sub(r"\bhis\b", "the person's", e[k])
+                    e[k] = neutral_person(e[k])
         (dst / "Resources/catalog.json").write_text(json.dumps(cat, indent=1, ensure_ascii=False), encoding="utf-8")
 
     _edit(dst / "Resources/Info.plist",
@@ -137,7 +159,7 @@ def sync(src: Path, dst: Path) -> None:
         p.write_text(scrub_comments(t), encoding="utf-8")
     left = [f"{Path(f).name}:{i + 1}" for f in glob.glob(str(s_dst / "*.swift"))
             for i, ln in enumerate(Path(f).read_text(encoding="utf-8").split("\n"))
-            if re.search(r"heyfriday", ln, re.I)]
+            if re.search(private_words(), ln, re.I)]
     if left:
         raise SyncError("personal names left after the edits: " + ", ".join(left[:10]))
 

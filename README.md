@@ -47,6 +47,13 @@ claude mcp add iris -- python3 /path/to/iris/agents/iris_mcp.py
 
 The server is one Python file with no dependencies beyond the standard library.
 
+### Talk to your agent through her
+
+```sh
+python3 agents/voice_loop.py -- claude -p      # say "Iris, what's left on my todo?" and Claude Code answers in her voice
+python3 agents/voice_loop.py -- codex exec     # or Codex, or any command that takes a prompt and prints a reply
+```
+
 ## Roadmap
 
 1. **MCP server** for any agent: shipped (`agents/iris_mcp.py`, tests in `tests/`).

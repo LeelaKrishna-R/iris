@@ -171,3 +171,16 @@ def test_cli_iris_down(tmp_path, monkeypatch):
     import iris_cli
     monkeypatch.setattr(iris_mcp, "KEY_FILE", tmp_path / "missing")
     assert iris_cli.run(["notice", "x"])[0] == 2
+
+
+def test_voice_loop_turn_passes_words_to_the_agent_and_says_its_reply(iris):
+    import voice_loop
+    reply = voice_loop.turn(["echo", "You said:"], "what's on my calendar", speak=False)
+    assert reply == "You said: what's on my calendar"
+    paths = [p for _m, p, _b in iris]
+    assert paths[-2:] == ["/iris/act", "/mouth/show"] and iris[-1][2]["text"] == reply
+
+
+def test_voice_loop_turn_says_when_the_agent_cant_start(iris):
+    import voice_loop
+    assert voice_loop.turn(["/no/such/agent"], "hi", speak=False).startswith("I couldn't start the agent")

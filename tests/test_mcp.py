@@ -156,3 +156,18 @@ def test_cursor_hook_reacts_to_stop(iris):
     assert cursor_hook.react({"hook_event_name": "stop", "status": "error"}) == "notice_error"
     assert cursor_hook.react({"hook_event_name": "stop", "status": "aborted"}) == ""
     assert cursor_hook.react({"hook_event_name": "afterFileEdit"}) == ""
+
+
+def test_cli(iris):
+    import iris_cli
+    assert iris_cli.run(["say", "--bubble", "Build", "finished"]) == (0, "Iris showed it in her bubble.")
+    assert iris[-1][2]["text"] == "Build finished"
+    assert iris_cli.run(["react", "moonwalk"])[0] == 1
+    assert iris_cli.run(["notice", "tests", "failed"]) == (0, "Iris glanced up at it.")
+    assert iris_cli.run([])[0] == 64 and iris_cli.run(["dance-party"])[0] == 64
+
+
+def test_cli_iris_down(tmp_path, monkeypatch):
+    import iris_cli
+    monkeypatch.setattr(iris_mcp, "KEY_FILE", tmp_path / "missing")
+    assert iris_cli.run(["notice", "x"])[0] == 2

@@ -147,3 +147,12 @@ def test_codex_notify_reacts_to_a_finished_turn(iris):
     assert codex_notify.react({"type": "agent-turn-complete", "last-assistant-message": "All tests pass."}) == "notice"
     assert iris[-1][1:] == ("/iris/notice", {"title": "Codex: All tests pass."})
     assert codex_notify.react({"type": "something-else"}) == ""
+
+
+def test_cursor_hook_reacts_to_stop(iris):
+    import cursor_hook
+    assert cursor_hook.react({"hook_event_name": "stop", "status": "completed"}) == "notice"
+    assert iris[-1][1:] == ("/iris/notice", {"title": "Cursor finished"})
+    assert cursor_hook.react({"hook_event_name": "stop", "status": "error"}) == "notice_error"
+    assert cursor_hook.react({"hook_event_name": "stop", "status": "aborted"}) == ""
+    assert cursor_hook.react({"hook_event_name": "afterFileEdit"}) == ""

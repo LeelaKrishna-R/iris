@@ -5,7 +5,7 @@ A desktop companion for your Mac that any AI agent can bring to life.
 Iris lives on your screen as a small animated character. She walks, sits beside your windows, reacts when
 you play with her, and naps when you step away. Hook her up to an AI agent (Claude Code, Codex, Cursor,
 OpenClaw, or your own) and she becomes its face: she speaks its replies, glances up when a task finishes,
-and waves when it needs you.
+and comes over when it needs you.
 
 > Status: early. This repository is built in the open, one shipped piece at a time. What is here works;
 > what isn't yet is listed under **Roadmap**, never described as done.
@@ -14,7 +14,7 @@ and waves when it needs you.
 
 Iris runs a small local API on `127.0.0.1:7791`. Only your macOS user can use it: every request is
 signed with a key Iris writes to `~/Library/Application Support/Iris/link.key` (mode 0600) on first run.
-Agents connect in one of three ways:
+Agents connect in several ways:
 
 | Way | For | Status |
 |---|---|---|
@@ -22,7 +22,7 @@ Agents connect in one of three ways:
 | **Claude Code hook** (`agents/claude_code_hook.py`): she glances up when Claude finishes, comes over when it needs you | Claude Code | shipped |
 | **Codex notify** (`agents/codex_notify.py`): she glances up when Codex finishes a turn | OpenAI Codex CLI | shipped |
 | **Cursor hook** (`agents/cursor_hook.py`): she glances up when Cursor's agent finishes (or stops on an error) | Cursor | shipped |
-| **`iris` CLI** (`agents/iris_cli.py`): `iris say …`, `iris notice …`, `iris react wave`, `iris listen` | scripts, custom agents | shipped |
+| **`iris` CLI** (`agents/iris_cli.py`): `iris say …`, `iris notice …`, `iris react giggle`, `iris listen` | scripts, custom agents | shipped |
 | **HTTP API** (`docs/API.md`): every endpoint, signing, and why her hands stay out of agents | custom agents | documented |
 
 ### MCP tools
@@ -74,12 +74,13 @@ python3 agents/voice_loop.py -- codex exec     # or Codex, or any command that t
 ## Roadmap
 
 1. **MCP server** for any agent: shipped (`agents/iris_mcp.py`, tests in `tests/`).
-2. **The Iris app itself** (`app/`, in progress: builds, wake words and agent name are settings), neutral and installable: her body, animations and senses, with no
-   assumptions about who you are. Your name, her wake word and her personality are your settings.
+2. **The Iris app itself** (`app/`): her body, animations and senses, with no assumptions about who you are.
+   In progress: it builds, and her wake words, agent name, port and data folder are settings. Her art (the
+   animation frames) joins the repository with the first public release.
 3. **Agent hooks**: Claude Code, Codex and Cursor shipped (`agents/claude_code_hook.py`, `agents/codex_notify.py`, `agents/cursor_hook.py`).
 4. **`iris` CLI** and **HTTP API docs** (`docs/API.md`): shipped.
-5. **First-run welcome** (shipped: explains each permission and opens its System Settings pane; "Welcome…" in her menu shows it again). Next: fallbacks tested with each permission refused (screen recording, microphone,
-   accessibility), and works with any of them refused.
+5. **First-run welcome**: shipped. It explains each permission and opens its System Settings pane, and
+   "Welcome…" in her menu shows it again. Next: checking she behaves well with each permission refused.
 
 ## Install (from source)
 

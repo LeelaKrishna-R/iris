@@ -2,3 +2,9 @@ __pycache__/
 *.pyc
 .build/
 .DS_Store
+
+# Her art stays private (see docs/ART.md for how to make your own)
+app/Resources/anim/
+app/Resources/live/
+app/Resources/sprites/
+tools/private_words.txt

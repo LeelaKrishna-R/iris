@@ -2,6 +2,12 @@
 
 A desktop companion for your Mac that any AI agent can bring to life.
 
+<p align="center">
+  <img src="docs/images/iris.png" height="260" alt="Iris standing, smiling">
+  <img src="docs/images/wave.gif" height="260" alt="Iris waving">
+  <img src="docs/images/guitar.gif" height="260" alt="Iris playing guitar">
+</p>
+
 Iris lives on your screen as a small animated character. She walks, sits beside your windows, reacts when
 you play with her, and naps when you step away. Hook her up to an AI agent (Claude Code, Codex, Cursor,
 OpenClaw, or your own) and she becomes its face: she speaks its replies, glances up when a task finishes,
@@ -75,8 +81,8 @@ python3 agents/voice_loop.py -- codex exec     # or Codex, or any command that t
 
 1. **MCP server** for any agent: shipped (`agents/iris_mcp.py`, tests in `tests/`).
 2. **The Iris app itself** (`app/`): her body, animations and senses, with no assumptions about who you are.
-   In progress: it builds, and her wake words, agent name, port and data folder are settings. Her art (the
-   animation frames) joins the repository with the first public release.
+   In progress: it builds, and her wake words, agent name, port and data folder are settings. Her original art
+   stays private; [docs/ART.md](docs/ART.md) is how it was made, so you can make your own set.
 3. **Agent hooks**: Claude Code, Codex and Cursor shipped (`agents/claude_code_hook.py`, `agents/codex_notify.py`, `agents/cursor_hook.py`).
 4. **`iris` CLI** and **HTTP API docs** (`docs/API.md`): shipped.
 5. **First-run welcome**: shipped. It explains each permission and opens its System Settings pane, and
@@ -84,8 +90,11 @@ python3 agents/voice_loop.py -- codex exec     # or Codex, or any command that t
 
 ## Install (from source)
 
+Her drawings aren't in this repository, so make a set first ([docs/ART.md](docs/ART.md) says what goes where and how
+we made ours). Without art the app has nothing to draw.
+
 ```sh
-git clone <this repo> iris && cd iris/app
+git clone https://github.com/LeelaKrishna-R/iris && cd iris/app
 ./build.sh --launch          # builds, signs, installs to ~/Applications/Iris.app and starts her
 ```
 
@@ -116,4 +125,4 @@ macOS 14 or later. The MCP server needs Python 3.9+.
 
 ## License
 
-To be decided before the first public release.
+The code is [MIT](LICENSE). Iris's original drawings aren't included and aren't covered by it.

@@ -23,7 +23,7 @@ Agents connect in one of three ways:
 | **Codex notify** (`agents/codex_notify.py`): she glances up when Codex finishes a turn | OpenAI Codex CLI | shipped |
 | **Cursor hook** (`agents/cursor_hook.py`): she glances up when Cursor's agent finishes (or stops on an error) | Cursor | shipped |
 | **`iris` CLI** (`agents/iris_cli.py`): `iris say …`, `iris notice …`, `iris react wave`, `iris listen` | scripts, custom agents | shipped |
-| **HTTP API docs** | custom agents | planned |
+| **HTTP API** (`docs/API.md`): every endpoint, signing, and why her hands stay out of agents | custom agents | documented |
 
 ### MCP tools
 
@@ -53,7 +53,7 @@ The server is one Python file with no dependencies beyond the standard library.
 2. **The Iris app itself** (`app/`, in progress: builds, wake words and agent name are settings), neutral and installable: her body, animations and senses, with no
    assumptions about who you are. Your name, her wake word and her personality are your settings.
 3. **Agent hooks**: Claude Code, Codex and Cursor shipped (`agents/claude_code_hook.py`, `agents/codex_notify.py`, `agents/cursor_hook.py`).
-4. **`iris` CLI** shipped; **HTTP API docs** next, for custom agents.
+4. **`iris` CLI** and **HTTP API docs** (`docs/API.md`): shipped.
 5. **First-run setup** that explains each macOS permission (screen recording, microphone,
    accessibility), and works with any of them refused.
 

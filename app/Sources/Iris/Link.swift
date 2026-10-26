@@ -8,7 +8,7 @@ import Network
 /// read (~/Library/Application Support/Iris/link.key, 0600). No public
 /// route, no sign-in, no key leaves the machine.
 final class Link {
-    static let port: UInt16 = 7791
+    static var port: UInt16 { Config.port }
     typealias Reply = (Int, [String: Any]) -> Void
     typealias Handler = (_ path: String, _ query: [String: String], _ body: [String: Any], _ reply: @escaping Reply) -> Void
 

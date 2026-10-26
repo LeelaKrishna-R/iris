@@ -1,12 +1,11 @@
 import Foundation
 
-/// Where Iris keeps what she learns and sees: ~/Library/Application Support/Iris.
-/// Friday Core runs as the same macOS user on this Mac, so it reads the link
-/// key from here; nobody else can (0600).
+/// Where Iris keeps what she learns and sees: ~/Library/Application Support/Iris (or Config.dataDir).
+/// Agents run as the same macOS user, so they read the link key from here; nobody else can (0600).
 enum Store {
     static var dir: URL = {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        let d = base.appendingPathComponent("Iris", isDirectory: true)
+        let d = Config.dataDir ?? base.appendingPathComponent("Iris", isDirectory: true)
         try? FileManager.default.createDirectory(at: d, withIntermediateDirectories: true,
                                                  attributes: [.posixPermissions: 0o700])
         return d

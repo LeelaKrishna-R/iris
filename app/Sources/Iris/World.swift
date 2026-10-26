@@ -68,7 +68,7 @@ final class RealWorld: World {
     var musicPlaying: Bool {
         // Which apps are making sound right now (Core Audio's process list,
         // macOS 14.2+, no permission). The output device itself reads "running"
-        // all the time (10-11: some app always holds a stream), so it can't tell.
+        // all the time, so it can't tell.
         let players: Set<String> = ["com.spotify.client", "com.apple.Music", "com.apple.podcasts", "com.tidal.desktop",
                                     "com.amazon.music", "com.deezer.deezer-desktop"]
         var addr = AudioObjectPropertyAddress(mSelector: kAudioHardwarePropertyProcessObjectList,
@@ -99,7 +99,7 @@ final class RealWorld: World {
         }
         return false
     }
-    // 10-22: built once and kept until macOS says his displays changed (resolution, arrangement, the Dock or
+    // built once and kept until macOS says his displays changed (resolution, arrangement, the Dock or
     // menu bar resizing the visible frame); her body reads this from ~46 places, many every frame, and
     // rebuilding it each time was her top own function in a 10 s sample with him at the Mac
     private var screensKept: [Display]?
@@ -153,7 +153,7 @@ final class RealWorld: World {
               AXUIElementCopyAttributeValue(w as! AXUIElement, kAXTitleAttribute as CFString, &title) == .success else { return nil }
         return title as? String
     }
-    // 10-22: hardware keys only. The session's counter also counted keys other apps post, and one at 07:14
+    // hardware keys only. The session's counter also counted keys other apps post, and one at 07:14
     // (his last real input 05:51) had her wave "he came back after 83 min away" to an empty room.
     var keyCounter: UInt32 { CGEventSource.counterForEventType(.hidSystemState, eventType: .keyDown) }
     var handsIdle: Double {

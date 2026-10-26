@@ -184,7 +184,7 @@ enum Sim {
             if kind == "notified" { extra[(info["busy"] as? Bool) == true ? "notices_busy" : "notices_cued", default: 0] += 1 }
             if kind == "act", let what = info["what"] as? String {
                 acts.append((t, what))
-                // every move of her own names its cause in the world (owner 10-15: "so random for no reason")
+                // every move of her own names its cause in the world 
                 if ((info["why"] as? String) ?? "").isEmpty { extra["acts_uncaused", default: 0] += 1 }
                 if ["hop", "dash", "wave", "giggle", "dance"].contains(what) {
                     extra["loud_acts", default: 0] += 1
@@ -194,7 +194,7 @@ enum Sim {
             if kind == "think", let why = info["why"] as? String, why.hasPrefix("home"), (info["moving"] as? Bool) == true {
                 extra["home_walks", default: 0] += 1
             }
-            // a walk set off while he's been away 5 min+: only home or a corner is a reason then (10-17)
+            // a walk set off while he's been away 5 min+: only home or a corner is a reason then
             if kind == "walk", let why = info["why"] as? String, why.hasPrefix("home") { extra["walks_home", default: 0] += 1 }
             if kind == "walk", let why = info["why"] as? String, ((info["idle"] as? Double) ?? 0) >= Body.trulyAway,
                !why.hasPrefix("home"), !why.hasPrefix("corner") {
@@ -585,7 +585,7 @@ final class Analyzer {
             c["snap_y"] = (c["snap_y"] ?? 0) + 1
             note(t, String(format: "SNAP y %.0f → %.0f at x %.0f (no jump, no fall)", py, y, x))
         }
-        // 2b. sliding along asleep: a walk with her eyes shut (10-14 QA: "go away" while she napped)
+        // 2b. sliding along asleep: a walk with her eyes shut
         if !unseen && !held && (s["sleeping"] as! Bool) && (p["sleeping"] as! Bool) && !((s["riding"] as? Bool) ?? false)
             && vy == 0 && pvy == 0 && abs(dx) > 0.5 {
             c["s_moving_asleep"] = (c["s_moving_asleep"] ?? 0) + dt
@@ -732,7 +732,7 @@ final class Analyzer {
             if let f = field, old.intersects(f) { c["s_old_bubble_over_field"] = (c["s_old_bubble_over_field"] ?? 0) + dt }
             if let k = caret, old.intersects(k.insetBy(dx: -40, dy: -20)) { c["s_old_bubble_over_caret"] = (c["s_old_bubble_over_caret"] ?? 0) + dt }
         }
-        // her eyes (10-14): on his cursor when it's near, on what changed when it's far, at him while
+        // her eyes: on his cursor when it's near, on what changed when it's far, at him while
         // she talks; and a glance within half a second at a new window, a new app, his voice
         let eye = CGPoint(x: mid, y: y + h * 0.68)
         let free = (s["sleeping"] as! Bool) == false && !held && face.walk < 0.05 && face.act.isEmpty

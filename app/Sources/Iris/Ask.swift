@@ -1,6 +1,6 @@
 import AppKit
 
-/// "Ask Friday…" from her menu (10-12): a small box near the pointer to type a
+/// "Ask Friday…" from her menu: a small box near the pointer to type a
 /// question to Friday, for when speaking isn't right. Return sends it, Escape
 /// or clicking away closes it. What's typed goes the way her ears' words go.
 final class AskBox: NSObject, NSTextFieldDelegate {
@@ -77,7 +77,7 @@ final class AskPanel: NSPanel {
 import Carbon.HIToolbox
 
 /// ⌃⌥Space anywhere opens "Ask Friday…"; ⌃⌥⇧Space starts listening, as her
-/// menu's "Talk to Friday" does (10-12). Carbon hot keys: no permission is
+/// menu's "Talk to Friday" does. Carbon hot keys: no permission is
 /// asked for, and only these two combinations are taken.
 enum AskHotKey {
     private static var refs: [EventHotKeyRef?] = []

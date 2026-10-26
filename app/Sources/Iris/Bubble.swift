@@ -1,7 +1,7 @@
 import AppKit
 import QuartzCore
 
-/// Her speech bubble (10-14 redesign, owner: "i need the bubble ui very better"):
+/// Her speech bubble:
 /// a native card in the system's light or dark, a hairline edge and a real
 /// shadow, a soft tail toward her, her name with a little sound wave that moves
 /// while she speaks, and rounded type. It springs out of her head, the words

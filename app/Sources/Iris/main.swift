@@ -95,7 +95,7 @@ final class App: NSObject, NSApplicationDelegate {
         case "/eyes/now":
             reply(200, eyes.now())
         case "/iris/senses":
-            // 10-21: "stop watching my screen / stop listening" (an hour), "watch again / listen again" (0)
+            // "stop watching my screen / stop listening" (an hour), "watch again / listen again" (0)
             let ears = body["ears_off_s"] as? Double
             let eyesOff = body["eyes_off_s"] as? Double
             main {
@@ -107,13 +107,13 @@ final class App: NSObject, NSApplicationDelegate {
                 return (200, out)
             }
         case "/eyes/shot":
-            // "take a screenshot": saved to Pictures/Friday Screenshots (10-12)
+            // "take a screenshot": saved to Pictures/Friday Screenshots
             eyes.shot { paths in
                 reply(paths.isEmpty ? 500 : 200, paths.isEmpty ? ["ok": false, "reason": "capture_failed"]
                                                                 : ["ok": true, "paths": paths])
             }
         case "/ears/words":
-            // 10-15: the names in his life (Core's core/stt_names, the same list his phone's voice is
+            // the names in his life (Core's core/stt_names, the same list his phone's voice is
             // primed with), so both of her recognizers expect them
             let w = (body["words"] as? [String] ?? []).map { String($0.prefix(40)) }.filter { !$0.isEmpty }
             ears.extraWords = Array(w.prefix(80))
@@ -284,7 +284,7 @@ final class App: NSObject, NSApplicationDelegate {
 }
 
 /// `Iris --hear a.wav`: a recording heard by both of her recognizers, on this Mac and Apple's server
-/// (10-15: to compare them). Never asks for permission: if speech recognition isn't allowed, says so.
+/// . Never asks for permission: if speech recognition isn't allowed, says so.
 if CommandLine.arguments.count == 3 && CommandLine.arguments[1] == "--hear" {
     guard SFSpeechRecognizer.authorizationStatus() == .authorized, let rec = SFSpeechRecognizer(locale: Locale(identifier: "en-US")) else {
         print("speech recognition not allowed for this binary"); exit(2)

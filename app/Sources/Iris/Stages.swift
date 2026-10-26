@@ -1,6 +1,6 @@
 import Foundation
 
-/// Her drawn clips whose cause is her own body (10-21, owner: why aren't her animations used?).
+/// Her drawn clips whose cause is her own body.
 /// Each decision is a pure function of her state, so it can be tested on its own
 /// (tests/test_iris_body_stages_1021.py compiles this file with a driver). No dice, no rotation:
 /// a clip plays because its state holds, and its why says which state.

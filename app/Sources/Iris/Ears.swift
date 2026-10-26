@@ -16,7 +16,7 @@ final class Ears {
     }
 
     var onWake: (() -> Void)?
-    /// He said her name while she was talking (10-14 barge-in): stop her voice.
+    /// He said her name while she was talking: stop her voice.
     var onBargeIn: (() -> Void)?
     var onHeard: ((Heard) -> Void)?
     var onDone: (() -> Void)?
@@ -41,10 +41,10 @@ final class Ears {
     /// What she is saying right now, lowercased: her own words heard back are not his.
     private var ownLine = ""
     private var silenceTimer: Timer?
-    // 10-21 (owner: "stop listening" = off for an hour): the mic engine stops, then starts again on its own
+    // the mic engine stops, then starts again on its own
     private(set) var offUntil = Date.distantPast
     private var offTimer: Timer?
-    // 10-12: each recognition task is numbered. Starting a new one cancels the old, and the
+    // each recognition task is numbered. Starting a new one cancels the old, and the
     // old one's handler then reports an error: that error used to start yet another task,
     // which cancelled this one, forever (~3 a second: 120% CPU, 126 threads, and nothing
     // heard). Only the current task's handler acts, and a real failure backs off.
@@ -59,7 +59,7 @@ final class Ears {
     private var queue: [Heard] = []
     private var waiters: [(Heard?) -> Void] = []
 
-    // 10-15 (owner: "iam speaking and she misreads some words"): the on-device recognizer heard "Hey
+    // the on-device recognizer heard "Hey
     // Friday" as "Hey friend", "Iris" as "I was", "while I was away" as "while I wait". It still listens
     // all day (nothing leaves the Mac until her name); from her name on, the same audio also goes to
     // Apple's server recognizer, which is far better at names and whole sentences, and its words are
@@ -74,7 +74,7 @@ final class Ears {
             + ["what did I miss", "remind me", "come here", "go away", "be quiet", "go to sleep", "wake up", "dance", "sit"]
     }
     /// The names in his life, from Core (/ears/words): expected by both recognizers.
-    /// 10-19: kept across her restarts. Core sends them once an hour, so each restart (91 "iris: awake"
+    /// kept across her restarts. Core sends them once an hour, so each restart (91 "iris: awake"
     /// in Iris.log, 10-10 to 10-19) left her recognizers without his names for up to an hour.
     var extraWords: [String] = Store.load([String].self, "ears-words.json") ?? [] {
         didSet { Store.save(extraWords, "ears-words.json") }
@@ -109,7 +109,7 @@ final class Ears {
         input.installTap(onBus: 0, bufferSize: 2048, format: fmt) { [weak self] buf, _ in
             guard let self else { return }
             let voiced = self.measure(buf)
-            // 10-14 (owner: "iris wont listen to 'hey friday' when … she isnt idle"): her ears
+            // her ears
             // stayed shut for every line she spoke; now they keep hearing, and only her name
             // (not in her own line) counts while she talks — see partial().
             self.gate.lock()
@@ -152,12 +152,12 @@ final class Ears {
         }
     }
 
-    // 10-13: recognition only while there is sound. She used to keep a task running all
+    // recognition only while there is sound. She used to keep a task running all
     // day: every quiet minute ended in "no speech" and a new task 0.3 s later, so the
-    // recognizer decoded silence non-stop (35-46% CPU, 370 MB -> 930 MB over 10 hours).
+    // recognizer decoded silence non-stop.
     // Now a task starts when the mic rises above the room's own level, gets the half
     // second before it, and stops after a few quiet seconds.
-    // 10-20: "sound" was any buffer 9 dB over the room's level, so a fan ramping up kept a task
+    // "sound" was any buffer 9 dB over the room's level, so a fan ramping up kept a task
     // running 79-92% of the time with him idle and nothing playing (localspeechrecognition 105
     // CPU-minutes in 15 h). A task now starts on likely speech (VoiceGate: voiced sound over the
     // room's noise, held ~0.1 s), and "quiet" means no speech.
@@ -167,9 +167,9 @@ final class Ears {
     private var lastVoiceAt = Date.distantPast
     private var voice: VoiceGate?                // the audio tap's own (created in begin)
     private var speechNow = false                // (under gate) for status()
-    // 10-14: 0.7 s, was 0.45. The gate opens on sound, then wake() waits for the main thread; a
+    // 0.7 s, was 0.45. The gate opens on sound, then wake() waits for the main thread; a
     // busy frame there cost the first buffers, and with them the "Fri" of "Friday".
-    // 10-20: ~1 s. VoiceGate says speech 0.16 s after it starts (median; 0.25-0.28 s at the 90th
+    // ~1 s. VoiceGate says speech 0.16 s after it starts (median; 0.25-0.28 s at the 90th
     // percentile, 1.3 s at worst, over 450 voiced clips in rooms in the offline bench), later than
     // raw sound did.
     static let prerollBuffers = 24          // ~1 s at 44.1/48 kHz with 2048-frame buffers
@@ -181,8 +181,8 @@ final class Ears {
         starting = false
         let running = request != nil
         gate.unlock()
-        // 10-24: not while another app has the microphone (a call): what's said there is to other people
-        // (10-19 a "Friday" in his Discord talk woke her and was answered aloud), she doesn't speak over a
+        // not while another app has the microphone (a call): what's said there is to other people
+        // , she doesn't speak over a
         // call anyway, and the recognizer ran at ~80% CPU on it. Her menu's "Talk to Friday" still opens.
         if !running && Date() >= conversationUntil && onCall() { return }
         if !running { newTask() }
@@ -298,7 +298,7 @@ final class Ears {
         guard !addressed else { return }
         let low = text.lowercased()
         let talking = Date() < mutedUntil
-        // 10-14: the recognizer hears "Iris" as "I was" / "I will" ("Iris come here" → "I was come here"
+        // the recognizer hears "Iris" as "I was" / "I will" ("Iris come here" → "I was come here"
         // in every on-device run of the bench; "I was" reached Friday as a fragment). At the start of
         // what he says and followed by one of her commands, that is her name.
         if low.range(of: HerName.misheardName, options: .regularExpression) ?? (HerName.wakeWords.contains("friday") ? low.range(of: HerName.misheardFriday, options: .regularExpression) : nil) != nil,
@@ -312,7 +312,7 @@ final class Ears {
         }
         for w in HerName.wakeWords {
             if talking && ownLine.range(of: "\\b\(w)\\b", options: .regularExpression) != nil { continue }   // her own word
-            // 10-22: not when it's the day ("on Friday") or said about her (HerName.about); his finished
+            // not when it's the day ("on Friday") or said about her (HerName.about); his finished
             // words are judged again by HerName.choose before anything reaches Friday
             if low.range(of: "\\b\(w)\\b", options: .regularExpression) != nil, HerName.end(in: low) != nil {
                 addressed = true; followUpWake = false
@@ -335,12 +335,12 @@ final class Ears {
         }
     }
 
-    // 10-14 (owner: "i need her super responsive"): what he said used to end 1.2 s after the
+    // what he said used to end 1.2 s after the
     // last new word, checked every 0.25 s (1.2-1.45 s). Now: 0.8 s after the last word once the
     // mic is quiet too (the recognizer's words lag the sound, so a quiet mic says he's done), and
     // 1.4 s at most if the room never goes quiet. "Friday" and a pause to think waits 2 s for the
     // rest: it used to go to Friday as "Friday" alone.
-    // 10-14 later (owner: "it needs to understand speech properly, missing them a lot"): 0.8 s cut
+    // 0.8 s cut
     // him off mid-sentence ("How", "s sick", "I was", "Can you check" reached Friday). Now 1.3 s
     // after the last word with the mic quiet, 2.2 s at most, and 1.2 s more when his last word
     // plainly goes on ("and", "to", "my", "what" …).
@@ -565,7 +565,7 @@ final class Ears {
         lock.unlock()
     }
 
-    // 10-14: one reader (Core's loop). A newer poll answers any older one empty: a poll whose
+    // one reader (Core's loop). A newer poll answers any older one empty: a poll whose
     // Core went away (a restart mid-poll) used to stay first in line for up to 25 s and take what
     // he said next to nobody. A timed-out poll now removes itself, not whichever was first.
     private var waiterSeq = 0
@@ -600,7 +600,7 @@ final class Ears {
     }
     private var waiterIDs: [Int] = []
 
-    // 10-12: how loud the mic is (dBFS), so "she didn't hear it" can be told apart
+    // how loud the mic is (dBFS), so "she didn't hear it" can be told apart
     // from "no sound reached the mic". Only the level is kept, never the audio.
     private var levelDB: Float = -160, peakDB: Float = -160, peakAt = Date.distantPast
     /// The room's own level: follows quiet at once, rises slowly (~1 dB a second), so a

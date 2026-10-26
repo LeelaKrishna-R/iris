@@ -1,13 +1,13 @@
 import Accelerate
 import Foundation
 
-/// 10-20: is someone likely speaking into her microphone? Her ears run Apple's recognizer only while
+/// is someone likely speaking into her microphone? Her ears run Apple's recognizer only while
 /// this says yes (Ears.measure). It used to be "one buffer 9 dB over the room's level", so any room
 /// sound ran the recognizer: with him idle at 23:06 and nothing playing, a task was up 79-92% of the
 /// time and localspeechrecognition.xpc had used 105 CPU-minutes in 15 h.
 ///
 /// A voice, unlike a fan swelling, a keyboard or a clatter, is voiced: what it adds to the room repeats
-/// at its pitch (80-400 Hz). Every ~21 ms the last ~43 ms are taken apart (FFT). The part above the
+/// at its pitch. Every ~21 ms the last ~43 ms are taken apart (FFT). The part above the
 /// room's own noise, in 80-1000 Hz where the pitch lives, is checked for repeating at a pitch (its
 /// autocorrelation, one more FFT). A frame is voiced when the voice band (200-4000 Hz) is `minSNR` over
 /// the room and that part is clearly periodic. Speech starts when `onsetNeeded` of the last

@@ -139,7 +139,7 @@ final class SpriteView: SKView {
     private var src: [SIMD2<Float>] = []
     private var clock: CGFloat = 0
     private var lastUpdate = Date()
-    /// Her last pose, for the pose journal (10-14, owner: "changes a pose from x to y … log this").
+    /// Her last pose, for the pose journal.
     private var journalPose = ""
     private var journalPoseAt = Date()
 
@@ -211,7 +211,7 @@ final class SpriteView: SKView {
 
     /// How far below her feet her window must sit for the clip showing: "sit_legs" is drawn on an edge
     /// 93 px up its 440 px picture (measured on anim/sit_legs/0.webp: rows 345-347 from the top), legs
-    /// hanging below it, so the drawn edge goes on the window's top (10-21). 0 for everything else.
+    /// hanging below it, so the drawn edge goes on the window's top. 0 for everything else.
     var ledge: CGFloat { showing == "@sit_legs" ? 4 + spriteSize.height * 93 / 440 : 0 }
 
     private func sprite(_ name: String) -> SKSpriteNode {
@@ -226,7 +226,7 @@ final class SpriteView: SKView {
     private func pose(_ f: Face) -> String {
         if !f.act.isEmpty && !SpriteView.rigActs.contains(f.act) && frames(f.act) != nil { return "@" + f.act }
         if f.sleeping { return "@sleep" }
-        // 10-17 (owner: the Iris panel's moves "arent working"): her rig draws its actions only standing or
+        // her rig draws its actions only standing or
         // sitting (apply below), so a nod or a dance asked while she typed along or waved was taken,
         // reported done ("Dancing" in the ledger) and never shown. An action of her rig leaves those poses
         // while it plays.
@@ -240,7 +240,7 @@ final class SpriteView: SKView {
         // her laptop pose is seated too, but only "sit" got the margin, so a walk value hovering at 0.05 flipped it
         let seatedNow = livePose == "sit" || livePose == "laptop" || showing == "@typing" || showing == "@" + f.seat
         if f.walk > (seatedNow ? 0.2 : 0.05) || (f.hop > 6 && f.vy != 0) {
-            // walking and jumping: her rig, standing — or the drawn walk her walk's cause asks for (10-21)
+            // walking and jumping: her rig, standing — or the drawn walk her walk's cause asks for
             if !f.gait.isEmpty && f.vy == 0 && !rigAct && frames(f.gait) != nil { return "@" + f.gait }
             return "@idle"
         }
@@ -277,9 +277,9 @@ final class SpriteView: SKView {
         clock += dt
         lastUpdate = now
 
-        // asleep, her breathing needs few frames (10-14: the app held a steady ~16% CPU at 60 fps)
-        // 10-22: awake and still (sitting, typing along, a clip in place) was 60 fps too; her drawing was about a
-        // third of her CPU (10-21 sample, 37% with him at it). Movement keeps 60: walking, carried, a hop or fall.
+        // asleep, her breathing needs few frames
+        // awake and still (sitting, typing along, a clip in place) was 60 fps too; her drawing was about a
+        // third of her CPU. Movement keeps 60: walking, carried, a hop or fall.
         let moving = f.held || f.walk > 0.05 || abs(f.vx) > 1 || f.vy != 0 || f.hop > 0.5
         let fps = f.sleeping ? 20 : moving ? 60 : 30
         if preferredFramesPerSecond != fps { preferredFramesPerSecond = fps }
@@ -287,13 +287,13 @@ final class SpriteView: SKView {
         if want != journalPose {
             // from, to and why: what drove it (a clip, sleep, his typing, walking, sitting), and how long
             // the last pose held — the report reads this to find poses that flicker or never change
-            // a drawn walk or seat in place of her rig (10-21) is named as the clip it is
+            // a drawn walk or seat in place of her rig is named as the clip it is
             let drawnStage = want == "@" + f.gait || want == "@" + f.seat
             let what = !f.act.isEmpty ? "clip \(f.act)" : drawnStage ? "clip \(want.dropFirst())" : f.sleeping ? "asleep" : !f.hint.isEmpty ? f.hint
                 : f.walk > 0.05 ? "walking" : f.sit > 0.6 ? "sitting" : "standing"
             let why = f.why.isEmpty ? what : "\(what): \(f.why)"     // and its cause (10-15)
             // idle_s: seconds since his last key, click or mouse move (the system's clock) — whether he
-            // was at the Mac for this change, which the report can't otherwise tell (10-15)
+            // was at the Mac for this change, which the report can't otherwise tell
             let idle = CGEventSource.secondsSinceLastEventType(.hidSystemState, eventType: CGEventType(rawValue: ~0)!)
             Store.append(["at": Date().timeIntervalSince1970, "from": journalPose, "to": want, "why": why,
                           "held_s": Double(Int(Date().timeIntervalSince(journalPoseAt) * 10)) / 10,
@@ -349,7 +349,7 @@ final class SpriteView: SKView {
             case "@hop":                                   // the jump frames follow her real arc
                 frameIndex = f.vy > 150 ? min(2, n - 1) : f.vy > -80 ? min(3, n - 1) : min(4, n - 1)
             case "@fall_land":
-                // 10-21: down from his window — the falling frames (0-2) while she is in the air, then the
+                // down from his window — the falling frames (0-2) while she is in the air, then the
                 // landing (3 onward, 0.15 s each) once her feet are down, holding the last
                 if f.vy != 0 { landedFor = 0; frameIndex = f.vy > 0 ? 0 : f.vy > -400 ? min(1, n - 1) : min(2, n - 1) }
                 else { landedFor += dt; frameIndex = min(n - 1, 3 + Int(landedFor / 0.15)) }
@@ -360,7 +360,7 @@ final class SpriteView: SKView {
                     blendFor = nextFrameIn * 0.75             // the last frame melts into this one
                     frameIndex = (frameIndex + 1) % n
                     let base: CGFloat = ["@sleep": 0.75, "@blanket": 0.8, "@sit": 0.55, "@idle": 0.5, "@typing": 0.3, "@wave": 0.16, "@talk": 0.14,
-                                         // her body's own clips (10-21): a doze droops slowly, a snore breathes,
+                                         // her body's own clips: a doze droops slowly, a snore breathes,
                                          // legs swing, pages turn, a line waits for a bite
                                          "@doze": 0.35, "@snore": 0.5, "@sit_legs": 0.18, "@read_book": 0.6,
                                          "@fishing": 0.8, "@sulk": 0.3][want] ?? 0.13
@@ -446,7 +446,7 @@ final class SpriteView: SKView {
             case "nod":
                 p.nod = max(0, sin(t * 7)) * 0.9; p.mouth = "smile_open"
             case "shake_head":
-                // 10-20: at 0.55 her "no" read as standing still at her size (frames of the panel's tap);
+                // at 0.55 her "no" read as standing still at her size (frames of the panel's tap);
                 // a full turn each way, eyes going with it, easing out over three seconds
                 let k = max(0, 1 - t / 3)
                 p.turn = sin(t * 8) * 0.95 * k; p.gaze = CGPoint(x: sin(t * 8) * 0.9 * k, y: 0); p.mouth = "frown"
@@ -464,13 +464,13 @@ final class SpriteView: SKView {
                 p.tilt = sin(t * 6) * 0.12; p.turn = sin(t * 3) * 0.45
                 if live.pose == "stand" { p.stride = 0.7; p.step = t * 6; p.dir = sin(t * 3) > 0 ? 1 : -1 }
             case "sigh":
-                // 10-20: half-lidded and a small dip read as no move; a breath in, then eyes nearly shut,
+                // half-lidded and a small dip read as no move; a breath in, then eyes nearly shut,
                 // head dropping and the breath let out through an "o"
                 let k = min(1, t / 0.8)
                 p.lid = 0.25 + 0.6 * k; p.mouth = t > 0.6 && t < 1.8 ? "o" : "flat"
                 p.nod = 0.7 * k; p.breath = t < 0.6 ? 1.6 : -1.4 * k
             case "think":
-                // 10-20: a 0.16 tilt read as no move; head tipped well over, eyes up and away, lips pursed
+                // a 0.16 tilt read as no move; head tipped well over, eyes up and away, lips pursed
                 p.tilt += 0.3; p.gaze = CGPoint(x: 0.9, y: 0.9); p.mouth = "pout"
                 p.turn = 0.45 + sin(t * 0.8) * 0.08
             case "shy":

@@ -102,7 +102,7 @@ final class Live: SKNode {
         guard ok else { return }
         clock += dt
         // what shows over her picture
-        // 10-15 (owner: "goofy … creepy looks"): her eyes are open or shut, both her own drawings
+        // her eyes are open or shut, both her own drawings
         // (iris/art/live.py); the half-shut lids were skin patches over her eyes and are gone
         layers["lid3"]?.isHidden = p.happy || p.lid <= 0.85
         layers["happy"]?.isHidden = !p.happy

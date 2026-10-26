@@ -71,7 +71,7 @@ enum Hands {
         down.post(tap: .cghidEventTap)
         up.post(tap: .cghidEventTap)
         // and let go of the modifiers: the system kept Command "held" after cmd+up
-        // until the next plain key (10-11), so what was typed next became shortcuts
+        // until the next plain key, so what was typed next became shortcuts
         if !flags.isEmpty, let release = CGEvent(source: src) {
             release.type = .flagsChanged
             release.flags = []
@@ -155,7 +155,7 @@ enum Hands {
         var out: [Thing] = [], text: [Thing] = []
         var seen = 0
         // what sits in a dialog or sheet comes first: Music's welcome sheet ("Not Now")
-        // blocked every action while its buttons were listed after 50 others (10-11)
+        // blocked every action while its buttons were listed after 50 others
         func walk(_ e: AXUIElement, _ depth: Int, _ inDialog: Bool = false) {
             guard depth < 30, out.count < limit, seen < 6000 else { return }
             seen += 1
@@ -234,7 +234,7 @@ enum Hands {
         let parts = path.split(separator: ">").map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
         guard parts.count >= 2, let target = targetApp(app) else { return ["ok": false, "reason": "no_such_app"] }
         // A menu acts only for the app in front: "Music > Quit Music" pressed in the
-        // background answered success and did nothing (10-11). Bring it forward first.
+        // background answered success and did nothing. Bring it forward first.
         if NSWorkspace.shared.frontmostApplication?.processIdentifier != target.processIdentifier {
             target.activate()
             for _ in 0..<20 where NSWorkspace.shared.frontmostApplication?.processIdentifier != target.processIdentifier {

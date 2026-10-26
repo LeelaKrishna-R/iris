@@ -38,12 +38,12 @@ final class Eyes {
     static let windowsEveryS: Double = 3
     private var lastChange = Date.distantPast
     private var lastError: String?
-    // 10-21 (owner: "stop watching my screen" = off for an hour): no screen read and nothing of his
+    // no screen read and nothing of his
     // screens handed to Friday until then
     private var offUntil = Date.distantPast
     // his focused window as Friday last asked (now()), to tell the screen he works on from the other one
     private var focusedCache: CGRect?
-    // 10-21: her screen reads were ~45% of her CPU (a 10 s sample; 37% CPU with him at it). Words on his
+    // her screen reads were ~45% of her CPU (a 10 s sample; 37% CPU with him at it). Words on his
     // screens count only while he's at the Mac and mostly on the screen he works on (core/iris_reflex)
     static let readAwayS: Double = 300        // away this long: no reads; the first look after he's back reads
     static let otherScreenEveryS: Double = 60 // the screen he isn't working on: at most once a minute (was 10 s)
@@ -68,7 +68,7 @@ final class Eyes {
 
     static var permitted: Bool { CGPreflightScreenCaptureAccess() }
 
-    // 10-17: her glance is a running stream per display, not a screenshot every second. Iris.log
+    // her glance is a running stream per display, not a screenshot every second. Iris.log
     // held 3,303 "SKView: no drawables available for rendering. Skipping this frame." lines, every
     // one 30-90 ms after her once-a-second capture (unified log, 10-17 12:12:08: shareable content
     // .368, screenshot .389, skipped frame .417; per process the skips sit in one tenth of the
@@ -88,7 +88,7 @@ final class Eyes {
     private lazy var output = Output(self)
 
     func start() {
-        // she never asks on her own: he allowed it once (10-10), and a request at
+        // she never asks on her own: he allowed it once, and a request at
         // every launch was the dialog he kept clicking. If it is really gone,
         // /health says screen_recording_not_allowed and Friday tells him.
         timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in self?.look() }
@@ -111,7 +111,7 @@ final class Eyes {
         let (open, tried) = q.sync { (!streams.isEmpty || opening, openTried) }
         if !open && Date().timeIntervalSince(tried) >= 5 { await openStreams() }
         let (looks, targets, mine) = q.sync { (glances, shown, me) }
-        // 10-22: the window list every 3 s, not every tick (a top own cost in a sample with him at the Mac)
+        // the window list every 3 s, not every tick (a top own cost in a sample with him at the Mac)
         if Date().timeIntervalSince(windowsAt) >= Eyes.windowsEveryS || q.sync(execute: { windows.isEmpty }) {
             windowsAt = Date()
             let wins = Eyes.windowList(on: Array(targets.values))
@@ -242,13 +242,13 @@ final class Eyes {
             displays[id] = d
             // reading costs seconds of CPU on this Mac: at most one read every 10 s, both screens together
             guard reading.isEmpty, now.timeIntervalSince(lastRead) >= 10, now >= offUntil else { return false }
-            // 10-24: hardware input only (keys another app posts aren't him: the 10-22 07:14 phantom wave)
+            // hardware input only (keys another app posts aren't him: the 10-22 07:14 phantom wave)
             let idle = CGEventSource.secondsSinceLastEventType(.hidSystemState, eventType: CGEventType(rawValue: ~0)!)
             guard idle < Eyes.readAwayS else { return false }        // he's away: his screens' words feed nothing
             let front = focusedCache.map { frame.contains(CGPoint(x: $0.midX, y: $0.midY)) } ?? true
             guard front || now.timeIntervalSince(d.readAt ?? .distantPast) >= Eyes.otherScreenEveryS else { return false }
             let sinceRead = now.timeIntervalSince(d.readAt ?? .distantPast)
-            // 10-24: his hands resting a minute or more (reading, watching), at most every 30 s: a chat or a video
+            // his hands resting a minute or more (reading, watching), at most every 30 s: a chat or a video
             // moving had her read every ~9 s, each read a 45-60% CPU spike, for words that only count while he works
             guard idle < Eyes.handsBusyS || sinceRead >= Eyes.restingEveryS else { return false }
             guard let p = pendingRead[id] else { return false }
@@ -263,7 +263,7 @@ final class Eyes {
         q.sync { reading.insert(id); pendingRead[id] = nil; lastRead = Date() }
         ocrQ.async { [weak self] in
             guard let self else { return }
-            // 10-17: every read is Vision's accurate recognizer, revision 2. She read a changed screen
+            // every read is Vision's accurate recognizer, revision 2. She read a changed screen
             // first with .fast (no language correction) and again with accurate revision 3 (with it)
             // only after 10 s still; a terminal running tests is never still that long, so what her
             // reflexes and Friday got was the quick read: in her eyes logs 10-13..10-17, 270 of 309
@@ -312,7 +312,7 @@ final class Eyes {
         }
     }
 
-    // MARK: a screenshot he asked for (10-12)
+    // MARK: a screenshot he asked for
 
     /// Every display as he sees it (Iris left out), saved as PNGs in
     /// ~/Pictures/Friday Screenshots (not a folder macOS guards, so nothing is
@@ -387,7 +387,7 @@ final class Eyes {
             "front_title": Eyes.focusedTitle() ?? "",
             "idle_s": CGEventSource.secondsSinceLastEventType(.hidSystemState, eventType: any),   // his hands only (10-24)
             "permitted": Eyes.permitted,
-            // 10-12: an app has the mic (a call is live) / something is playing (any tab)
+            // an app has the mic (a call is live) / something is playing (any tab)
             "mic_others": AudioUse.micByOthers,
             "sound": AudioUse.soundPlaying,
         ]
@@ -413,7 +413,7 @@ final class Eyes {
                 return m
             }
             out["windows"] = windows.map { ["app": $0.app, "title": $0.title, "display": $0.display ?? 0, "frame": $0.frame] }
-            // 10-17: the display his focused window is on — where his typing goes, so where its
+            // the display his focused window is on — where his typing goes, so where its
             // output appears (her reflexes took Claude's output on his other screen as his)
             if let f = focused,
                let d = displays.values.first(where: { $0.frame.count == 4

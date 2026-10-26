@@ -2,18 +2,18 @@ import Foundation
 
 /// Her name in what he said, and what of it is for her, decided on his finished words.
 ///
-/// 10-19: her ears woke on a partial guess and kept that guess's place in the text. The on-device
+/// her ears woke on a partial guess and kept that guess's place in the text. The on-device
 /// recognizer rewrites its words as he goes on, so a name in one guess can be gone from the next, and a
 /// place in one guess points elsewhere in the next. In Iris's ears.jsonl (on-device words) and Friday's
-/// surface_history (what reached Core): "I was sick" reached Friday as "s sick" (10-14), and a sentence he
+/// surface_history (what reached Core): "I was sick" reached Friday as "s sick", and a sentence he
 /// said to someone else in the room, with no name in its finished words, reached Friday cut at its first
-/// word and was answered (10-19). Now her name is looked for again in the finished words, and the text is
+/// word and was answered. Now her name is looked for again in the finished words, and the text is
 /// cut there; when it is in neither recognizer's finished words, it was not said to her.
 ///
 /// Apart from Ears (AVFoundation, Speech) so it compiles on its own: tests/test_iris_her_name_1019.py.
 enum HerName {
     static var wakeWords: [String] { Config.wakeWords }
-    /// "Hey Friday" misheard by the on-device recognizer (10-15: "Hey friend").
+    /// "Hey Friday" misheard by the on-device recognizer.
     static let misheardFriday = #"^\s*(?:hey|hi|okay|ok)\s+(?:friend|friends|fried|frida|fri day)\b"#
     /// "Iris" misheard, only at the start and only before one of her commands.
     static let misheardName = #"^\s*(?:hey\s+)?(?:i was|i will|i'll|irish|ires|iras)(?=\s+(?:come|dance|sit|sleep|wake|stop|go|wave|look|move|be quiet|hush|shh|nap|giggle|say hi))"#

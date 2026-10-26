@@ -54,7 +54,7 @@ The server is one Python file with no dependencies beyond the standard library.
    assumptions about who you are. Your name, her wake word and her personality are your settings.
 3. **Agent hooks**: Claude Code, Codex and Cursor shipped (`agents/claude_code_hook.py`, `agents/codex_notify.py`, `agents/cursor_hook.py`).
 4. **`iris` CLI** and **HTTP API docs** (`docs/API.md`): shipped.
-5. **First-run setup** that explains each macOS permission (screen recording, microphone,
+5. **First-run welcome** (shipped: explains each permission and opens its System Settings pane; "Welcome…" in her menu shows it again). Next: fallbacks tested with each permission refused (screen recording, microphone,
    accessibility), and works with any of them refused.
 
 ## Install (from source)

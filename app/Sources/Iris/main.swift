@@ -59,6 +59,7 @@ final class App: NSObject, NSApplicationDelegate {
         }
         do { try link?.start() } catch { log("link failed: \(error)") }
         log("iris: awake")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { Welcome.showIfFirstRun() }
     }
 
     func applicationWillTerminate(_ n: Notification) { body.soul.save() }

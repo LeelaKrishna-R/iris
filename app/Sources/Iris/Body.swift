@@ -2069,6 +2069,7 @@ final class Body {
         m.addItem(withTitle: "Talk to \(Config.agentName)  ⌃⌥⇧Space", action: #selector(Menu.talk), keyEquivalent: "").target = Menu.shared
         m.addItem(withTitle: sleeping ? "Wake Up" : "Nap", action: #selector(Menu.nap), keyEquivalent: "").target = Menu.shared
         m.addItem(.separator())
+        m.addItem(withTitle: "Welcome…", action: #selector(Menu.welcome), keyEquivalent: "").target = Menu.shared
         m.addItem(withTitle: "Quit Iris", action: #selector(Menu.quit), keyEquivalent: "").target = Menu.shared
         Menu.shared.body = self
         if let view { NSMenu.popUpContextMenu(m, with: e, for: view) }
@@ -2197,6 +2198,7 @@ final class Menu: NSObject {
     weak var body: Body?
     @objc func talk() { body?.onTalk?() }
     @objc func ask() { body?.onAsk?() }
+    @objc func welcome() { Welcome.show() }
     @objc func nap() { body?.toggleNap() }
     @objc func quit() { body?.soul.save(); NSApp.terminate(nil) }
 }

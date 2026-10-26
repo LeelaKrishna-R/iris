@@ -31,6 +31,7 @@ Agents connect in one of three ways:
 | `iris_react` | Plays one of her animations (wave, hop, think …) |
 | `iris_animations` | Lists her animations |
 | `iris_notice` | Glances up at something that just happened, with a small "!" and no words |
+| `iris_listen` | Waits for what you say to her by name ("Iris, …") or type in her Ask box, so an agent can hold a spoken conversation through her |
 | `iris_come` | Comes to your pointer, or to your other screen |
 | `iris_screen` | What's on your screens (front app, window, text). **Off unless you set `IRIS_MCP_SCREEN=1`.** |
 
@@ -47,7 +48,7 @@ The server is one Python file with no dependencies beyond the standard library.
 ## Roadmap
 
 1. **MCP server** for any agent: shipped (`agents/iris_mcp.py`, tests in `tests/`).
-2. **The Iris app itself**, neutral and installable: her body, animations and senses, with no
+2. **The Iris app itself** (`app/`, in progress: builds, wake words and agent name are settings), neutral and installable: her body, animations and senses, with no
    assumptions about who you are. Your name, her wake word and her personality are your settings.
 3. **Agent hooks**: Claude Code shipped (`agents/claude_code_hook.py`); Codex and Cursor next.
 4. **HTTP API docs + `iris` CLI** for custom agents.

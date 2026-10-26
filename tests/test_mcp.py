@@ -40,6 +40,8 @@ def iris(tmp_path, monkeypatch):
                 reply = {"ok": True, "animations": [{"id": "wave"}, {"id": "think"}]}
             if self.path == "/iris/act" and json.loads(raw)["id"] not in ("wave", "think"):
                 reply = {"ok": False, "reason": "no_such_animation"}
+            if self.path == "/ears/next":
+                reply = {"ok": True, "heard": {"text": "what's the weather", "typed": False}}
             if self.path == "/eyes/now":
                 reply = {"ok": True, "front_app": "Code", "front_title": "main.py", "displays": [{"id": 1, "text": "hi"}]}
             body = json.dumps(reply).encode()
@@ -133,3 +135,8 @@ def test_claude_code_hook_never_blocks_claude(tmp_path, monkeypatch):
                        input='{"hook_event_name": "Stop"}', capture_output=True, text=True, timeout=20,
                        env={"IRIS_URL": "http://127.0.0.1:9", "IRIS_KEY_FILE": str(tmp_path / "none"), "PATH": "/usr/bin"})
     assert p.returncode == 0 and p.stdout == ""
+
+
+def test_listen_returns_what_was_said_to_her(iris):
+    assert tool("iris_listen", seconds=3)[0] == "Said to her: what's the weather"
+    assert iris[-1][1:] == ("/ears/next", {"timeout": 3.0})

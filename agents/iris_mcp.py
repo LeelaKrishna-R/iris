@@ -123,6 +123,17 @@ def t_come(args: dict) -> str:
     return ("Iris is on her way." if r.get("ok") else f"Iris didn't come: {r.get('reason')}.")
 
 
+def t_listen(args: dict) -> str:
+    """What the person next says to her by name ("Iris, …") or types into her "Ask" box, waiting up to 25 s."""
+    wait = min(25.0, max(1.0, float(args.get("seconds") or 20)))
+    r = call("/ears/next", {"timeout": wait}, timeout=wait + 10)
+    h = r.get("heard")
+    if not h:
+        return f"Nothing was said to Iris in {wait:.0f} s."
+    how = "typed to her" if h.get("typed") else "said to her"
+    return f"{how.capitalize()}: {h.get('text', '')}"
+
+
 def t_screen(args: dict) -> str:
     r = call("/eyes/now", method="GET", timeout=5)
     if not r.get("ok"):
@@ -147,6 +158,10 @@ TOOLS = {
     "iris_notice": (t_notice, "Have Iris glance up at something that just happened (a task finished, a test failed, "
                               "an approval is waiting): a look and a small '!', no words.",
                     {"what": {"type": "string", "description": "A few words on what happened."}}, ["what"]),
+    "iris_listen": (t_listen, "Wait for what the person says to Iris by name (\"Iris, …\") or types into her Ask box, "
+                              "up to 25 seconds; answer with iris_say to hold a spoken conversation through her. Only "
+                              "speech addressed to her is ever returned.",
+                    {"seconds": {"type": "number", "description": "How long to wait, 1-25 (default 20)."}}, []),
     "iris_come": (t_come, "Call Iris over: beside the pointer, or to the other screen.",
                   {"to": {"type": "string", "enum": ["cursor", "other_screen"]}}, []),
 }

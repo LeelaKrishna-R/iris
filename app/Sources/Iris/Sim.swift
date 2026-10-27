@@ -1,6 +1,6 @@
 import AppKit
 
-/// `Iris --simulate scenario.json [out.json] [--seeds 1-20]`: her real Body
+/// `Iris --simulate scenario.json [out.json] [--seeds ]`: her real Body
 /// and Soul, headless, against made-up screens, windows, a cursor, typing,
 /// petting and dragging, on a clock stepped at 60 frames a second as fast as
 /// the Mac can go. Every frame is checked for what looks wrong on his screens
@@ -184,7 +184,7 @@ enum Sim {
             if kind == "notified" { extra[(info["busy"] as? Bool) == true ? "notices_busy" : "notices_cued", default: 0] += 1 }
             if kind == "act", let what = info["what"] as? String {
                 acts.append((t, what))
-                // every move of her own names its cause in the world 
+                // every move of her own names its cause in the world
                 if ((info["why"] as? String) ?? "").isEmpty { extra["acts_uncaused", default: 0] += 1 }
                 if ["hop", "dash", "wave", "giggle", "dance"].contains(what) {
                     extra["loud_acts", default: 0] += 1
@@ -203,7 +203,7 @@ enum Sim {
             if kind == "fell_asleep" { extra["naps", default: 0] += 1; if extra["first_sleep_t"] == nil { extra["first_sleep_t"] = t } }
             if kind == "boss_back" {
                 extra["boss_backs", default: 0] += 1
-                // a hop and a wave: only when he was really away (a reading pause gets a look, 10-15)
+                // a hop and a wave: only when he was really away (a reading pause gets a look)
                 if (info["greets"] as? Bool) ?? (((info["k"] as? Double) ?? 0) > 0.25) { extra["greeted", default: 0] += 1 }
                 A.returnedAt = t
             }
@@ -539,6 +539,7 @@ final class Analyzer {
     private var moveDirAt = -99.0
     private var screenNow = -1
     private var restStart: (t: Double, x: Double)?
+    private var mouseSeen: (t: Double, at: CGPoint)?    // when his cursor last moved (a parked one is no one to follow)
     init(screens: [Display]) { self.screens = screens }
 
     func screenIndex(_ px: CGFloat) -> Int {
@@ -550,6 +551,7 @@ final class Analyzer {
     }
 
     var returnedAt: Double?
+    var plainSitFrom: Double?                        // when her present plain awake sit began (no clip, no act)
     var field: CGRect?
     var caret: CGRect?
     var change: (point: CGPoint, t: Double)?         // where his screen last changed, and when (sim time)
@@ -585,7 +587,7 @@ final class Analyzer {
             c["snap_y"] = (c["snap_y"] ?? 0) + 1
             note(t, String(format: "SNAP y %.0f → %.0f at x %.0f (no jump, no fall)", py, y, x))
         }
-        // 2b. sliding along asleep: a walk with her eyes shut
+        // 2b. sliding along asleep: a walk with her eyes shut (QA: while she napped)
         if !unseen && !held && (s["sleeping"] as! Bool) && (p["sleeping"] as! Bool) && !((s["riding"] as? Bool) ?? false)
             && vy == 0 && pvy == 0 && abs(dx) > 0.5 {
             c["s_moving_asleep"] = (c["s_moving_asleep"] ?? 0) + dt
@@ -710,6 +712,12 @@ final class Analyzer {
                 c["greet_approach_s"] = (c["greet_approach_s"] ?? 0) + (t - r); returnedAt = nil
             } else if t - r > 60 { c["greet_approach_s"] = (c["greet_approach_s"] ?? 0) + 60; returnedAt = nil }
         }
+        // 9f. a plain sit, awake: no drawn seat, no act, not typing along — what he sees as her staring
+        if Sim.pose(face) == "sit" && face.seat.isEmpty && face.act.isEmpty && face.hint.isEmpty && (s["talking"] as? Bool) != true {
+            let from = plainSitFrom ?? t
+            plainSitFrom = from
+            c["plain_sit_max"] = max(c["plain_sit_max"] ?? 0, t - from)
+        } else { plainSitFrom = nil }
         // never talking or listening with her eyes shut (her name, Friday's words wake her)
         if (s["sleeping"] as! Bool) && ((s["talking"] as? Bool) == true || (s["listening"] as? Bool) == true) {
             c["s_asleep_attending"] = (c["s_asleep_attending"] ?? 0) + dt
@@ -742,9 +750,11 @@ final class Analyzer {
             return abs(d) < 80 || (d > 0) == (face.gaze.x > 0) && abs(face.gaze.x) > 0.12
         }
         let mode = s["gaze_mode"] as? String ?? ""
+        if mouseSeen.map({ hypot($0.at.x - mouse.x, $0.at.y - mouse.y) >= 30 }) ?? true { mouseSeen = (t, mouse) }
+        let mouseMoving = t - (mouseSeen?.t ?? t) < Body.restEyesAfter
         if free && !typing && (s["talking"] as? Bool) != true && mode != "him" && mode != "glance" {
             let dist = hypot(mouse.x - eye.x, mouse.y - eye.y)
-            if dist < 540 {
+            if dist < 540 && mouseMoving {
                 c["s_cursor_near"] = (c["s_cursor_near"] ?? 0) + dt
                 if toward(mouse) { c["s_gaze_on_cursor"] = (c["s_gaze_on_cursor"] ?? 0) + dt }
             } else if dist > 660, let ch = change, t - ch.t > 0.4 && t - ch.t < 5.5, abs(ch.point.x - eye.x) > 150 {
@@ -779,7 +789,9 @@ final class Analyzer {
         if me.contains(mouse) && !held { c["s_under_cursor"] = (c["s_under_cursor"] ?? 0) + dt }
         // 11. pose flicker: a pose held for under 0.4 s
         if let lp = p["_pose"] as? String, lp != pose { _ = lp }
-        poseFlicker(t, pose)
+        // a drawn gait is the body only while she walks (SpriteView.pose: a wave, sleep or being held come first);
+        // every gait Stages names is drawn (iris/Resources/anim)
+        poseFlicker(t, pose == "walk" && !face.gait.isEmpty ? "gait_" + face.gait : pose)
         if target == nil && vy == 0 { if restStart == nil { restStart = (t, Double(x)) } } else { restStart = nil }
         c["walked_pts"] = (c["walked_pts"] ?? 0) + Double(held ? 0 : abs(dx))
     }
@@ -788,6 +800,7 @@ final class Analyzer {
     private var poseSince = 0.0
     /// Walking, jumping and standing are one rigged body (SpriteView draws them all as "@idle"),
     /// so only a change between bodies — standing, sitting, laptop, waving, asleep — can flicker.
+    /// a drawn gait (run, tiptoe, sad_walk) is its own body too ("gait_run"), as SpriteView draws it.
     private func poseFlicker(_ t: Double, _ p0: String) {
         let pose = ["walk", "jump", "stand"].contains(p0) ? "stand" : p0
         guard pose != curPose else { return }
@@ -800,7 +813,7 @@ final class Analyzer {
     }
 
     // MARK: how alive she looks to him (the same measures scripts/iris_journal_report.py takes from
-    // her real poses.jsonl, 10-15 owner: "she mostly sleeps and waves when I'm at my pc, sits and blinks")
+    // her real poses.jsonl)
     private var lifePose = ""
     private var lifeSince = 0.0
     private var lifePrev: (pose: String, held: Double)?   // the body before this one, and how long it held

@@ -11,12 +11,12 @@ final class Ears {
     struct Heard: Codable {
         var text: String; var at: Date; var addressed: Bool; var typed: Bool? = nil
         /// When each stage of hearing it happened (epoch seconds): its task began, the first word, the
-        /// wake word, his last word. Core logs the latency of each (core/iris._ears_budget), 10-14.
+        /// wake word, his last word. Core logs the latency of each (core/iris._ears_budget),.
         var times: [String: Double]? = nil
     }
 
     var onWake: (() -> Void)?
-    /// He said her name while she was talking: stop her voice.
+    /// He said her name while she was talking (barge-in): stop her voice.
     var onBargeIn: (() -> Void)?
     var onHeard: ((Heard) -> Void)?
     var onDone: (() -> Void)?
@@ -30,7 +30,7 @@ final class Ears {
     private var task: SFSpeechRecognitionTask?
     private var lastText = ""
     private var lastPartialAt = Date()
-    private var taskAt = Date.distantPast       // this recognition task began (10-14: stage times)
+    private var taskAt = Date.distantPast       // this recognition task began (stage times)
     private var firstWordAt: Date?
     /// What he says now is for her (her name in a guess, or a follow-up): decided again on his finished words.
     private var addressed = false
@@ -41,7 +41,7 @@ final class Ears {
     /// What she is saying right now, lowercased: her own words heard back are not his.
     private var ownLine = ""
     private var silenceTimer: Timer?
-    // the mic engine stops, then starts again on its own
+    // (owner: = off for an hour): the mic engine stops, then starts again on its own
     private(set) var offUntil = Date.distantPast
     private var offTimer: Timer?
     // each recognition task is numbered. Starting a new one cancels the old, and the
@@ -75,7 +75,7 @@ final class Ears {
     }
     /// The names in his life, from Core (/ears/words): expected by both recognizers.
     /// kept across her restarts. Core sends them once an hour, so each restart (91 "iris: awake"
-    /// in Iris.log, 10-10 to 10-19) left her recognizers without his names for up to an hour.
+    /// in Iris.log) left her recognizers without his names for up to an hour.
     var extraWords: [String] = Store.load([String].self, "ears-words.json") ?? [] {
         didSet { Store.save(extraWords, "ears-words.json") }
     }
@@ -154,7 +154,7 @@ final class Ears {
 
     // recognition only while there is sound. She used to keep a task running all
     // day: every quiet minute ended in "no speech" and a new task 0.3 s later, so the
-    // recognizer decoded silence non-stop.
+    // recognizer decoded silence non-stop (35-46% CPU, 370 MB -> 930 MB over 10 hours).
     // Now a task starts when the mic rises above the room's own level, gets the half
     // second before it, and stops after a few quiet seconds.
     // "sound" was any buffer 9 dB over the room's level, so a fan ramping up kept a task
@@ -182,7 +182,7 @@ final class Ears {
         let running = request != nil
         gate.unlock()
         // not while another app has the microphone (a call): what's said there is to other people
-        // , she doesn't speak over a
+        // (a in his Discord talk woke her and was answered aloud), she doesn't speak over a
         // call anyway, and the recognizer ran at ~80% CPU on it. Her menu's "Talk to Friday" still opens.
         if !running && Date() >= conversationUntil && onCall() { return }
         if !running { newTask() }
@@ -471,7 +471,7 @@ final class Ears {
                     self.sharpText = result.bestTranscription.formattedString
                     if result.isFinal { self.sharpTask = nil; self.sharpDone?() }
                 } else if let error {
-                    // 10-25 12:21: "server words missing after 179ms", then the on-device guess "One"; the
+                    // "server words missing after 179ms", then the on-device guess "One"; the
                     // server's failure was dropped here, so nothing said why. Its domain and code, never words.
                     let e = error as NSError
                     log("ears: server recognizer failed (\(e.domain) \(e.code))")
@@ -504,7 +504,7 @@ final class Ears {
         DispatchQueue.main.asyncAfter(deadline: .now() + Ears.sharpWait) { send() }
     }
 
-    /// Typed to her (her menu's "Ask Friday…", 10-12): meant for Friday, as if
+    /// Typed to her (her menu's): meant for Friday, as if
     /// said with her name; Core answers it in her bubble, not out loud.
     func typed(_ text: String) {
         let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -546,10 +546,13 @@ final class Ears {
         onWake?()
     }
 
-    /// Friday is about to speak for `seconds`: don't hear it; then listen for a reply.
-    func mute(for seconds: Double, line: String = "") {
+    /// Friday is about to speak for `seconds`: don't hear it; then, when it answers him (`listen`), listen for a
+    /// reply. (journal): a line she says on her own (a thought, a welcome, a notice) opened the
+    /// same seven seconds, and his Discord call's "What is the moderator so we can know who is active" was taken
+    /// as said to her and answered aloud. Only an answer to him waits for his next words without her name.
+    func mute(for seconds: Double, line: String = "", listen: Bool = true) {
         mutedUntil = Date().addingTimeInterval(seconds + 0.6)
-        conversationUntil = mutedUntil.addingTimeInterval(7)
+        if listen { conversationUntil = mutedUntil.addingTimeInterval(7) }
         ownLine = line.lowercased()
         lastText = ""
         addressed = false
@@ -641,18 +644,19 @@ final class Ears {
 
 /// Her mouth: Friday's voice through the Mac mini speakers.
 final class Mouth: NSObject, AVAudioPlayerDelegate {
-    private var queue: [(AVAudioPlayer, String)] = []
+    private var queue: [(AVAudioPlayer, String, Bool)] = []
     private var playing: AVAudioPlayer?
-    var onStart: ((String, Double) -> Void)?
+    var onStart: ((String, Double, Bool) -> Void)?
 
-    /// Queue an mp3/wav; returns its length in seconds, or nil if it can't be played.
-    func play(_ data: Data, text: String) -> Double? {
+    /// Queue an mp3/wav; returns its length in seconds, or nil if it can't be played. `listen`: it answers him,
+    /// so his next words after it are for her without her name (Ears.mute).
+    func play(_ data: Data, text: String, listen: Bool = true) -> Double? {
         guard let p = try? AVAudioPlayer(data: data) else { return nil }
         p.delegate = self
         p.prepareToPlay()
         let secs = p.duration
         DispatchQueue.main.async {
-            self.queue.append((p, text))
+            self.queue.append((p, text, listen))
             if self.playing == nil { self.next() }
         }
         return secs
@@ -660,9 +664,9 @@ final class Mouth: NSObject, AVAudioPlayerDelegate {
 
     private func next() {
         guard !queue.isEmpty else { playing = nil; return }
-        let (p, text) = queue.removeFirst()
+        let (p, text, listen) = queue.removeFirst()
         playing = p
-        onStart?(text, p.duration)
+        onStart?(text, p.duration, listen)
         p.play()
     }
 
@@ -676,7 +680,7 @@ final class Mouth: NSObject, AVAudioPlayerDelegate {
         playing = nil
     }
 
-    // 10-14 QA: he cut in (her name while she talked: Ears' barge-in). Core makes an answer a
+    // QA: he cut in (her name while she talked: Ears' barge-in). Core makes an answer a
     // sentence at a time, so the rest of the one he interrupted kept arriving and the next
     // sentence played over him. Clips are refused until he has finished what he cut in with
     // (Ears.onDone), or 15 s pass if that never comes.

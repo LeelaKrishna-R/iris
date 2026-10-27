@@ -40,7 +40,7 @@ struct Face: Equatable {
     var act = ""                 // a library animation she is performing
     var actMoves = false
     var snug = false               // asleep a good while: under her blanket
-    var why = ""                   // the cause in the world of what she's doing now (poses.jsonl's why, 10-15)
+    var why = ""                   // the cause in the world of what she's doing now (poses.jsonl's why)
     var gait = ""                  // a drawn walk her walk's cause asks for: "sad_walk", "tiptoe" (Stages.gait)
     var seat = ""                  // a drawn clip in place of her sit pose: "sit_legs", "fishing", "read_book" (Stages.seat)
 }
@@ -226,17 +226,17 @@ final class SpriteView: SKView {
     private func pose(_ f: Face) -> String {
         if !f.act.isEmpty && !SpriteView.rigActs.contains(f.act) && frames(f.act) != nil { return "@" + f.act }
         if f.sleeping { return "@sleep" }
-        // her rig draws its actions only standing or
+        // (owner: the Iris panel's moves): her rig draws its actions only standing or
         // sitting (apply below), so a nod or a dance asked while she typed along or waved was taken,
         // reported done ("Dancing" in the ledger) and never shown. An action of her rig leaves those poses
         // while it plays.
         let rigAct = SpriteView.rigActs.contains(f.act)
         if f.hint == "wave" && !rigAct { return "@wave" }
-        // 10-20 pose log 01:40:18–21: sit ↔ stand six times in 3 s (held 0.1–0.2 s) during look_around — a
+        // pose log 01:40:18–21: sit ↔ stand six times in 3 s (held 0.1–0.2 s) during look_around — a
         // value hovering at a single threshold flipped her body every frame. Each threshold now has a
         // margin on the side she is already on: seated she stays down until sit falls below 0.4, and a
         // drift under 0.2 doesn't stand her up to walk.
-        // 10-24 pose log 12:55:31-12:56:10: typing <-> idle up to four times in one second while she typed along:
+        // pose log 12:55:31-12:56:10: typing <-> idle up to four times in one second while she typed along:
         // her laptop pose is seated too, but only "sit" got the margin, so a walk value hovering at 0.05 flipped it
         let seatedNow = livePose == "sit" || livePose == "laptop" || showing == "@typing" || showing == "@" + f.seat
         if f.walk > (seatedNow ? 0.2 : 0.05) || (f.hop > 6 && f.vy != 0) {
@@ -246,7 +246,7 @@ final class SpriteView: SKView {
         }
         if f.hint == "typing" && !rigAct { return "@typing" }
         if f.hint == "watching" || f.sit > (seatedNow ? 0.4 : 0.6) {
-            // seated, a drawn clip says it better when its state holds (Stages.seat, 10-21)
+            // seated, a drawn clip says it better when its state holds (Stages.seat)
             if !f.seat.isEmpty && !rigAct && frames(f.seat) != nil { return "@" + f.seat }
             return "@sit"
         }
@@ -277,9 +277,9 @@ final class SpriteView: SKView {
         clock += dt
         lastUpdate = now
 
-        // asleep, her breathing needs few frames
+        // asleep, her breathing needs few frames (the app held a steady ~16% CPU at 60 fps)
         // awake and still (sitting, typing along, a clip in place) was 60 fps too; her drawing was about a
-        // third of her CPU. Movement keeps 60: walking, carried, a hop or fall.
+        // third of her CPU (sample, 37% with him at it). Movement keeps 60: walking, carried, a hop or fall.
         let moving = f.held || f.walk > 0.05 || abs(f.vx) > 1 || f.vy != 0 || f.hop > 0.5
         let fps = f.sleeping ? 20 : moving ? 60 : 30
         if preferredFramesPerSecond != fps { preferredFramesPerSecond = fps }
@@ -291,13 +291,19 @@ final class SpriteView: SKView {
             let drawnStage = want == "@" + f.gait || want == "@" + f.seat
             let what = !f.act.isEmpty ? "clip \(f.act)" : drawnStage ? "clip \(want.dropFirst())" : f.sleeping ? "asleep" : !f.hint.isEmpty ? f.hint
                 : f.walk > 0.05 ? "walking" : f.sit > 0.6 ? "sitting" : "standing"
-            let why = f.why.isEmpty ? what : "\(what): \(f.why)"     // and its cause (10-15)
+            let why = f.why.isEmpty ? what : "\(what): \(f.why)"     // and its cause
             // idle_s: seconds since his last key, click or mouse move (the system's clock) — whether he
             // was at the Mac for this change, which the report can't otherwise tell
             let idle = CGEventSource.secondsSinceLastEventType(.hidSystemState, eventType: CGEventType(rawValue: ~0)!)
+            // typing <-> idle still flips in 50-100 ms while she types along (poses.jsonl),
+            // with her why saying her walk was under 0.05; what pose() read when it chose is kept, so the next one says which input
+            let seatedNow = livePose == "sit" || livePose == "laptop" || showing == "@typing" || showing == "@" + f.seat
+            func r2(_ v: CGFloat) -> Double { Double(Int(v * 100)) / 100 }
             Store.append(["at": Date().timeIntervalSince1970, "from": journalPose, "to": want, "why": why,
                           "held_s": Double(Int(Date().timeIntervalSince(journalPoseAt) * 10)) / 10,
-                          "idle_s": Double(Int(min(idle, 86_400) * 10)) / 10], to: "poses.jsonl",
+                          "idle_s": Double(Int(min(idle, 86_400) * 10)) / 10,
+                          "in": ["walk": r2(f.walk), "vy": r2(f.vy), "hop": r2(f.hop), "sit": r2(f.sit), "act": f.act,
+                                 "hint": f.hint, "seat": f.seat, "gait": f.gait, "seated": seatedNow]], to: "poses.jsonl",
                          cap: 5_000_000)
             journalPose = want
             journalPoseAt = Date()

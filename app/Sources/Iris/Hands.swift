@@ -11,7 +11,7 @@ enum Hands {
     static func type(_ text: String) -> Bool {
         guard permitted else { return false }
         // A private source and no flags: with the HID-state source, a Command left
-        // "held" by an earlier combo turned typed letters into shortcuts (10-11:
+        // "held" by an earlier combo turned typed letters into shortcuts (
         // "ZZZ" was cmd+Z, and a space opened Spotlight).
         let src = CGEventSource(stateID: .privateState)
         for chunk in text.chunked(16) {
@@ -30,7 +30,7 @@ enum Hands {
     }
 
     /// "cmd+t", "return", "cmd+shift+4", "escape", "down".
-    /// The Mac's own play/pause, next and previous keys (10-12: "pause the music",
+    /// The Mac's own play/pause, next and previous keys ("pause the music",
     /// "skip this song"): whatever app is playing (Music, a browser) takes them,
     /// as it does from the keyboard's media keys.
     static let mediaKeys: [String: Int32] = ["play": 16, "next": 17, "previous": 18]   // NX_KEYTYPE_*

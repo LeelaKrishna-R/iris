@@ -7,7 +7,7 @@ import Foundation
 /// time and localspeechrecognition.xpc had used 105 CPU-minutes in 15 h.
 ///
 /// A voice, unlike a fan swelling, a keyboard or a clatter, is voiced: what it adds to the room repeats
-/// at its pitch. Every ~21 ms the last ~43 ms are taken apart (FFT). The part above the
+/// at its pitch (80-400 Hz). Every ~21 ms the last ~43 ms are taken apart (FFT). The part above the
 /// room's own noise, in 80-1000 Hz where the pitch lives, is checked for repeating at a pitch (its
 /// autocorrelation, one more FFT). A frame is voiced when the voice band (200-4000 Hz) is `minSNR` over
 /// the room and that part is clearly periodic. Speech starts when `onsetNeeded` of the last

@@ -68,7 +68,7 @@ final class RealWorld: World {
     var musicPlaying: Bool {
         // Which apps are making sound right now (Core Audio's process list,
         // macOS 14.2+, no permission). The output device itself reads "running"
-        // all the time, so it can't tell.
+        // all the time (some app always holds a stream), so it can't tell.
         let players: Set<String> = ["com.spotify.client", "com.apple.Music", "com.apple.podcasts", "com.tidal.desktop",
                                     "com.amazon.music", "com.deezer.deezer-desktop"]
         var addr = AudioObjectPropertyAddress(mSelector: kAudioHardwarePropertyProcessObjectList,

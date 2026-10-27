@@ -28,12 +28,12 @@ final class App: NSObject, NSApplicationDelegate {
         body.eyes = eyes
         body.start()
         eyes.start()
-        // no Accessibility ask at launch either: allowed 10-10; /health reports it if it goes
+        // no Accessibility ask at launch either: allowed; /health reports it if it goes
 
         ears.onWake = { [weak self] in self?.body.setListening(true) }
         ears.onHeard = { [weak self] h in
             self?.body.bubble?.say("“\(h.text)”", for: 4)
-            self?.body.awaitingAnswer()          // 10-14: her thinking pose at once, not after Core's round trip
+            self?.body.awaitingAnswer()          // her thinking pose at once, not after Core's round trip
         }
         ears.onDone = { [weak self] in self?.body.setListening(false); self?.mouth.uncut() }
         ears.onVoice = { [weak self] in self?.body.heardVoice() }
@@ -47,8 +47,8 @@ final class App: NSObject, NSApplicationDelegate {
         }
         AskHotKey.register({ [weak self] in self?.body.onAsk?() }, talk: { [weak self] in self?.ears.listenNow() })
 
-        mouth.onStart = { [weak self] text, secs in
-            self?.ears.mute(for: secs, line: text)
+        mouth.onStart = { [weak self] text, secs, listen in
+            self?.ears.mute(for: secs, line: text, listen: listen)
             self?.body.speaking(text, seconds: secs)
         }
         ears.onBargeIn = { [weak self] in self?.mouth.cut() }      // the rest of what he cut off waits (Mouth.cut)
@@ -125,7 +125,7 @@ final class App: NSObject, NSApplicationDelegate {
                 guard let h else { return reply(200, ["ok": true, "heard": NSNull()]) }
                 var heard: [String: Any] = ["text": h.text, "at": h.at.timeIntervalSince1970, "addressed": h.addressed,
                                             "typed": h.typed ?? false]
-                for (k, v) in h.times ?? [:] { heard[k] = v }       // her stage times (10-14)
+                for (k, v) in h.times ?? [:] { heard[k] = v }       // her stage times
                 reply(200, ["ok": true, "heard": heard])
             }
         case "/mouth/play":
@@ -134,7 +134,9 @@ final class App: NSObject, NSApplicationDelegate {
             }
             let text = body["text"] as? String ?? ""
             if mouth.isCut { return reply(409, ["ok": false, "reason": "interrupted"]) }
-            guard let secs = mouth.play(data, text: text) else { return reply(422, ["ok": false, "reason": "unplayable"]) }
+            // "listen": false from Core for a line she says on her own (core/iris._Speaker: no ask it answers)
+            let listen = body["listen"] as? Bool ?? true
+            guard let secs = mouth.play(data, text: text, listen: listen) else { return reply(422, ["ok": false, "reason": "unplayable"]) }
             reply(200, ["ok": true, "seconds": secs])
         case "/mouth/show":
             let text = body["text"] as? String ?? ""
@@ -239,7 +241,7 @@ final class App: NSObject, NSApplicationDelegate {
         case "/iris/notice":
             // Friday's reminder or push just appeared on his screen (core/notify, best-effort)
             let title = body["title"] as? String ?? ""
-            log("notice: " + String(title.prefix(40)))      // 10-24: whether she was told is in her log
+            log("notice: " + String(title.prefix(40)))      // whether she was told is in her log
             main { self.body.notified(String(title.prefix(80))); return (200, ["ok": true]) }
         case "/iris/usage":
             // his active minutes per app on a day (default today), from her eyes; local only
@@ -249,6 +251,25 @@ final class App: NSObject, NSApplicationDelegate {
                           "hours": self.body.workHours(day: day)]) }
         case "/iris/events":
             main { (200, ["ok": true, "events": self.body.takeEvents()]) }
+        case "/iris/ask":
+            // a Friday approval with Allow / Deny beside her (core/approvals._at_the_mac); the click
+            // waits in /iris/decisions for Core, which decides it exactly once (core/approval_decide)
+            let id = body["id"] as? String ?? ""
+            let text = body["text"] as? String ?? ""
+            guard !id.isEmpty, !text.isEmpty else { return reply(400, ["ok": false, "reason": "no_id_or_text"]) }
+            let title = body["title"] as? String ?? "Approval needed"
+            let until = (body["until"] as? Double).map { Date(timeIntervalSince1970: $0) }
+            main {
+                ApprovalCard.shared.show(id: id, title: String(title.prefix(60)), text: String(text.prefix(420)),
+                                         until: until, near: self.body.frameOnScreen)
+                return (200, ["ok": true])
+            }
+        case "/iris/ask_done":
+            let id = body["id"] as? String ?? ""
+            main { ApprovalCard.shared.close(id: id.isEmpty ? nil : id); return (200, ["ok": true]) }
+        case "/iris/decisions":
+            main { (200, ["ok": true, "decisions": ApprovalCard.shared.takeDecisions(),
+                          "showing": ApprovalCard.shared.showing]) }
         case "/iris/hold":
             let secs = body["seconds"] as? Double ?? 10
             let talk = body["talk"] as? Bool ?? false
@@ -285,7 +306,7 @@ final class App: NSObject, NSApplicationDelegate {
 }
 
 /// `Iris --hear a.wav`: a recording heard by both of her recognizers, on this Mac and Apple's server
-/// . Never asks for permission: if speech recognition isn't allowed, says so.
+/// (to compare them). Never asks for permission: if speech recognition isn't allowed, says so.
 if CommandLine.arguments.count == 3 && CommandLine.arguments[1] == "--hear" {
     guard SFSpeechRecognizer.authorizationStatus() == .authorized, let rec = SFSpeechRecognizer(locale: Locale(identifier: "en-US")) else {
         print("speech recognition not allowed for this binary"); exit(2)
@@ -384,7 +405,7 @@ if CommandLine.arguments.count == 4 && CommandLine.arguments[1] == "--cutout" {
     exit(0)
 }
 
-/// `Iris --simulate scenario.json [out.json] [--seeds 1-20]`: her body and mind
+/// `Iris --simulate scenario.json [out.json] [--seeds ]`: her body and mind
 /// headless against made-up screens, on a fast clock (Sim.swift).
 if CommandLine.arguments.count >= 3 && CommandLine.arguments[1] == "--simulate" {
     Sim.run(CommandLine.arguments)

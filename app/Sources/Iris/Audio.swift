@@ -3,7 +3,7 @@ import CoreAudio
 import Darwin
 
 /// Which apps are using the microphone or making sound right now, from Core
-/// Audio's process list (macOS 14.2+, no permission). 10-12: a call is an app
+/// Audio's process list (macOS 14.2+, no permission). a call is an app
 /// using the mic, not a call app's window being open (a Zoom home window or a
 /// Teams chat isn't a call), and music in a background tab is still playing.
 enum AudioUse {
@@ -31,7 +31,7 @@ enum AudioUse {
         return out
     }
 
-    /// The app behind a process: its bundle id, or for a helper with none (10-14: Safari plays
+    /// The app behind a process: its bundle id, or for a helper with none (Safari plays
     /// a YouTube video through a WebKit XPC process whose bundle id read "", so video in a
     /// browser counted as silence) a name from its executable path.
     static func who(_ pid: pid_t) -> String {

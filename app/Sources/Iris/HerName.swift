@@ -19,7 +19,7 @@ enum HerName {
     static let misheardName = #"^\s*(?:hey\s+)?(?:i was|i will|i'll|irish|ires|iras)(?=\s+(?:come|dance|sit|sleep|wake|stop|go|wave|look|move|be quiet|hush|shh|nap|giggle|say hi))"#
     static let trim = CharacterSet(charactersIn: " ,.!?").union(.whitespaces)
 
-    /// 10-22 (production 10-19 11:41: "…Friday is the moderator so we can know who is active", said to his
+    /// (production "…Friday is the moderator so we can know who is active", said to his
     /// Discord, answered aloud): her name said about her, or the weekday, is not said to her.
     static let greetingOnly = #"^\s*(?:(?:hey|hi|hello|okay|ok|yo|oh)[\s,]*)*$"#
     static let weekdayBefore = #"\b(?:on|this|next|last|every|by|until|till|since|before|after|from)\s+$"#
@@ -80,7 +80,7 @@ enum HerName {
     }
 
     /// The words handed to Friday when he finished: the server's when what follows her name is in them
-    /// (they are better at names and whole sentences, 10-15); else the on-device words when her name is in
+    /// (they are better at names and whole sentences); else the on-device words when her name is in
     /// those; else the server's when her name alone is in them. Nil: her name was in neither recognizer's
     /// finished words (only in a guess the on-device one took back), so it was not said to her.
     static func choose(onDevice: String, server: String, followUp: Bool) -> (text: String, from: String)? {

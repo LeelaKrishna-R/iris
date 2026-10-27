@@ -41,7 +41,7 @@ enum Focus {
         return Seen(field: field, caret: caret, app: app.localizedName ?? "", role: roleV as? String ?? "")
     }
 
-    /// Where his keys go (10-17: Claude's output in his VS Code counted as his because he had just
+    /// Where his keys go (Claude's output in his VS Code counted as his because he had just
     /// typed, into Claude's message box): "terminal" (a shell: what follows is his command's
     /// output), "editor" (code: what follows is his own), "chat" (a message box: he is asking
     /// someone else, and the answer is theirs), "other" (any other field), "unknown" (Accessibility
@@ -65,7 +65,7 @@ enum Focus {
             }
         } else {
             // VS Code (1.142) answers no focused element while the keys go to a panel's web view
-            // (Claude Code's message box, measured 10-17); the field itself still says it is focused
+            // (Claude Code's message box, measured); the field itself still says it is focused
             chain = focusedInWindow(axApp)
         }
         guard let field = chain.first else { return ("unknown", "no focused element") }

@@ -180,7 +180,7 @@ final class Body {
 
     /// The system's own key counter, every frame, as the backstop for the key
     /// monitor: after a rebuild macOS can keep reporting Accessibility while the
-    /// global monitor silently stops delivering keys (10-11: "iris isn't being
+    /// global monitor silently stops delivering keys ("iris isn't being
     /// responsive to me typing"). Any key the counter saw that the monitor didn't
     /// is counted here, so his typing always reaches her.
     private func keysFromCounter() {
@@ -281,7 +281,7 @@ final class Body {
         let step = min(10, now.timeIntervalSince(useCountedAt))
         useCountedAt = now
         // the system's own idle clock (any key, click, scroll or mouse move): lastInput starts at
-        // launch, so the two minutes after every launch were counted as his
+        // launch, so the two minutes after every launch were counted as his (00:00 install)
         let idle = world is RealWorld
             ? CGEventSource.secondsSinceLastEventType(.hidSystemState, eventType: CGEventType(rawValue: ~0)!)
             : now.timeIntervalSince(lastInput)
@@ -353,7 +353,7 @@ final class Body {
         guard musicOn, !watchingVideo, !sleeping, !held, performing.isEmpty else { return }
         let half = Int(clock * 2)                       // a sway each half second, about a beat
         if half != lastSway { lastSway = half; lean.kick(half % 2 == 0 ? 0.12 : -0.12) }
-        // and only while he's at the Mac (no antics to an empty room, 10-15)
+        // and only while he's at the Mac (no antics to an empty room)
         if now >= nextDanceAt && now.timeIntervalSince(lastTyped) > 10 && now.timeIntervalSince(lastInput) < 300 {
             perform("dance", seconds: 4, own: true, why: "music playing")
             // every 60-150 s by dice was ~30 dances in an hour of music
@@ -393,7 +393,7 @@ final class Body {
         events.append("he just came back to the Mac")
         let k = soul.feel(.bossBack)
         // the hop and the wave are for him really coming back; two or three minutes of reading
-        // without a touch is him still there, and gets only her eyes and a smile (10-15: a wave on
+        // without a touch is him still there, and gets only her eyes and a smile (a wave on
         // nearly every wake)
         let greets = k > 0.25 && away >= Body.trulyAway
         trace?("boss_back", ["k": k, "was_sleeping": sleeping, "away": away, "greets": greets])
@@ -408,7 +408,7 @@ final class Body {
         waveT = 1.8
         waveWhy = String(format: "he came back after %.0f min away", away / 60)
         trace?("act", ["what": "wave", "why": waveWhy])
-        show("♪")                                        // 10-22: was "!" or "♪" by a coin
+        show("♪")                                        // was "!" or "♪" by a coin
     }
 
     func hover(_ on: Bool) {
@@ -573,24 +573,24 @@ final class Body {
             else if let since = screenMovingSince, now.timeIntervalSince(since) >= Body.screenWakeAfter { maybeWake(0.12) }
             return
         }
-        // where the action is : his full-screen film or a call sends her to a quiet
+        // where the action is: his full-screen film or a call sends her to a quiet
         // corner; ten minutes with nothing happening send her to her favourite spot first
         let corner = watchCorner()
         let nothing = idle >= Body.homeAfter && !screenMoving && !world.callOn && !world.soundOn && !watchingVideo
         // late at night she dozes off after two quiet minutes instead of five — only
         // when the screens are still too: a movie, a chat or code being written
-        // without his hands is still something to watch 
-        //
+        // without his hands is still something to watch
+        // (and not straight after waking, and only once the screens have been still a minute)
         let dozy = idle > (watchingVideo ? 900 : Soul.lateNight ? 120 : 300)
             && now.timeIntervalSince(screenMovedAt) > Body.screenStillToDoze && now.timeIntervalSince(wokeAt) > Body.wakeHolds
             && s.sleepiness > (Soul.lateNight ? 0.4 : 0.55)
         // (sleepy before the ten minutes are up, she goes home to doze off there)
         let home = corner == nil && (nothing || dozy) ? favouriteSpot() : nil
         let goingHome = home.map { abs($0 - x) > 40 || standingOn != nil } ?? false
-        // falling asleep has a stage he can see. Standing,
+        // (owner: why aren't her animations used?): falling asleep has a stage he can see. Standing,
         // she dozes on her feet first ("doze": head drooping, snapping up, drooping) and falls asleep when
         // it ends, unless he touched the Mac meanwhile; seated, she falls asleep where she sits. Both only
-        // when everything above says dozy (it was also a draw against her sleepiness: no dice, 10-15 rule).
+        // when everything above says dozy (it was also a draw against her sleepiness: no dice, rule).
         if !goingHome && dozy && performing != "doze" {
             let why = String(format: "dozed: no input %.0f s, screens still %.0f s, sleepy %.2f", idle, min(3600, now.timeIntervalSince(screenMovedAt)), s.sleepiness)
             if Stages.dozeFirst(dozy: dozy, goingHome: goingHome, seated: sit.target > 0.5) && performing.isEmpty {
@@ -615,7 +615,7 @@ final class Body {
         // a few points is not worth a step (tiny shuffles read as twitching); up or down a level always is.
         // Seated, she stays a minute at least, and gets up only for somewhere a real walk away — unless
         // she's in his way, his call or film or nothing-happening sends her off, or it's his other screen
-        //
+        // (33 stand-sit-stand flips inside a minute, from 1-2 s walks between two seats)
         let seated = sit.target > 0.5 && !hurry && corner == nil && home == nil
             && screenAt(pick.x + Body.size.width / 2).frame == screenAt(x + Body.size.width / 2).frame
         let stay = seated && (now.timeIntervalSince(satSince) < Body.sitHolds || far <= Body.seatedStep)
@@ -624,7 +624,7 @@ final class Body {
         // window; the screen he's working on; her mind's want; or the walk she's already on
         let meNow = CGRect(x: x, y: y, width: Body.size.width, height: Body.size.height)
         let otherScreen = screenAt(pick.x + Body.size.width / 2).frame != screenAt(x + Body.size.width / 2).frame
-        // (10-17 poses.jsonl 13:40-23:18, him away for hours: woken by a chat moving on a screen, she
+        // ( poses.jsonl 13:40-23:18, him away for hours: woken by a chat moving on a screen, she
         // walked "to the screen he's working on", sat, walked "home", sat, walked off toward his
         // cursor and home again, 44 home walks since noon. Away, his cursor is where he left it, not
         // him, and no screen is one he's working on: neither is a reason to walk.)
@@ -644,7 +644,7 @@ final class Body {
             if !same { speed = 34 + CGFloat(s.arousal) * 46 + (s.arousal > 0.8 && far > 500 ? 60 : 0); walkSince = world.now }   // a walk keeps its pace
             if !same { trace?("walk", ["why": pull, "idle": idle, "to": Double(pick.x)]) }
             if hurry { speed = max(speed, 240); hurry = false }    // in his way while he types: she scurries
-            // 10-24 poses.jsonl: 8 crossings to the screen he's working on took 13.4 of 60 min (a stroll across a
+            // poses.jsonl: 8 crossings to the screen he's working on took 13.4 of 60 min (a stroll across a
             // whole display); she runs there, a short trip, then she's with him
             if pull == "to the screen he's working on" { speed = max(speed, Body.crossSpeed) }
             // the action's pull is a stroll, never a dash: home and beside his window slowly,
@@ -657,7 +657,7 @@ final class Body {
             sit.target = 0
             workingAlong = false
             // arrived, she stands a little before she thinks about sitting (sitting down the moment she
-            // got there, then up again for the next walk, was the stand-sit-stand thrash, 10-15)
+            // got there, then up again for the next walk, was the stand-sit-stand thrash)
             postureUntil = now.addingTimeInterval(Double(far / max(speed, 30)) + (typing ? Double.rnd(3...8) : Double.rnd(15...40)))
             soul.did(pick.nearHim ? "approach" : "roam")
             restWhy = "where she walked: " + pull
@@ -672,17 +672,22 @@ final class Body {
                 let wasSitting = sit.target > 0.5
                 let typedFor = world.now.timeIntervalSince(lastTyped) < 6 ? world.now.timeIntervalSince(typingSince) : 0
                 // she sits down for a reason, and stays sitting until a walk with a reason gets her up
-                //
+                // (getting up or sitting down by dice was the random posture he sees)
                 _ = settle
                 let sitFor: String? = typedFor > 0 ? "keeping him company while he types"
                     : watchingVideo ? "watching his video with him"
                     : deepFocus ? "keeping him company while he focuses"
                     : s.sleepiness > 0.45 ? String(format: "sleepy %.2f", s.sleepiness)
                     : ["watch", "rest", "work_along", "nap"].contains(w.want) && w.k > 0.3 ? "her mind: \(w.want)"
-                    // near him a few
+                    // (sim 28 lively browsing: standing 596 of 600 s): near him a few
                     // minutes with no walk, she settles down beside him while he reads or browses
+                    // standing still for minutes read as staring; near
+                    // him she settles after a minute with no walk (was 3), never over his work; far from his cursor
+                    // (in front of his video, sim 24) she still waits for a walk with a reason
                     : idle < 120 && world.now.timeIntervalSince(walkSince) >= Body.settleAfter
-                        && Double(abs(x + Body.size.width / 2 - world.mouse.x)) < Body.withinReach ? "settled beside him"
+                        && inTheWay(CGRect(x: x, y: y, width: Body.size.width, height: Body.size.height)) <= 0.3
+                        && Double(abs(x + Body.size.width / 2 - world.mouse.x)) < Body.withinReach
+                        ? "settled while he works"            // never over his work or what he's watching (sim 24)
                     : nil
                 sit.target = wasSitting || sitFor != nil ? 1 : 0
                 if sit.target > 0.5 && !wasSitting { satSince = world.now; restWhy = sitFor ?? "" }
@@ -708,7 +713,7 @@ final class Body {
             }
         }
         if wanting.want == "nap" { soul.sleepiness = min(1, soul.sleepiness + 0.15 * wanting.k) }
-        // : nothing of her own by dice. Each
+        // nothing of her own by dice. Each
         // move has a cause in the world — his typing stopping (a nod, frame()), his cursor resting on
         // her (shy), his hand on her, music (sway, dance), his return after 5 min (one wave) — and
         // here, late and sleepy, a yawn now and then. Otherwise she breathes, blinks, and her eyes
@@ -739,9 +744,11 @@ final class Body {
         let screens = world.screens
         let mineIdx = screens.firstIndex { $0.frame.minX <= x + Body.size.width / 2 && x + Body.size.width / 2 < $0.frame.maxX }
         // he's away (Body.trulyAway): his cursor and the screen it was last on are where he left them,
-        // not him; nothing of his draws her
+        // not him; nothing of his draws her (see think)
         let himHere = idle < Body.trulyAway
-        let invited = !himHere ? nil : hisScreen.flatMap { h in h != mineIdx && world.now.timeIntervalSince(hisScreenSince) >= Body.screenStay ? h : nil }
+        let mayCross = world.now.timeIntervalSince(crossedAt) >= Body.crossGap
+        let invited = !himHere || !mayCross ? nil
+            : hisScreen.flatMap { h in h != mineIdx && world.now.timeIntervalSince(hisScreenSince) >= Body.screenStay ? h : nil }
             ?? frontInvite          // or his front window has settled over there (Body.frontStay, 2 min) with him
         // beside his front window: a pull while he's around (gentle while he types — she keeps him company where she is)
         // (up on one of his windows she's already among his things: that seat is hers to keep)
@@ -749,7 +756,7 @@ final class Body {
         func screenOf(_ px: CGFloat) -> Int? { screens.firstIndex { $0.frame.minX <= px + Body.size.width / 2 && px + Body.size.width / 2 < $0.frame.maxX } }
         for (i, scr) in screens.enumerated() where scr.frame != fullScreenFrame {
             let f = scr.visibleFrame
-            // evenly spaced across the floor, not random positions
+            // (owner rule no dice): evenly spaced across the floor, not random positions
             let n = i == mineIdx ? 22 : 6
             let span = max(0, f.width - Body.size.width)
             for k in 0..<n { spots.append(Spot(x: f.minX + span * (CGFloat(k) + 0.5) / CGFloat(n), perch: nil, nearHim: false)) }
@@ -770,7 +777,7 @@ final class Body {
                   let scr = screens.first(where: { $0.frame.contains(CGPoint(x: f.midX, y: f.maxY - 1)) }),
                   f.maxY + Body.size.height <= scr.visibleFrame.maxY,
                   f.maxY - scr.visibleFrame.minY <= Body.maxClimb || standingID == w.id else { continue }
-            // its left, middle and right of the top she can stand on
+            // its left, middle and right of the top she can stand on (were three random points)
             let lo = max(f.minX, scr.visibleFrame.minX), hi = max(lo, min(f.maxX, scr.visibleFrame.maxX) - Body.size.width)
             for sx in [lo + (hi - lo) * 0.15, (lo + hi) / 2, lo + (hi - lo) * 0.85] {
                 if Body.topVisible(ws, i, sx) { spots.append(Spot(x: sx, perch: f.maxY, nearHim: false, perchID: w.id)) }
@@ -843,7 +850,7 @@ final class Body {
             let farFromHim = farFor >= Body.farFor
             if isHere && targetX == nil { v += (0.35 + 0.6 * (1 - s.boredom) + (deepFocus || watchingVideo ? 0.6 : 0)) * (farFromHim ? 0.2 : 1) }
             // while he types and she's out of his way, she stays where she is and keeps him company
-            // there
+            // there (boredom made her cross the screen every ~15 s while he typed)
             if isHere && typing && inTheWay(me) < 0.3 { v += 1.4 }   // in his deep focus, or watching with him, stay put       // a comfortable spot is hard to leave
             if let t = targetX, abs(sp.x - t) < 1, sp.perch == perchTop { v += 0.45 }
             if let inv = invited, screenOf(sp.x) == inv { v += 0.8 }
@@ -878,7 +885,8 @@ final class Body {
         let bestHere = here.map { crossings[$0] }.min() ?? .infinity
         let keep = scored.indices.filter { i in
             let si = screenOf(scored[i].0.x)
-            return si == mineIdx || si == invited || (typing && bestHere > 0 && clear[i] && crossings[i] < bestHere)
+            return si == mineIdx || si == invited
+                || (mayCross && typing && bestHere > 0 && clear[i] && crossings[i] < bestHere)
         }
         if !keep.isEmpty && keep.count < scored.count {
             scored = keep.map { scored[$0] }; clear = keep.map { clear[$0] }
@@ -900,7 +908,7 @@ final class Body {
            mx - here.1 < 0.5 {
             return here.0
         }
-        // the best spot . It was a weighted draw, "the best
+        // the best spot (owner rule nothing of hers by dice). It was a weighted draw, "the best
         // most of the time, never always", plus random noise on each score and a 4% whim: walks to spots that
         // weren't the best, part of 17 minutes walking in an hour (poses.jsonl 12:54-13:54)
         return scored.max { $0.1 < $1.1 }!.0
@@ -959,7 +967,7 @@ final class Body {
         if screenMoving { screenMovedAt = now; if screenMovingSince == nil { screenMovingSince = now } } else { screenMovingSince = nil }
         // he stopped after a real stretch of typing (20 s or more, quiet 3 s): she nods, once per stretch
         let burst = lastTyped.timeIntervalSince(typingSince)
-        // 30 of these nods in 3 h, then one each half hour; 10-24 (owner: "no
+        // 30 of these nods in 3 h, then one each half hour; (owner: "no
         // reactions"): at most one each Body.nodEveryS (10 min), once per stretch of his typing
         if burst > 20 && now.timeIntervalSince(lastTyped) > 3 && noddedFor != typingSince && !sleeping && !held && !listening
             && performing.isEmpty && targetX == nil && now.timeIntervalSince(noddedAt) > Body.nodEveryS {
@@ -1001,7 +1009,10 @@ final class Body {
         // keeps her off his work, and every 1.5 s to an empty room it fed nothing
         if now.timeIntervalSince(lastFocusRead) > 1.5 && now.timeIntervalSince(lastInput) < 60 { readFocus() }
         feelInTheWay(dt, now)
-        soul.drift(Double(dt), active: now.timeIntervalSince(lastInput) < 30 || watchingVideo || screenMoving,   // a busy screen is not an empty room
+        // sim 27 (him reading, a scroll every minute or so): "active" was a touch in the last 30 s, so between
+        // his scrolls she grew sleepy, up to 1.0 with him right there, and sat heavy-eyed instead of with her book —
+        // the stare he sees. He's here until Stages.awayFor, as for her fishing.
+        soul.drift(Double(dt), active: now.timeIntervalSince(lastInput) < Stages.awayFor || watchingVideo || screenMoving,   // a busy screen is not an empty room
                    typingRate: Double(keyTimes.count) / 3 * 60)
         if now >= nextThought { think() }
 
@@ -1060,7 +1071,7 @@ final class Body {
 
     // MARK: paying attention — between her bigger reactions her eyes are always somewhere
     //
-    // . In order: Friday speaking through her, or him
+    // In order: Friday speaking through her, or him
     // talking (the mic heard words): she looks at him, out of the screen, her head toward where he
     // works. His caret while he types. His cursor when it's near her (600 pt). Otherwise where his
     // screen last changed (her eyes' glance, the last 6 s), else his front window. A new window, a
@@ -1088,10 +1099,31 @@ final class Body {
         if now.timeIntervalSince(lastTyped) < 2, let k = focusCaret {
             lookToward(CGPoint(x: k.midX, y: k.midY), snap: 0.25, head: 0.7); gazeMode = "caret"; return
         }
-        if dist < Body.followRange { lookToward(c, snap: 0.25, head: 0.6); gazeMode = "cursor"; return }
+        if dist < Body.followRange { look(c, mode: "cursor", head: 0.6, now); return }
         if let ch = changeSeen, now.timeIntervalSince(ch.at) < 6 { lookToward(ch.point, snap: 0.2, head: 0.5); gazeMode = "change"; return }
-        if let fw = frontSeen { lookToward(CGPoint(x: fw.midX, y: fw.midY), snap: 0.2, head: 0.5); gazeMode = "front"; return }
-        lookToward(c, snap: 0.2, head: 0.5); gazeMode = "cursor"
+        if let fw = frontSeen { look(CGPoint(x: fw.midX, y: fw.midY), mode: "front", head: 0.5, now); return }
+        look(c, mode: "cursor", head: 0.5, now)
+    }
+
+    /// her eyes on a point that doesn't move — the middle of his front
+    /// window (56% of sim 47's afternoon) or his parked cursor — held there for minutes, which is a stare. After
+    /// Body.restEyesAfter on the same still point she rests her eyes (down and ahead, her head back toward the
+    /// middle); the cursor moving, his typing or a change on his screen brings them back at once.
+    static let restEyesAfter: TimeInterval = 10
+    private var stillPoint: CGPoint?
+    private var stillSince = Date.distantPast
+
+    private func look(_ p: CGPoint, mode: String, head: CGFloat, _ now: Date) {
+        if let s = stillPoint, hypot(s.x - p.x, s.y - p.y) < 30, gazeMode == mode || gazeMode == "rest" {
+            if now.timeIntervalSince(stillSince) >= Body.restEyesAfter {
+                gx.target = 0; gy.target = -0.35; turn.target = turn.target * 0.3
+                gazeMode = "rest"
+                return
+            }
+        } else {
+            stillPoint = p; stillSince = now
+        }
+        lookToward(p, snap: 0.2, head: head); gazeMode = mode
     }
 
     /// Eye contact: he sits in front of his screen, so her eyes come nearly to the middle (looking
@@ -1145,7 +1177,7 @@ final class Body {
 
     /// A jump to (tx, ty) along a real arc: a short crouch, then off.
     /// `fromWindow`: why she is hopping off one of his windows (a drop of Stages.jumpDownAtLeast or more
-    /// lands as "fall_land", 10-21).
+    /// lands as "fall_land").
     private func leap(toX tx: CGFloat, toY ty: CGFloat, crouch: Double = 0.16, fromWindow: String? = nil) {
         let g = Body.gravity
         let rise = ty - y
@@ -1158,7 +1190,7 @@ final class Body {
         if tx != x { face.flip = tx < x }
         standingOn = nil; standingID = nil
         // she jumps on her feet: seated on a window that went from under her, she flew down still sitting
-        // (sim 21 once she settled beside him, 10-24)
+        // (sim 21 once she settled beside him)
         sit.target = 0; sit.value = 0; sit.vel = 0; workingAlong = false
         trace?("leap", ["from": [Double(x), Double(y)], "to": [Double(tx), Double(ty)], "height": Double(rise)])
     }
@@ -1272,9 +1304,9 @@ final class Body {
                 let floorThere = dest.visibleFrame.minY
                 let touching = left ? abs(dest.frame.maxX - cur.frame.minX) < 1 : abs(dest.frame.minX - cur.frame.maxX) < 1
                 if touching && abs(floorThere - y) < 6 {
-                    walking = step(toward: t, dt)                  // level floors: she just walks on
+                    walking = step(toward: t, dt); legLeft = abs(t - x)   // level floors: she just walks on
                 } else if abs(edge - x) > 2 {
-                    walking = step(toward: edge, dt)
+                    walking = step(toward: edge, dt); legLeft = abs(edge - x)   // this leg ends at the edge, in a hop down
                 } else {
                     let land = left ? max(t, dest.visibleFrame.maxX - w - 130) : min(t, dest.visibleFrame.minX + 130)
                     leap(toX: land, toY: floorThere)
@@ -1289,7 +1321,7 @@ final class Body {
             } else if abs(t - x) < 3 {
                 targetX = nil
             } else {
-                walking = step(toward: t, dt)
+                walking = step(toward: t, dt); legLeft = abs(t - x)
             }
         }
         if targetX == nil { lean.target = 0 }
@@ -1307,10 +1339,17 @@ final class Body {
         }
         currentWalk += (walking - currentWalk) * min(1, dt * 10)
         let mine = screenAt(x + w / 2)
+        if let was = myScreen?.id, was != mine.id { crossedAt = world.now }
         myScreen = (mine.id, mine.frame)
         lastFloor = vy == 0 && launch == nil && standingOn == nil ? floorAt(x) : nil
     }
     private var myScreen: (id: UInt32, frame: CGRect)?
+    /// poses.jsonl 09:03-09:08: she crossed between his screens every 1-2 min, back and forth, each time a
+    /// run "to the screen he's working on" (an invitation one way, out of his way the other). After a change of
+    /// screen she stays on the new one Body.crossGap before she crosses again of her own accord; carried or
+    /// called over (Body.come) she goes at once as before.
+    private var crossedAt = Date.distantPast
+    static let crossGap: TimeInterval = 300
     private var lastFloor: CGFloat?
     private var moved = false
 
@@ -1421,7 +1460,7 @@ final class Body {
     /// She changes screens on her own only once he has been working on the other one this long.
     static let screenStay: Double = 120
 
-    // MARK: where the action is 
+    // MARK: where the action is
     //
     // His front window is where his day is happening. Once it has settled on his other screen
     // (moved there, or he clicked into a window there) for 20 s with him there too, she notices
@@ -1432,20 +1471,20 @@ final class Body {
 
     /// The front window has to stay on the other screen this long before she goes to it.
     static let withinReach: Double = 500       // pt from his hand: farther for farFor, and him busy elsewhere, her place pulls little
-    static let settleAfter: Double = 180       // s standing near him with no walk, then she sits beside him (10-24)
-    static let likesPerch: Double = 0.25       // her liking for a window top beside him (a trait, 10-24)
+    static let settleAfter: Double = 60        // s standing near him with no walk, then she sits
+    static let likesPerch: Double = 0.25       // her liking for a window top beside him (a trait)
     static let farFor: Double = 20             // s his hand stays out of reach before she goes to him
     static let crossSpeed: CGFloat = 320       // pt/s on her way to the screen he's working on (a run)
-    static let frontStay: Double = 60          // 10-24: was 20 s (owner 10-14 "super responsive"); 8 crossings in 45 min (owner 10-24 "walks from one screen to another"); with her run across (08382125) a minute balances both
+    static let frontStay: Double = 60          // was 20 s; 8 crossings in 45 min; with her run across (08382125) a minute balances both
     /// Nothing happening for this long and she goes to her favourite spot.
     static let homeAfter: Double = 600
-    // 10-21 pose log: "typing along with him" 74 times in 3 h, in and out with every burst of keys
+    // pose log: "typing along with him" 74 times in 3 h, in and out with every burst of keys
     static let typeAlongAfterS: Double = 15     // his typing this long: her laptop comes out (was 4)
     static let typeAlongHoldS: Double = 90      // and goes away this long after his last key (was 20)
     static let yawnEveryS: Double = 1800        // her late-night yawn, at most this often
     static let dizzyEveryS: Double = 1800       // her "@_@" at his fast scrolling, at most this often
     static let danceEveryS: Double = 1200       // her dance to music: 30 s after it starts, then at most this often
-    static let nodEveryS: Double = 600          // her nod when a stretch of his typing stops, at most this often (10-24: was 30 min; owner "no reactions")
+    static let nodEveryS: Double = 600          // her nod when a stretch of his typing stops, at most this often (was 30 min)
 
     // MARK: awake with him ("she mostly sleeps and waves when I'm at my pc, sits and
     // blinks"; her poses.jsonl that night: woken and asleep again within a minute 21 times, 40 waves,
@@ -1468,7 +1507,7 @@ final class Body {
     private var screenMovedAt = Date.distantPast        // his screens last changed (her eyes, or the sim)
     private var screenMovingSince: Date?                // and have kept changing since
     private var lastYawnAt = Date.distantPast
-    // her body's own clips: the doze before sleep, the walk-off when he shoos her, the jump
+    // her body's own clips (Stages): the doze before sleep, the walk-off when he shoos her, the jump
     // down from his window, and when Friday's answer is taking a while
     private var dozeWhy: String?                        // nodding off: falls asleep with this cause when the doze ends
     private var dozeInputAt = Date.distantPast          // his last input when the doze began (any newer wakes her)
@@ -1573,7 +1612,7 @@ final class Body {
         let w = Body.size.width, screens = world.screens
         guard !screens.isEmpty else { return nil }
         if let since = callSince, world.now.timeIntervalSince(since) >= 3 {
-            // 10-24 poses.jsonl (his 10:41-11:35 call): she walked to a new corner six times, because the corner
+            // poses.jsonl (his 10:41-11:35 call): she walked to a new corner six times, because the corner
             // was worked out from whatever he had in front, and he clicked between apps during the call. The
             // corner chosen at the call's start is hers for the call, unless it's in his way or the screens changed.
             if let c = callCorner, screens.contains(where: { $0.visibleFrame.minX <= c && c + w <= $0.visibleFrame.maxX }),
@@ -1619,6 +1658,9 @@ final class Body {
     private var walkSince = Date.distantPast       // when she set off for where she's going
     private var wayThoughtAt = Date.distantPast
     private var currentWalk: CGFloat = 0
+    /// sim 33 seed 8: what's left of this leg of her walk — to his screen's edge when a hop down comes first
+    /// (a 0.18 s run, then her crouch), else to her spot; the run is judged by it (Stages.gait).
+    private var legLeft: CGFloat = 0
     private var lastX: CGFloat = 0
     private var focusCaret: CGRect?
     private var focusField: CGRect?
@@ -1736,8 +1778,8 @@ final class Body {
         f.mouthOpen = f.talking ? (sin(Double(clock) * 9 + sin(Double(clock) * 2.3) * 2) > -0.1 ? 1 : 0) : 0
         f.hint = waveT > 0 ? "wave" : workingAlong ? "typing" :
             (watchingVideo && sit.target > 0.5 ? "watching" : (curiousT > 0 ? "curious" : ""))
-        // the cause of what she's doing, in the world (poses.jsonl's why, 10-15)
-        // 10-20 pose log: chase (his cursor flicking past her), sunset_watch, syntax_sparkles were logged
+        // the cause of what she's doing, in the world (poses.jsonl's why)
+        // pose log: chase (his cursor flicking past her), sunset_watch, syntax_sparkles were logged
         // "\(Config.agentName) speaking through her" because talking outranked the clip's own cause; a clip she is
         // performing keeps its own cause.
         f.why = held ? "he's carrying her" : listening ? "he's talking to her" : !performing.isEmpty ? actWhy
@@ -1775,7 +1817,8 @@ final class Body {
         // it better than her sit pose — each from her state (Stages), its why in poses.jsonl
         let walkingNow = currentWalk > 0.05 && !held && !listening
         f.gait = Stages.gait(walking: walkingNow, inAir: vy != 0 || launch != nil,
-                             shooed: shooWalkTo != nil && targetX.map { abs($0 - shooWalkTo!) < 1 } == true, walkWhy: walkWhy)
+                             shooed: shooWalkTo != nil && targetX.map { abs($0 - shooWalkTo!) < 1 } == true, walkWhy: walkWhy,
+                             left: targetX == nil ? 0 : Double(legLeft), running: face.gait == "run")
         let seat = Stages.seat(seated: sit.target > 0.5 && performing.isEmpty, onWindow: standingOn != nil && vy == 0,
                                typingAlong: workingAlong, watchingVideo: watchingVideo, asleep: sleeping, listening: listening,
                                talking: now < talkUntil, seatedFor: seatedAwakeSince.map { now.timeIntervalSince($0) } ?? 0,
@@ -1881,7 +1924,7 @@ final class Body {
         listening = on
         if on {
             _ = soul.feel(.heardName)
-            // woken by her name she sits up and listens sitting (10-14: standing straight out of
+            // woken by her name she sits up and listens sitting (standing straight out of
             // sleep flashed a sitting frame for 0.08 s on the way up, the sim's 40_talking_to_her)
             listenSeated = sleeping
             if sleeping { sleeping = false; wideT = 0.4 }
@@ -1948,7 +1991,7 @@ final class Body {
         let main = world.screens.first { $0.frame.origin == .zero } ?? world.screens[0]
         lookToward(CGPoint(x: main.visibleFrame.maxX - 160, y: main.visibleFrame.maxY - 40), snap: 1)
         let busy = deepFocus || watchingVideo || world.now.timeIntervalSince(lastTyped) < 4
-        curiousT = busy ? 0.8 : 1.4; if !busy { show("!") }     // a look up there; waves are for his return (10-15)
+        curiousT = busy ? 0.8 : 1.4; if !busy { show("!") }     // a look up there; waves are for his return
         trace?("notified", ["busy": busy])
     }
 
@@ -2005,7 +2048,7 @@ final class Body {
     func shooed() {
         touch("shoo")
         soul.reward(-1)
-        // 10-14 QA: "go away" while she napped slid her 300 pt along the floor still lying asleep
+        // QA: "go away" while she napped slid her 300 pt along the floor still lying asleep
         if sleeping { sleeping = false; sit.target = 0 }   // she gets up first, then walks off
         poutT = 2
         // she walks off sadly ("sad_walk", "sad, ignored") and sulks where she stops ("sulk", in
@@ -2026,7 +2069,7 @@ final class Body {
         think(soon: Double(abs(to - x)) / 45 + 3)    // she finishes walking off (and sulks) before her next thought picks a place
     }
 
-    /// He called her over (core/iris_talk, 10-14): "cursor" — beside his pointer — or
+    /// He called her over (core/iris_talk): "cursor" — beside his pointer — or
     /// "other_screen" — the middle of his nearest other screen. She sets off at once, and
     /// her next thought waits until she has had time to get there. nil when she went;
     /// else why not ("held", "one_screen", "unknown_place").
@@ -2174,12 +2217,15 @@ final class Body {
          "perch": perchTop.map { Double($0) } as Any, "riding": riding,
          "on_window": standingOn != nil, "on_front_window": standingOn != nil && standingOn == world.frontWindow(), "crouching": launch != nil, "speed": Double(speed), "sit": Double(sit.value),
          "sleeping": sleeping, "held": held, "walk": Double(currentWalk), "flip": face.flip, "turn": Double(turn.value),
-         "lean": Double(lean.value), "hint": face.hint, "act": performing, "working_along": workingAlong,
+         "lean": Double(lean.value), "hint": face.hint, "act": performing, "seat": face.seat, "working_along": workingAlong,
          "emote": emoteAge < 1 ? (emote ?? "") : "", "in_the_way": inTheWay(CGRect(x: x, y: y, width: Body.size.width, height: Body.size.height)),
          "want": wanting.want, "watching_video": watchingVideo, "alpha": Double(alpha), "display_moved": moved, "talking": world.now < talkUntil, "gaze_mode": gazeMode, "listening": listening,
          "bubble": world.now < bubbleUntil ? Body.bubbleRect(bubbleText, CGRect(x: x, y: y, width: Body.size.width, height: Body.size.height), bubbleAvoid()) : [Double](), "lid": Double(lid.value), "valence": soul.valence, "arousal": soul.arousal, "sleepiness": soul.sleepiness,
          "boredom": soul.boredom, "affection": soul.affection, "his_idle": world.now.timeIntervalSince(lastInput)]
     }
+
+    /// Where she is on his screens (an approval card goes beside her, ApprovalCard).
+    var frameOnScreen: CGRect { CGRect(x: x, y: y, width: Body.size.width, height: Body.size.height) }
 
     func state() -> [String: Any] {
         ["x": Double(x), "y": Double(y), "sleeping": sleeping, "listening": listening,

@@ -4,7 +4,7 @@ import ApplicationServices
 import ScreenCaptureKit
 import Vision
 
-/// Her eyes: every screen, a glance a second at most (a stream per display, 10-17). A frame that changed is read
+/// Her eyes: every screen, a glance a second at most (a stream per display). A frame that changed is read
 /// (Vision, on this Mac) once it settles; what's on each display, which app
 /// and window he's in, and every window on screen are kept for Friday to ask
 /// about. Without Screen Recording she sees nothing and says so — never an
@@ -38,7 +38,7 @@ final class Eyes {
     static let windowsEveryS: Double = 3
     private var lastChange = Date.distantPast
     private var lastError: String?
-    // no screen read and nothing of his
+    // (owner: = off for an hour): no screen read and nothing of his
     // screens handed to Friday until then
     private var offUntil = Date.distantPast
     // his focused window as Friday last asked (now()), to tell the screen he works on from the other one
@@ -70,7 +70,7 @@ final class Eyes {
 
     // her glance is a running stream per display, not a screenshot every second. Iris.log
     // held 3,303 "SKView: no drawables available for rendering. Skipping this frame." lines, every
-    // one 30-90 ms after her once-a-second capture (unified log, 10-17 12:12:08: shareable content
+    // one 30-90 ms after her once-a-second capture (unified log, shareable content
     // .368, screenshot .389, skipped frame .417; per process the skips sit in one tenth of the
     // second, the eyes timer's), and they pile up while the Mac is loaded. Each second asked
     // ScreenCaptureKit for the window list (a TCC check on her main thread), then one-shot
@@ -242,7 +242,7 @@ final class Eyes {
             displays[id] = d
             // reading costs seconds of CPU on this Mac: at most one read every 10 s, both screens together
             guard reading.isEmpty, now.timeIntervalSince(lastRead) >= 10, now >= offUntil else { return false }
-            // hardware input only (keys another app posts aren't him: the 10-22 07:14 phantom wave)
+            // hardware input only (keys another app posts aren't him: the phantom wave)
             let idle = CGEventSource.secondsSinceLastEventType(.hidSystemState, eventType: CGEventType(rawValue: ~0)!)
             guard idle < Eyes.readAwayS else { return false }        // he's away: his screens' words feed nothing
             let front = focusedCache.map { frame.contains(CGPoint(x: $0.midX, y: $0.midY)) } ?? true
@@ -266,10 +266,10 @@ final class Eyes {
             // every read is Vision's accurate recognizer, revision 2. She read a changed screen
             // first with .fast (no language correction) and again with accurate revision 3 (with it)
             // only after 10 s still; a terminal running tests is never still that long, so what her
-            // reflexes and Friday got was the quick read: in her eyes logs 10-13..10-17, 270 of 309
+            // reflexes and Friday got was the quick read: in her eyes logs, 270 of 309
             // "AssertionError"s read "AssertlonError" and 28 of 75 "N failed" "N falled" (i as l, m as
             // rn, "è" for e), and the two reads of one screen spelled its lines differently, so lines
-            // already there came back as new. Measured 10-17 on this Mac (Intel, no Neural Engine) on
+            // already there came back as new. Measured on this Mac (Intel, no Neural Engine) on
             // four 1920x1080 frames drawn like his VS Code (editor, terminal, chat; 103-110 known lines
             // each) and his two real screens (scratch bench, per read after warm-up):
             //   .fast:               CER 21-26%, 5-8 lines exact, 0.25 s CPU (0.1 s on his screens)
@@ -358,7 +358,7 @@ final class Eyes {
     /// What's playing, from window titles she can already read (Screen Recording, her eyes): Spotify's window
     /// is titled with the song while one plays ("Spotify Premium" / "Spotify" when not); a browser window on a
     /// YouTube video ("… - YouTube") counts only while sound is playing. No other app is asked (an AppleScript
-    /// query would be a new permission prompt on his screen). 10-25: "what's playing" could only say whether.
+    /// query would be a new permission prompt on his screen). "what's playing" could only say whether.
     static func nowPlaying(soundOn: Bool) -> [String: String]? {
         guard let list = CGWindowListCopyWindowInfo([.optionAll], kCGNullWindowID) as? [[String: Any]] else { return nil }
         let browsers: Set<String> = ["Safari", "Google Chrome", "Arc", "Firefox", "Brave Browser", "Microsoft Edge"]
@@ -385,7 +385,7 @@ final class Eyes {
         var out: [String: Any] = [
             "front_app": front?.localizedName ?? "",
             "front_title": Eyes.focusedTitle() ?? "",
-            "idle_s": CGEventSource.secondsSinceLastEventType(.hidSystemState, eventType: any),   // his hands only (10-24)
+            "idle_s": CGEventSource.secondsSinceLastEventType(.hidSystemState, eventType: any),   // his hands only
             "permitted": Eyes.permitted,
             // an app has the mic (a call is live) / something is playing (any tab)
             "mic_others": AudioUse.micByOthers,
@@ -462,7 +462,7 @@ final class Eyes {
 
     /// The app he's working in: the frontmost one, unless that's one of macOS's own agents with no Dock
     /// icon (a notification banner's UserNotificationCenter, Control Center, the Dock), then the last
-    /// regular app that was (10-20 journal: her eye break, watch and thoughts ran "on UserNotificationCenter"
+    /// regular app that was (her eye break, watch and thoughts ran "on UserNotificationCenter"
     /// while a banner had focus for a second).
     static var workingApp: NSRunningApplication? {
         let front = NSWorkspace.shared.frontmostApplication
@@ -472,7 +472,7 @@ final class Eyes {
             return front
         }
         if let last = lastRegular, !last.isTerminated { return last }
-        // None seen since she started (10-20 04:06: she restarted under Discord's local-network dialog,
+        // None seen since she started (she restarted under Discord's local-network dialog,
         // up since 03:28): the regular app whose window is frontmost on screen.
         let wins = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
             as? [[String: Any]] ?? []

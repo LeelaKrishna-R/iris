@@ -13,6 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "agents"))
 import iris_mcp  # noqa: E402
 
 KEY = b"test-key-0123456789"
+DECISIONS: list = []          # what /iris/decisions answers, one poll at a time
 
 
 @pytest.fixture
@@ -42,6 +43,8 @@ def iris(tmp_path, monkeypatch):
                 reply = {"ok": False, "reason": "no_such_animation"}
             if self.path == "/ears/next":
                 reply = {"ok": True, "heard": {"text": "what's the weather", "typed": False}}
+            if self.path == "/iris/decisions":
+                reply = {"ok": True, "decisions": DECISIONS.pop(0) if DECISIONS else []}
             if self.path == "/eyes/now":
                 reply = {"ok": True, "front_app": "Code", "front_title": "main.py", "displays": [{"id": 1, "text": "hi"}]}
             body = json.dumps(reply).encode()
@@ -184,3 +187,30 @@ def test_voice_loop_turn_passes_words_to_the_agent_and_says_its_reply(iris):
 def test_voice_loop_turn_says_when_the_agent_cant_start(iris):
     import voice_loop
     assert voice_loop.turn(["/no/such/agent"], "hi", speak=False).startswith("I couldn't start the agent")
+
+
+def test_ask_shows_the_card_and_returns_the_click(iris, monkeypatch):
+    monkeypatch.setattr(iris_mcp, "POLL_S", 0)
+    monkeypatch.setattr(iris_mcp.os, "urandom", lambda n: b"\x01" * n)
+    DECISIONS[:] = [[], [{"id": "someone-else", "choice": "approve"}], [{"id": "mcp-010101010101", "choice": "reject"}]]
+    assert tool("iris_ask", action="Delete the build folder")[0] == "Denied: don't do it."
+    method, path, body = next(x for x in iris if x[1] == "/iris/ask")
+    assert body["id"] == "mcp-010101010101" and body["text"] == "Delete the build folder"
+    assert body["title"] == "Your agent asks"
+    DECISIONS[:] = [[{"id": "mcp-010101010101", "choice": "approve"}]]
+    assert tool("iris_ask", action="Push to main", title="Claude Code")[0] == "Allowed: go ahead."
+
+
+def test_ask_with_no_answer_closes_the_card_and_allows_nothing(iris, monkeypatch):
+    monkeypatch.setattr(iris_mcp, "POLL_S", 0)
+    clock = iter(range(0, 10_000, 3))
+    monkeypatch.setattr(iris_mcp.time, "time", lambda: float(next(clock)))
+    DECISIONS[:] = []
+    assert tool("iris_ask", action="Send the email", seconds=5)[0] == \
+        "No answer in 5 s; the card was closed. Nothing was allowed."
+    assert iris[-1][1] == "/iris/ask_done"
+
+
+def test_ask_needs_an_action(iris):
+    assert tool("iris_ask", action="  ")[0] == "Nothing to ask: action is empty."
+    assert iris == []

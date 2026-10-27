@@ -252,8 +252,8 @@ final class App: NSObject, NSApplicationDelegate {
         case "/iris/events":
             main { (200, ["ok": true, "events": self.body.takeEvents()]) }
         case "/iris/ask":
-            // a Friday approval with Allow / Deny beside her (core/approvals._at_the_mac); the click
-            // waits in /iris/decisions for Core, which decides it exactly once (core/approval_decide)
+            // an approval your agent asks for, with Allow / Deny beside her; the click waits in
+            // /iris/decisions for the agent, which acts on it once (agents/iris_mcp.py iris_ask)
             let id = body["id"] as? String ?? ""
             let text = body["text"] as? String ?? ""
             guard !id.isEmpty, !text.isEmpty else { return reply(400, ["ok": false, "reason": "no_id_or_text"]) }

@@ -134,6 +134,30 @@ def t_listen(args: dict) -> str:
     return f"{how.capitalize()}: {h.get('text', '')}"
 
 
+def t_ask(args: dict) -> str:
+    """An Allow / Deny card beside her for one action, and the click: waits up to `seconds` (max 300)."""
+    text = " ".join(str(args.get("action") or "").split())
+    if not text:
+        return "Nothing to ask: action is empty."
+    wait = min(300.0, max(5.0, float(args.get("seconds") or 120)))
+    ask_id = "mcp-" + os.urandom(6).hex()
+    r = call("/iris/ask", {"id": ask_id, "title": str(args.get("title") or "Your agent asks")[:60], "text": text[:420],
+                           "until": time.time() + wait})
+    if not r.get("ok"):
+        return f"Iris couldn't show the card: {r.get('reason') or 'no reason given'}. Nothing was allowed."
+    end = time.time() + wait
+    while time.time() < end:
+        for d in call("/iris/decisions", method="GET").get("decisions") or []:
+            if d.get("id") == ask_id and d.get("choice") in ("approve", "reject"):
+                return "Allowed: go ahead." if d["choice"] == "approve" else "Denied: don't do it."
+        time.sleep(POLL_S)
+    call("/iris/ask_done", {"id": ask_id})
+    return f"No answer in {wait:.0f} s; the card was closed. Nothing was allowed."
+
+
+POLL_S = 1.0
+
+
 def t_screen(args: dict) -> str:
     r = call("/eyes/now", method="GET", timeout=5)
     if not r.get("ok"):
@@ -162,6 +186,12 @@ TOOLS = {
                               "up to 25 seconds; answer with iris_say to hold a spoken conversation through her. Only "
                               "speech addressed to her is ever returned.",
                     {"seconds": {"type": "number", "description": "How long to wait, 1-25 (default 20)."}}, []),
+    "iris_ask": (t_ask, "Ask the person at the Mac to approve one action, on a card beside Iris with Allow and Deny. "
+                        "Waits for the click (up to `seconds`, default 120) and returns Allowed, Denied, or no answer, "
+                        "in which case nothing was allowed. The card never takes their typing; Allow has no key.",
+                 {"action": {"type": "string", "description": "What you want to do, in plain words."},
+                  "title": {"type": "string", "description": "A short heading (default \"Your agent asks\")."},
+                  "seconds": {"type": "number", "description": "How long to wait, 5-300 (default 120)."}}, ["action"]),
     "iris_come": (t_come, "Call Iris over: beside the pointer, or to the other screen.",
                   {"to": {"type": "string", "enum": ["cursor", "other_screen"]}}, []),
 }

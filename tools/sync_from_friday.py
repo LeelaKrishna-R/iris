@@ -195,7 +195,10 @@ def sync(src: Path, dst: Path) -> None:
            "/// when your agent says it was answered elsewhere (/iris/ask_done), or when you click.\n", True))
     _edit(s_dst / "Link.swift", ("static let port: UInt16 = 7791", "static var port: UInt16 { Config.port }"))
     _edit(s_dst / "main.swift",
-          ('log("iris: awake")\n', 'log("iris: awake")\n        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { Welcome.showIfFirstRun() }\n'))
+          ('log("iris: awake")\n', 'log("iris: awake")\n        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { Welcome.showIfFirstRun() }\n'),
+          (r"            //[^\n]*a Friday approval with Allow / Deny beside her[^\n]*\n[^\n]*\n",
+           "            // an approval your agent asks for, with Allow / Deny beside her; the click waits in\n"
+           "            // /iris/decisions for the agent, which acts on it once (agents/iris_mcp.py iris_ask)\n", True))
     body = s_dst / "Body.swift"
     _edit(body,
           ('String(format: "Friday\'s answer to him is taking over %.0f s", Stages.impatientAfter)',

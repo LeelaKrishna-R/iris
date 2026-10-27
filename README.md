@@ -40,6 +40,7 @@ Agents connect in several ways:
 | `iris_animations` | Lists her animations |
 | `iris_notice` | Glances up at something that just happened, with a small "!" and no words |
 | `iris_listen` | Waits for what you say to her by name ("Iris, …") or type in her Ask box, so an agent can hold a spoken conversation through her |
+| `iris_ask` | Shows a card beside her with what your agent wants to do, Allow and Deny, and returns your click (no answer means nothing was allowed) |
 | `iris_come` | Comes to your pointer, or to your other screen |
 | `iris_screen` | What's on your screens (front app, window, text). **Off unless you set `IRIS_MCP_SCREEN=1`.** |
 

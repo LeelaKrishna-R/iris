@@ -684,9 +684,15 @@ final class Body {
                     // standing still for minutes read as staring; near
                     // him she settles after a minute with no walk (was 3), never over his work; far from his cursor
                     // (in front of his video, sim 24) she still waits for a walk with a reason
-                    : idle < 120 && world.now.timeIntervalSince(walkSince) >= Body.settleAfter
+                    // (poses.jsonl 14:40-15:02: standing 595, 368 and 147 s): his cursor out of her reach,
+                    // or two minutes since his last touch while he reads, held her standing with nothing to sit her
+                    // down. With him at the Mac she settles wherever his hand is (sim 53); with a video in front
+                    // (his front app and title say so), only near his hand, so she isn't settled in front of it (sim 24)
+                    : idle < Stages.awayFor && world.now.timeIntervalSince(walkSince) >= Body.settleAfter
                         && inTheWay(CGRect(x: x, y: y, width: Body.size.width, height: Body.size.height)) <= 0.3
-                        && Double(abs(x + Body.size.width / 2 - world.mouse.x)) < Body.withinReach
+                        && (!Body.isVideo(app: world.frontApp ?? "", title: world.frontTitle)
+                            || Double(abs(x + Body.size.width / 2 - world.mouse.x)) < Body.withinReach)
+                        && world.now.timeIntervalSince(cursorMovedAt) > 2      // a calm moment, not mid-shake (sim 37)
                         ? "settled while he works"            // never over his work or what he's watching (sim 24)
                     : nil
                 sit.target = wasSitting || sitFor != nil ? 1 : 0
@@ -702,7 +708,12 @@ final class Body {
                 if typedFor > 0 && !workingAlong { postureUntil = world.now.addingTimeInterval(Double.rnd(6...15)) }
                 if workingAlong && world.now.timeIntervalSince(lastTyped) > Body.typeAlongHoldS && w.want != "work_along" { workingAlong = false }
                 if w.want == "watch", let fw = world.frontWindow() { lookToward(CGPoint(x: fw.midX, y: fw.midY), snap: 0.6) }
-                if world.now > postureUntil { postureUntil = world.now.addingTimeInterval(Double.rnd(25...140)) }
+                if world.now > postureUntil {
+                    // standing, she looks again when her minute without a walk is up, not up to 140 s later (sim 53)
+                    let settleIn = walkSince.addingTimeInterval(Body.settleAfter).timeIntervalSince(world.now)
+                    postureUntil = world.now.addingTimeInterval(sit.target < 0.5 && settleIn > 0
+                        ? min(Double.rnd(25...140), settleIn + 1) : Double.rnd(25...140))
+                }
             }
             // in her corner she sits and watches (his film, or quietly through his call)
             if corner != nil {
@@ -958,7 +969,9 @@ final class Body {
 
     func frame() {
         let now = world.now
-        let dt = CGFloat(min(0.05, now.timeIntervalSince(lastTick)))
+        // never below 0. A wall clock stepping back made dt negative and settle()'s max(0, t - dt)
+        // brought every spent timer back for a frame: a wave "he came back after 678 min away" to an empty room.
+        let dt = CGFloat(min(0.05, max(0, now.timeIntervalSince(lastTick))))
         lastTick = now
         clock += dt
         // when she last woke (by any path), and how long his screens have kept changing or been still

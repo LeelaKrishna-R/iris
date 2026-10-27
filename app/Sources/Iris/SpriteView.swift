@@ -273,7 +273,7 @@ final class SpriteView: SKView {
     private func apply() {
         let f = face
         let now = Date()
-        let dt = CGFloat(min(0.05, now.timeIntervalSince(lastUpdate)))
+        let dt = CGFloat(min(0.05, max(0, now.timeIntervalSince(lastUpdate))))   // a clock stepping back is no frame back
         clock += dt
         lastUpdate = now
 

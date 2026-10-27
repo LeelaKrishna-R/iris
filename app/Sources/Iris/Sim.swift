@@ -325,6 +325,7 @@ enum Sim {
                 if e["shoo"] as? Bool == true { body.shooed() }                 // "Iris, go away" (/iris/mood shoo)
                 if let h = e["hold"] as? [String: Any] { body.hold(h["seconds"] as? Double ?? 10, talk: false, pose: h["pose"] as? String ?? "") }
                 if e["screens"] != nil { w.screens = screens(e["screens"]); A.screens = w.screens }
+                if let back = e["clock_back"] as? Double { w.now = w.now.addingTimeInterval(-back) }   // the Mac's clock stepped back
             }
             if t >= nextMind {
                 nextMind = t + Double.rnd(mindEvery[0]...mindEvery[1])
@@ -552,6 +553,7 @@ final class Analyzer {
 
     var returnedAt: Double?
     var plainSitFrom: Double?                        // when her present plain awake sit began (no clip, no act)
+    var plainStandFrom: Double?                      // when her plain awake stand began (no walk, no clip, no act)
     var field: CGRect?
     var caret: CGRect?
     var change: (point: CGPoint, t: Double)?         // where his screen last changed, and when (sim time)
@@ -718,6 +720,14 @@ final class Analyzer {
             plainSitFrom = from
             c["plain_sit_max"] = max(c["plain_sit_max"] ?? 0, t - from)
         } else { plainSitFrom = nil }
+        // 9g. a plain stand, awake: not walking, no act, no hint — standing still and looking is the stare (
+        // poses.jsonl 14:40-14:50: 595 s standing on the screen he works on, his cursor out of her reach)
+        if Sim.pose(face) == "stand" && face.act.isEmpty && face.hint.isEmpty && face.walk < 0.05 && !(s["sleeping"] as! Bool)
+            && (s["talking"] as? Bool) != true {
+            let from = plainStandFrom ?? t
+            plainStandFrom = from
+            c["plain_stand_max"] = max(c["plain_stand_max"] ?? 0, t - from)
+        } else { plainStandFrom = nil }
         // never talking or listening with her eyes shut (her name, Friday's words wake her)
         if (s["sleeping"] as! Bool) && ((s["talking"] as? Bool) == true || (s["listening"] as? Bool) == true) {
             c["s_asleep_attending"] = (c["s_asleep_attending"] ?? 0) + dt

@@ -54,18 +54,74 @@ def _edit(path: Path, *edits) -> None:
     path.write_text(s, encoding="utf-8")
 
 
+# A diary date in a comment: "10-26", "9-30" (month-day), alone or as a span ("10-13..10-17", "10-10 to 10-19"),
+# never a range of units ("10-15 s", "1-2 min", "8-10%").
+_MD = r"(?:[1-9]|1[0-2])-[0-3]\d(?![\w%-])"
+_DATE = (r"(?<![\w:.-])" + _MD + r"(?:(?:\.\.|\s+to\s+)" + _MD + r")?(?:\s+\d{1,2}:\d{2}(?::\d{2})?)?"
+         r"(?!\s*(?:s|ms|min|minutes?|seconds?|px|pt|h|hours?)\b)")
+_OWNER = r"\bowner:?\s*(?:\"[^\"]*\"|(?=[,;)]|$))"                             # owner "mostly staring" / owner:
+
+
+def _undated(s: str) -> str:
+    """s without its diary dates and the first user's quotes, its punctuation tidied."""
+    s = re.sub(_OWNER, "", s)
+    s = re.sub(r"\bowner\s+(?=" + _DATE + ")", "", s)
+    s = re.sub(_DATE + r"(?:\s+[a-z][\w-]*)?\s*:\s+", "", s)                 # "10-26 sim: ..."
+    s = re.sub(_DATE, "", s)
+    while True:                                                                 # tidy until nothing changes
+        t = re.sub(r"\s{2,}", " ", s)
+        t = re.sub(r"\s+([,;.:)])", r"\1", t)
+        t = re.sub(r"([(])\s*[,;:]\s*", r"\1", t)
+        t = re.sub(r"[,;:]\s*([,;:)])", r"\1", t)
+        if t == s:
+            return s
+        s = t
+
+
+def _paren(m: re.Match) -> str:
+    inner = m.group(1)
+    if not re.search(r"\bowner\b|" + _DATE, inner):
+        return m.group(0)
+    kept = _undated(re.sub(r'["“][^"”]*["”]', "", inner)).strip(" ,;:")      # a quote dated so is the first user's
+    return f"({kept})" if re.search(r"[A-Za-z]{3}", kept) else ""
+
+
+def _scrub_note(body: str) -> str:
+    if not re.search(r"\bowner\b|" + _DATE, body):
+        return body
+    new = re.sub(r"\s*\(([^()]*)\)", lambda m: (" " if m.group(0)[0].isspace() else "") + _paren(m)
+                 if _paren(m) else "", body)                                   # "(10-26, owner: ...)"
+    new = _undated(new)
+    if new == body:
+        return body
+    return re.sub(r"^[,;:.]\s*", "", new).strip()
+
+
+def _comment_at(ln: str) -> int:
+    """Where a trailing // comment starts in a line of Swift, outside any string; -1 if none."""
+    quoted = False
+    for i, ch in enumerate(ln):
+        if ch == '"' and (i == 0 or ln[i - 1] != "\\"):
+            quoted = not quoted
+        elif not quoted and ln.startswith("//", i) and (i == 0 or ln[i - 1] in " \t"):
+            return i
+    return -1
+
+
 def scrub_comments(text: str) -> str:
+    """Comments without the first user's quotes or dated diary tags, whole-line and after code alike."""
     out = []
     for ln in text.split("\n"):
-        m = re.match(r"^(\s*///?\s?)(.*)$", ln)
-        if m and ln.lstrip().startswith("//"):
+        at = _comment_at(ln)
+        if at >= 0:
+            m = re.match(r"(///?\s?)(.*)$", ln[at:])
             pre, body = m.groups()
-            new = re.sub(r"\b\d{1,2}-\d{2}(?:\s+[\w:]+)?\s*\(owner[^)]*\)\s*:?\s*", "", body)
-            new = re.sub(r"\(owner[^)]*\)\s*", "", new)
-            new = re.sub(r"\bowner\s+\d{1,2}-\d{2}:?\s*", "", new)
-            new = re.sub(r"^\d{1,2}-\d{2}(?:\s+[a-z][\w-]*)?\s*:\s*", "", new)
-            new = re.sub(r"\s*\(\d{1,2}-\d{2}[^)]*\)", "", new)
-            ln = pre + new if new.strip() else pre.rstrip()
+            new = _scrub_note(body)
+            code = ln[:at]
+            if new.strip():
+                ln = code + pre + new
+            else:
+                ln = (code + pre).rstrip() if not code.strip() else code.rstrip()
         out.append(ln)
     return "\n".join(out)
 
@@ -131,6 +187,12 @@ def sync(src: Path, dst: Path) -> None:
 /// Agents run as the same macOS user, so they read the link key from here; nobody else can (0600)."""),
           ('let d = base.appendingPathComponent("Iris", isDirectory: true)',
            'let d = Config.dataDir ?? base.appendingPathComponent("Iris", isDirectory: true)'))
+    _edit(s_dst / "ApprovalCard.swift",
+          (r"/// Friday's approval, answered on the Mac.*?(?=final class ApprovalCard)",
+           "/// An approval your agent asks for, answered on the Mac: what it wants to do, beside Iris, with Allow and\n"
+           "/// Deny. A click is only recorded here (`decisions`); your agent collects it from /iris/decisions and acts\n"
+           "/// on it once. The card never takes your typing (a non-activating panel); it goes when the ask runs out,\n"
+           "/// when your agent says it was answered elsewhere (/iris/ask_done), or when you click.\n", True))
     _edit(s_dst / "Link.swift", ("static let port: UInt16 = 7791", "static var port: UInt16 { Config.port }"))
     _edit(s_dst / "main.swift",
           ('log("iris: awake")\n', 'log("iris: awake")\n        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { Welcome.showIfFirstRun() }\n'))

@@ -6,15 +6,22 @@ import AppKit
 /// when your agent says it was answered elsewhere (/iris/ask_done), or when you click.
 final class ApprovalCard: NSObject {
     static let shared = ApprovalCard()
-    struct Decision { let id: String; let choice: String }
+    struct Decision { let id: String; let choice: String; let at: Date }
     private(set) var decisions: [Decision] = []
     private var panel: NSPanel?
     private(set) var showing = ""           // the approval on screen now (Core closes it when answered elsewhere)
     private var closeTimer: Timer?
 
-    func takeDecisions() -> [[String: String]] {
-        defer { decisions.removeAll() }
+    /// Clicks your agent hasn't confirmed yet. Read, not taken: a read that emptied the list lost a click when
+    /// the agent gave up waiting on her busy main thread. The agent confirms each one it acted on
+    /// (/iris/decisions_ack). One older than 10 minutes is dropped: an approval runs out by then.
+    func pendingDecisions() -> [[String: String]] {
+        decisions.removeAll { Date().timeIntervalSince($0.at) > 600 }
         return decisions.map { ["id": $0.id, "choice": $0.choice] }
+    }
+
+    func ack(_ ids: [String]) {
+        decisions.removeAll { ids.contains($0.id) }
     }
 
     /// Shows the approval `id` next to `near` (her frame) until `until` (or 10 minutes, at most an hour).
@@ -91,7 +98,7 @@ final class ApprovalCard: NSObject {
 
     private func decide(_ choice: String) {
         guard !showing.isEmpty else { return }
-        decisions.append(Decision(id: showing, choice: choice))
+        decisions.append(Decision(id: showing, choice: choice, at: Date()))
         log("approval card: \(choice) \(showing.prefix(8))")
         close()
     }

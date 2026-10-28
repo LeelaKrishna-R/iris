@@ -43,12 +43,13 @@ time she runs. Send these headers on every request:
 | Request | Body | What it does |
 |---|---|---|
 | `POST /iris/ask` | `{"id": str, "text": str, "title": str, "until": unix seconds}` | Shows a card beside her with `text`, Allow and Deny, until `until` (10 minutes by default, an hour at most). One card at a time; a new ask replaces the old one |
-| `GET /iris/decisions` | none | Clicks since the last read, each once: `{"decisions": [{"id", "choice": "approve" \| "reject"}], "showing": id}` |
+| `GET /iris/decisions` | none | Clicks not yet confirmed: `{"decisions": [{"id", "choice": "approve" \| "reject"}], "showing": id}`. A click stays until you confirm it (or for 10 minutes), so a slow read can't lose it and another agent's read can't take yours |
+| `POST /iris/decisions_ack` | `{"ids": [str]}` | Confirms the clicks you acted on; only those leave the list |
 | `POST /iris/ask_done` | `{"id": str}` | Closes the card when the ask was answered somewhere else or ran out |
 
 The card is a non-activating panel: it never takes your typing, and Allow has no key equivalent, so only a
 click answers it. Iris records the click and does nothing else; your agent acts on it. `iris_ask` in
-`agents/iris_mcp.py` does all three steps for you.
+`agents/iris_mcp.py` does all of it for you, confirming only its own card's click.
 
 ## Senses
 

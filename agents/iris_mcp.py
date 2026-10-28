@@ -152,6 +152,9 @@ def t_ask(args: dict) -> str:
     while time.time() < end:
         for d in call("/iris/decisions", method="GET").get("decisions") or []:
             if d.get("id") == ask_id and d.get("choice") in ("approve", "reject"):
+                # she keeps a click until it's confirmed, so another agent's poll can't take this one, nor a slow
+                # read lose it; an older Iris without the route answers 404, harmlessly
+                call("/iris/decisions_ack", {"ids": [ask_id]})
                 return "Allowed: go ahead." if d["choice"] == "approve" else "Denied: don't do it."
         time.sleep(POLL_S)
     call("/iris/ask_done", {"id": ask_id})

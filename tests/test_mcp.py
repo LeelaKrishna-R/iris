@@ -197,6 +197,8 @@ def test_ask_shows_the_card_and_returns_the_click(iris, monkeypatch):
     method, path, body = next(x for x in iris if x[1] == "/iris/ask")
     assert body["id"] == "mcp-010101010101" and body["text"] == "Delete the build folder"
     assert body["title"] == "Your agent asks"
+    assert ("POST", "/iris/decisions_ack", {"ids": ["mcp-010101010101"]}) in iris     # only its own click confirmed
+    assert not any(x[1] == "/iris/decisions_ack" and "someone-else" in x[2]["ids"] for x in iris)
     DECISIONS[:] = [[{"id": "mcp-010101010101", "choice": "approve"}]]
     assert tool("iris_ask", action="Push to main", title="Claude Code")[0] == "Allowed: go ahead."
 

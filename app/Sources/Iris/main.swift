@@ -268,8 +268,12 @@ final class App: NSObject, NSApplicationDelegate {
             let id = body["id"] as? String ?? ""
             main { ApprovalCard.shared.close(id: id.isEmpty ? nil : id); return (200, ["ok": true]) }
         case "/iris/decisions":
-            main { (200, ["ok": true, "decisions": ApprovalCard.shared.takeDecisions(),
+            main { (200, ["ok": true, "decisions": ApprovalCard.shared.pendingDecisions(),
                           "showing": ApprovalCard.shared.showing]) }
+        case "/iris/decisions_ack":
+            // your agent confirms the clicks it acted on; only those leave her list
+            let ids = (body["ids"] as? [Any] ?? []).compactMap { $0 as? String }
+            main { ApprovalCard.shared.ack(ids); return (200, ["ok": true]) }
         case "/iris/hold":
             let secs = body["seconds"] as? Double ?? 10
             let talk = body["talk"] as? Bool ?? false

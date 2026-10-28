@@ -17,6 +17,24 @@ time she runs. Send these headers on every request:
 
 `agents/iris_mcp.py` (`call`) is a complete client in about thirty lines of standard-library Python.
 
+## From a terminal: `iris`
+
+`agents/iris_cli.py` signs for you, so a shell script, a git hook or any agent that can run a command can use her
+without writing a client:
+
+```sh
+python3 agents/iris_cli.py say "Build finished"          # aloud, lips moving; --bubble for her speech bubble only
+python3 agents/iris_cli.py notice "tests failed"         # a glance and a small "!", no words
+python3 agents/iris_cli.py react giggle                  # one of her animations
+python3 agents/iris_cli.py animations                    # lists them
+python3 agents/iris_cli.py come other_screen             # cursor (default) or other_screen
+python3 agents/iris_cli.py listen 10                     # prints what's said to her by name next, up to 25 s
+```
+
+What she answered goes to stdout; a refusal or an error goes to stderr. Exit status: `0` done, `1` Iris said no
+(the reason is printed: no such animation, nothing to say), `2` Iris isn't running or can't be reached, `64` the
+command wasn't understood. So `make test || python3 agents/iris_cli.py notice "tests failed"` works as written.
+
 ## Speaking and showing
 
 | Request | Body | What she does |

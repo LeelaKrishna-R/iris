@@ -72,7 +72,10 @@ def _spoken(text: str) -> dict:
     """Her voice for `text`: macOS's own `say` to a file, played through her mouth (lips move with it)."""
     with tempfile.TemporaryDirectory() as d:
         out = Path(d) / "line.aiff"
-        done = subprocess.run(["/usr/bin/say", "-o", str(out), text[:600]], capture_output=True, timeout=60)
+        try:
+            done = subprocess.run(["/usr/bin/say", "-o", str(out), text[:600]], capture_output=True, timeout=60)
+        except (OSError, subprocess.SubprocessError):
+            return {"ok": False, "reason": "no_voice"}      # no `say` here (not macOS): her bubble instead
         if done.returncode != 0 or not out.exists():
             return {"ok": False, "reason": "no_voice"}
         return call("/mouth/play", {"b64": base64.b64encode(out.read_bytes()).decode(), "text": text[:600]},

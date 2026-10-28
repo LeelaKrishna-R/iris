@@ -1,5 +1,6 @@
 """`iris` from a terminal, against the same signed fake Iris as the MCP tests: each command's request, its
 exit status (0 done, 1 Iris said no, 2 unreachable, 64 usage), and where its words go."""
+import subprocess
 import sys
 from pathlib import Path
 
@@ -12,9 +13,18 @@ from test_hooks import _closed_port  # noqa: E402
 from test_mcp import iris  # noqa: E402,F401  (the fixture)
 
 
-def test_say_aloud_and_in_her_bubble(iris):
+def _fake_say(monkeypatch):
+    def run(cmd, **k):                                   # macOS's `say -o <file>`: writes the audio file
+        Path(cmd[2]).write_bytes(b"FORM")
+        return subprocess.CompletedProcess(cmd, 0)
+    monkeypatch.setattr(iris_mcp.subprocess, "run", run)
+
+
+def test_say_aloud_and_in_her_bubble(iris, monkeypatch):
+    _fake_say(monkeypatch)
     code, out = iris_cli.run(["say", "Build", "finished"])
     assert code == 0 and out.startswith("Iris said it aloud"), out
+    assert iris[-1][1] == "/mouth/play"
     code, out = iris_cli.run(["say", "--bubble", "Build", "finished"])
     assert (code, out) == (0, "Iris showed it in her bubble.")
     assert iris[-1] == ("POST", "/mouth/show", {"text": "Build finished", "seconds": 6.0})
@@ -56,3 +66,10 @@ def test_iris_not_running_is_exit_2(tmp_path, monkeypatch, capsys):
     assert iris_cli.main() == 2
     out = capsys.readouterr()
     assert out.out == "" and out.err.strip()                  # the reason, on stderr
+
+
+def test_without_macos_say_she_shows_it_instead(iris, monkeypatch):
+    def run(cmd, **k):
+        raise FileNotFoundError(cmd[0])
+    monkeypatch.setattr(iris_mcp.subprocess, "run", run)
+    assert iris_cli.run(["say", "Build", "finished"]) == (0, "Iris showed it in her bubble.")

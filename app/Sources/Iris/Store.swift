@@ -48,6 +48,9 @@ enum Store {
     }
 }
 
+/// when his "stop watching" / "stop listening" ends (seconds since 1970; 0 = on), kept across her restarts.
+struct OffUntil: Codable { let at: Double }
+
 func log(_ s: String) {
     let line = "\(ISO8601DateFormatter().string(from: Date())) \(s)\n"
     FileHandle.standardError.write(line.data(using: .utf8)!)

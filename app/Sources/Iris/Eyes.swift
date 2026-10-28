@@ -50,7 +50,13 @@ final class Eyes {
     static let handsBusyS: Double = 60        // his last key, click or scroll this recent: his screen read every 10 s
     static let restingEveryS: Double = 30     // his hands resting longer: at most every 30 s
     var pausedUntil: Date? { q.sync { offUntil > Date() ? offUntil : nil } }
-    func pause(for seconds: Double) { q.sync { offUntil = seconds > 0 ? Date().addingTimeInterval(seconds) : .distantPast } }
+    func pause(for seconds: Double) {
+        q.sync {
+            offUntil = seconds > 0 ? Date().addingTimeInterval(seconds) : .distantPast
+            // kept through her restarts (91 in 9 days): she watched again at once after one
+            Store.save(OffUntil(at: seconds > 0 ? offUntil.timeIntervalSince1970 : 0), "eyes_off.json")
+        }
+    }
     private var busy = false
     private var timer: Timer?
 
@@ -88,6 +94,9 @@ final class Eyes {
     private lazy var output = Output(self)
 
     func start() {
+        if let off = Store.load(OffUntil.self, "eyes_off.json"), off.at > Date().timeIntervalSince1970 {
+            q.sync { offUntil = Date(timeIntervalSince1970: off.at) }   // his "stop watching" outlives her restart
+        }
         // she never asks on her own: he allowed it once, and a request at
         // every launch was the dialog he kept clicking. If it is really gone,
         // /health says screen_recording_not_allowed and Friday tells him.

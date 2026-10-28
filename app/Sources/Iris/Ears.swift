@@ -93,6 +93,11 @@ final class Ears {
             SFSpeechRecognizer.requestAuthorization { st in
                 DispatchQueue.main.async {
                     guard st == .authorized else { self.problem = "speech_recognition_not_allowed"; return }
+                    // "off for an hour" kept through her restarts (she listened again at once)
+                    if let off = Store.load(OffUntil.self, "ears_off.json"), off.at > Date().timeIntervalSince1970 {
+                        self.off(for: off.at - Date().timeIntervalSince1970)
+                        return
+                    }
                     self.begin()
                 }
             }
@@ -147,7 +152,7 @@ final class Ears {
 
     private func retry() {
         DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in
-            guard let self, !self.running else { return }
+            guard let self, !self.running, self.offUntil <= Date() else { return }   // never back on while he has them off
             self.begin()
         }
     }
@@ -519,6 +524,7 @@ final class Ears {
     func off(for seconds: Double) {
         guard seconds > 0 else { on(); return }
         offUntil = Date().addingTimeInterval(seconds)
+        Store.save(OffUntil(at: offUntil.timeIntervalSince1970), "ears_off.json")
         sleepEars()
         silenceTimer?.invalidate(); silenceTimer = nil
         engine.inputNode.removeTap(onBus: 0)
@@ -534,6 +540,7 @@ final class Ears {
         offTimer?.invalidate(); offTimer = nil
         let wasOff = offUntil > .distantPast
         offUntil = .distantPast
+        if wasOff { Store.save(OffUntil(at: 0), "ears_off.json") }
         if !running { begin() }
         if wasOff { log("ears: on again") }
     }

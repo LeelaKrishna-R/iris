@@ -86,8 +86,8 @@ python3 agents/voice_loop.py -- codex exec     # or Codex, or any command that t
    stays private; [docs/ART.md](docs/ART.md) is how it was made, so you can make your own set.
 3. **Agent hooks**: Claude Code, Codex and Cursor shipped (`agents/claude_code_hook.py`, `agents/codex_notify.py`, `agents/cursor_hook.py`).
 4. **`iris` CLI** and **HTTP API docs** (`docs/API.md`): shipped.
-5. **First-run welcome**: shipped. It explains each permission and opens its System Settings pane, and
-   "Welcome…" in her menu shows it again. Next: checking she behaves well with each permission refused.
+5. **First-run welcome**: shipped. It explains each permission (with buttons that open the Screen Recording and Microphone panes), and
+   "Welcome…" in her menu shows it again. What she does with each one refused is in [docs/PERMISSIONS.md](docs/PERMISSIONS.md).
 
 ## Install (from source)
 

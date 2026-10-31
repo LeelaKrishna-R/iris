@@ -179,7 +179,10 @@ enum Sim {
                     if (info["asleep"] as? Bool) == true { extra["mind_woke_her", default: 0] += 1 }
                 }
             }
-            if kind == "touch", let clip = info["clip"] as? String { extra["touch_" + clip, default: 0] += 1 }
+            if kind == "touch", let clip = info["clip"] as? String {
+                extra["touch_" + clip, default: 0] += 1
+                if (info["air"] as? Bool) == true { extra["touch_in_air", default: 0] += 1 }   // a touch clip begun mid-fall
+            }
             if kind == "come", let x = info["x"] as? Double { extra["comes", default: 0] += 1; coming = (t, x) }   // he called her over
             if kind == "notified" { extra[(info["busy"] as? Bool) == true ? "notices_busy" : "notices_cued", default: 0] += 1 }
             if kind == "act", let what = info["what"] as? String {
@@ -237,6 +240,10 @@ enum Sim {
         var frames: [[String: Any]] = []
         var i = 0
         let dt = 1 / fps
+        // her real picture choosing its pose and keeping its journal ("real_view", SimView)
+        let rend: SimView? = (sc["real_view"] as? Bool) == true ? SimView() : nil
+        if rend != nil { SpriteView.now = { w.now } }
+        defer { SpriteView.now = { Date() } }
         while t < duration {
             // the timeline, as it comes due
             while next < timeline.count, (timeline[next]["t"] as? Double ?? 0) <= t {
@@ -322,6 +329,9 @@ enum Sim {
                     if let v = mood["boredom"] { body.soul.boredom = v }
                 }
                 if let to = e["come"] as? String { _ = body.come(to) }          // he called her over (/iris/come)
+                if let a = e["act"] as? [String: Any], let id = a["id"] as? String {  // Core asks for a clip (/iris/act)
+                    body.perform(id, seconds: a["seconds"] as? Double ?? 6, asked: a["why"] as? String ?? "")
+                }
                 if e["shoo"] as? Bool == true { body.shooed() }                 // "Iris, go away" (/iris/mood shoo)
                 if let h = e["hold"] as? [String: Any] { body.hold(h["seconds"] as? Double ?? 10, talk: false, pose: h["pose"] as? String ?? "") }
                 if e["screens"] != nil { w.screens = screens(e["screens"]); A.screens = w.screens }
@@ -407,6 +417,7 @@ enum Sim {
             w.now = w.now.addingTimeInterval(dt)
             t += dt
             body.frame()
+            rend?.frame(face: body.face)
             let s = body.simState()
             if i % 60 == 0 && (s["sleeping"] as! Bool) { asleepAt.append(t) }
             // where the action is: following his front window to his other screen, sitting near it,
@@ -480,6 +491,46 @@ enum Sim {
             i += 1
         }
         var fs = A.findings(); if forcedHops > 0 { fs["window_left_her"] = Double(forcedHops) }
+        // the bodies her real picture swapped through (SpriteView's pose journal, as on his Mac): how many,
+        // and how many showed under a second — a body that pops in and straight out again
+        var viewPoses: [[String: Any]] = []
+        var viewNotes: [String] = []
+        if rend != nil, let text = try? String(contentsOf: Store.url("poses.jsonl"), encoding: .utf8) {
+            let t0 = start.timeIntervalSince1970
+            let rows = text.split(separator: "\n").compactMap { try? JSONSerialization.jsonObject(with: Data($0.utf8)) as? [String: Any] }
+            var under1 = 0.0
+            for (k, r) in rows.enumerated() {
+                let at = ((r["at"] as? Double ?? t0) - t0) * 100
+                viewPoses.append(["t": at.rounded() / 100, "from": r["from"] ?? "", "to": r["to"] ?? "", "why": r["why"] ?? "",
+                                  "held_s": r["held_s"] ?? 0])
+                // the pose this row left (its held_s), when it wasn't her first
+                if k > 1, let held = r["held_s"] as? Double, held < 1 {
+                    under1 += 1
+                    if viewNotes.count < 60 {
+                        viewNotes.append(String(format: "%7.2fs VIEW %@ for %.1fs → %@ (%@)", at / 100, r["from"] as? String ?? "", held,
+                                                r["to"] as? String ?? "", r["why"] as? String ?? ""))
+                    }
+                }
+            }
+            fs["view_swaps"] = Double(max(0, rows.count - 1))
+            fs["view_under_1s"] = under1
+            // what looks abrupt: a drawn clip left neither at its loop's start nor at its end; lying asleep
+            // one frame and sitting or standing in her rig the next; her laptop put away and out again within 3 s
+            var cuts = 0.0, wakeSnaps = 0.0, laptopAway = 0.0
+            for (k, r) in rows.enumerated() {
+                let from = r["from"] as? String ?? "", to = r["to"] as? String ?? ""
+                if let at = r["left_at"] as? [Int], at.count == 2, at[1] > 2, at[0] != 0, at[0] != at[1] - 1 {
+                    cuts += 1
+                    if viewNotes.count < 60 { viewNotes.append("VIEW CLIP CUT \(from) at frame \(at[0]) of \(at[1]) → \(to)") }
+                }
+                if from == "@sleep" && ["@sit", "@idle", "@typing"].contains(to) { wakeSnaps += 1 }
+                if k + 1 < rows.count, to != "@typing", from == "@typing", rows[k + 1]["to"] as? String == "@typing",
+                   (rows[k + 1]["held_s"] as? Double ?? 99) < 3 { laptopAway += 1 }
+            }
+            fs["view_clip_cuts"] = cuts
+            fs["view_wake_snaps"] = wakeSnaps
+            fs["view_laptop_away_back"] = laptopAway
+        }
         // how alive and how varied: entropy of what she did, the most common share, irregular gaps
         if !acts.isEmpty {
             var n: [String: Double] = [:]
@@ -508,8 +559,9 @@ enum Sim {
             }
         }
         for (k, v) in extra { fs[k] = (v * 100).rounded() / 100 }
-        var r: [String: Any] = ["seed": Int(seed), "findings": fs, "notes": A.notes]
+        var r: [String: Any] = ["seed": Int(seed), "findings": fs, "notes": A.notes + viewNotes]
         if keepFrames { r["frames"] = frames; r["events"] = events }
+        if keepFrames && rend != nil { r["view_poses"] = viewPoses }
         return r
     }
 
@@ -828,6 +880,7 @@ final class Analyzer {
     private var lifeSince = 0.0
     private var lifePrev: (pose: String, held: Double)?   // the body before this one, and how long it held
     private var wokeAt: Double?                           // she last left sleep
+    private var wasSleeping = false
     private var lastStir = 0.0                            // last thing he could see her do (a body, a clip, a step, a hop)
     /// The body as SpriteView draws it: a drawn clip is its own body; walking and standing are one rig.
     static func lifeBody(_ f: Face) -> String {
@@ -843,6 +896,9 @@ final class Analyzer {
             c["s_present"] = (c["s_present"] ?? 0) + dt
             if asleep { c["s_present_asleep"] = (c["s_present_asleep"] ?? 0) + dt }
         }
+        // out of sleep (her snore is a clip she sleeps through, not a wake)
+        if wasSleeping && !face.sleeping && !present { c["wakes_away"] = (c["wakes_away"] ?? 0) + 1 }
+        wasSleeping = face.sleeping
         let moving = face.walk > 0.05 || face.vy != 0
         var stir = false
         if pose != lifePose {

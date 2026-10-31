@@ -12,9 +12,9 @@ final class ApprovalCard: NSObject {
     private(set) var showing = ""           // the approval on screen now (Core closes it when answered elsewhere)
     private var closeTimer: Timer?
 
-    /// Clicks your agent hasn't confirmed yet. Read, not taken: a read that emptied the list lost a click when
-    /// the agent gave up waiting on her busy main thread. The agent confirms each one it acted on
-    /// (/iris/decisions_ack). One older than 10 minutes is dropped: an approval runs out by then.
+    /// His clicks Core hasn't confirmed yet. Read, not taken (review emptied on read while Core waited 3 s
+    /// for her busy main thread, a click was lost without a word); Core confirms each it decided (ack). One older
+    /// than 10 minutes is dropped: an approval runs out by then.
     func pendingDecisions() -> [[String: String]] {
         decisions.removeAll { Date().timeIntervalSince($0.at) > 600 }
         return decisions.map { ["id": $0.id, "choice": $0.choice] }

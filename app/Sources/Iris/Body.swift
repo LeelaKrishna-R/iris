@@ -67,6 +67,7 @@ final class Body {
     private var lastFlickAt = Date.distantPast
     private var lastChaseAt = Date.distantPast
     private var cursorMovedAt = Date.distantPast   // his hand last moved the mouse
+    private var cursorNearMovedAt = Date.distantPast   // ... within her reach (a shake across her, sim 37)
     private var touchUntil = Date.distantPast      // a touch clip plays until then (a long look doesn't cut it)
     private var fall: (fromY: CGFloat, at: Date)?  // let go of high up: where she fell from
 
@@ -174,6 +175,7 @@ final class Body {
         let now = world.now
         let away = now.timeIntervalSince(lastInput)
         lastInput = now
+        screenWokeHer = 0                                    // he's here: his screens matter again
         if performing == "doze" { performUntil = now }      // nodding off, his touch rouses her (no sleep after)
         if away > 120 { bossBack(away: away); activeSince = now }
     }
@@ -226,7 +228,7 @@ final class Body {
         if typingHand { armL.kick(7); armR.kick(-3) } else { armR.kick(7); armL.kick(-3) }
         tilt.kick(CGFloat.rnd(-0.4...0.4))
         _ = soul.feel(.key, 0.3)
-        if sleeping { maybeWake(0.08) }
+        if sleeping && keyTimes.count >= 3 { wake("his typing") }       // a few keys, not one brushed
         let rate = Double(keyTimes.count) / 3 * 60
         if rate > 300 && soul.feel(.fastTyping, 0.6) > 0.35 {
             sparkleT = 1.2
@@ -395,7 +397,10 @@ final class Body {
         // the hop and the wave are for him really coming back; two or three minutes of reading
         // without a touch is him still there, and gets only her eyes and a smile (a wave on
         // nearly every wake)
+        // real log: back after 19, 9 and 9 minutes within an hour, three waves (13 in two hours):
+        // his activity acknowledged rarely. The wave is for a long absence, or his first return in an hour.
         let greets = k > 0.25 && away >= Body.trulyAway
+            && (away >= Body.longAway || world.now.timeIntervalSince(lastWaveAt) >= Body.waveEvery)
         trace?("boss_back", ["k": k, "was_sleeping": sleeping, "away": away, "greets": greets])
         if sleeping { sleeping = false; wideT = 0.6; sit.target = 1 }       // waking, she sits up (standing comes after)
         guard k > 0.25 else { return }
@@ -406,6 +411,7 @@ final class Body {
         guard greets else { return }
         hop(380 * CGFloat(min(1, k + 0.3)))
         waveT = 1.8
+        lastWaveAt = world.now
         waveWhy = String(format: "he came back after %.0f min away", away / 60)
         trace?("act", ["what": "wave", "why": waveWhy])
         show("♪")                                        // was "!" or "♪" by a coin
@@ -458,7 +464,7 @@ final class Body {
 
     /// Her reaction to his touch: the clip, at once, traced for the simulator.
     private func touchClip(_ id: String, _ seconds: Double, _ why: String) {
-        trace?("touch", ["what": why, "clip": id])
+        trace?("touch", ["what": why, "clip": id, "air": vy != 0])
         perform(id, seconds: seconds, own: true, why: Body.touchWhy[why] ?? why)
         touchUntil = performUntil
     }
@@ -468,6 +474,7 @@ final class Body {
             notice("he picked you up and moved you")
             touch("drag")
             performing = ""; performMoves = false; fall = nil     // a clip stops when he picks her up
+            flickTimes.removeAll()                                 // his cursor darting to grab her isn't play
             held = true; _ = soul.feel(.dragged); wideT = 0.4; targetX = nil; perchTop = nil
             standingOn = nil; standingID = nil; perchID = nil; launch = nil; vx = 0; leapTo = nil
             jumpDown = nil; shooWalkTo = nil; dozeWhy = nil
@@ -519,7 +526,10 @@ final class Body {
             lastFlickAt = now
             flickTimes.append(now)
         }
-        if flickTimes.count >= 3 && now.timeIntervalSince(lastChaseAt) >= 120 && !held && !sleeping
+        // poses.jsonl 23:23:25: let go of high up, a chase began in mid-fall and the landing's getup cut it
+        // off 0.2 s in: she plays with his cursor with her feet on the ground, once what he did to her has played out
+        if flickTimes.count >= 3 && now.timeIntervalSince(lastChaseAt) >= 120 && !held && !sleeping && vy == 0 && fall == nil
+            && now >= touchUntil
             && now.timeIntervalSince(lastTyped) > 4 && !deepFocus && !watchingVideo {
             lastChaseAt = now
             flickTimes.removeAll()
@@ -567,10 +577,19 @@ final class Body {
         let s = soul
         let now = world.now
         if sleeping {
-            if idle < 3 { maybeWake(0.3) }
+            if idle < 3 { wake("his hands on the Mac") }
             // something happening on a screen wakes her too, him there or not —
-            // when it keeps happening; a few seconds of change is a flicker
-            else if let since = screenMovingSince, now.timeIntervalSince(since) >= Body.screenWakeAfter { maybeWake(0.12) }
+            // when it keeps happening; a few seconds of change is a flicker. poses.jsonl
+            // 06:01-12:31: away all morning, a busy Discord woke her 26 times, each a sit, a fishing stint
+            // and asleep again. Each time the screen woke her and he didn't come, the next takes twice as
+            // long a stretch of it (20 s, 40, 80 …); his own touch starts it over (touched()).
+            else if let since = screenMovingSince {
+                let needs = Body.screenWakeAfter * pow(2, Double(min(screenWokeHer, 6)))
+                if now.timeIntervalSince(since) >= needs {
+                    screenWokeHer += 1
+                    wake(String(format: "his screen kept changing %.0f s (%@)", now.timeIntervalSince(since), world.frontApp ?? "a screen"))
+                }
+            }
             return
         }
         // where the action is: his full-screen film or a call sends her to a quiet
@@ -674,6 +693,15 @@ final class Body {
                 // she sits down for a reason, and stays sitting until a walk with a reason gets her up
                 // (getting up or sitting down by dice was the random posture he sees)
                 _ = settle
+                // all a settle needs but a calm cursor (review with only that missing, her next look was
+                // 25-140 s away, so while he mouses steadily she could stand for minutes)
+                let settleReady = idle < Stages.awayFor && world.now.timeIntervalSince(walkSince) >= Body.settleAfter
+                    && inTheWay(CGRect(x: x, y: y, width: Body.size.width, height: Body.size.height)) <= 0.3
+                    && (!Body.isVideo(app: world.frontApp ?? "", title: world.frontTitle)
+                        || Double(abs(x + Body.size.width / 2 - world.mouse.x)) < Body.withinReach)
+                // a calm moment, not mid-shake across her (sim 37); his mousing elsewhere is no shake (sim 54: a move
+                // every 1-3 s anywhere on the screen kept her standing 545-658 s)
+                let cursorCalm = world.now.timeIntervalSince(cursorNearMovedAt) > 2
                 let sitFor: String? = typedFor > 0 ? "keeping him company while he types"
                     : watchingVideo ? "watching his video with him"
                     : deepFocus ? "keeping him company while he focuses"
@@ -688,11 +716,7 @@ final class Body {
                     // or two minutes since his last touch while he reads, held her standing with nothing to sit her
                     // down. With him at the Mac she settles wherever his hand is (sim 53); with a video in front
                     // (his front app and title say so), only near his hand, so she isn't settled in front of it (sim 24)
-                    : idle < Stages.awayFor && world.now.timeIntervalSince(walkSince) >= Body.settleAfter
-                        && inTheWay(CGRect(x: x, y: y, width: Body.size.width, height: Body.size.height)) <= 0.3
-                        && (!Body.isVideo(app: world.frontApp ?? "", title: world.frontTitle)
-                            || Double(abs(x + Body.size.width / 2 - world.mouse.x)) < Body.withinReach)
-                        && world.now.timeIntervalSince(cursorMovedAt) > 2      // a calm moment, not mid-shake (sim 37)
+                    : settleReady && cursorCalm
                         ? "settled while he works"            // never over his work or what he's watching (sim 24)
                     : nil
                 sit.target = wasSitting || sitFor != nil ? 1 : 0
@@ -711,8 +735,8 @@ final class Body {
                 if world.now > postureUntil {
                     // standing, she looks again when her minute without a walk is up, not up to 140 s later (sim 53)
                     let settleIn = walkSince.addingTimeInterval(Body.settleAfter).timeIntervalSince(world.now)
-                    postureUntil = world.now.addingTimeInterval(sit.target < 0.5 && settleIn > 0
-                        ? min(Double.rnd(25...140), settleIn + 1) : Double.rnd(25...140))
+                    postureUntil = world.now.addingTimeInterval(sit.target < 0.5 && settleReady && !cursorCalm ? 3
+                        : sit.target < 0.5 && settleIn > 0 ? min(Double.rnd(25...140), settleIn + 1) : Double.rnd(25...140))
                 }
             }
             // in her corner she sits and watches (his film, or quietly through his call)
@@ -956,8 +980,10 @@ final class Body {
         sit.target = 1
     }
 
-    private func maybeWake(_ p: Double) {
-        guard Double.rnd(0...1) < p else { return }
+    /// `why`: what woke her, in the world (her journal's, it said only).
+    private func wake(_ why: String) {
+        guard sleeping else { return }
+        wakeWhy = why
         sleeping = false
         sit.target = 1                          // she sits up; standing is a choice for later
         wideT = 0.3
@@ -975,7 +1001,7 @@ final class Body {
         lastTick = now
         clock += dt
         // when she last woke (by any path), and how long his screens have kept changing or been still
-        if wasAsleep && !sleeping { wokeAt = now; restWhy = "just woke" }
+        if wasAsleep && !sleeping { wokeAt = now; restWhy = "woke: " + (wakeWhy.isEmpty ? "\(Config.agentName) asked" : wakeWhy); wakeWhy = "" }
         wasAsleep = sleeping
         if screenMoving { screenMovedAt = now; if screenMovingSince == nil { screenMovingSince = now } } else { screenMovingSince = nil }
         // he stopped after a real stretch of typing (20 s or more, quiet 3 s): she nods, once per stretch
@@ -1000,6 +1026,7 @@ final class Body {
         if moved > 0.5 { touched(); cursorMovedAt = now }   // his hand back on the mouse after a while is him coming back too
         let me = CGPoint(x: x + Body.size.width / 2, y: y + Body.size.height * 0.68)
         let dist = hypot(c.x - me.x, c.y - me.y)
+        if moved > 0.5 && dist < Body.calmRadius { cursorNearMovedAt = now }
         if cursorSpeed > 3000 && dist < 160 && soul.feel(.cursorFlick, 0.8) > 0.4 && !held {
             wideT = 0.4; if vy == 0 { hop(200) }; lean.kick(c.x > me.x ? -4 : 4)
         }
@@ -1428,7 +1455,9 @@ final class Body {
     /// bounces in her seat instead — a hop would stand her up and sit her down again.
     private func hop(_ v: CGFloat) {
         guard launch == nil, !held else { return }
-        if sit.target > 0.5 || sit.value > 0.3 || sleeping { squash.kick(v / 110); tilt.kick(Bool.rnd() ? 0.5 : -0.5); return }
+        // poses.jsonl 23:28:37: typing -> idle -> typing -> idle -> typing in 0.25 s, a startle hop on her laptop
+        // (a chase just before had left sit at 0 while she still typed along): on her laptop she is seated too
+        if sit.target > 0.5 || sit.value > 0.3 || sleeping || workingAlong { squash.kick(v / 110); tilt.kick(Bool.rnd() ? 0.5 : -0.5); return }
         if vy == 0 { vy = v }
     }
 
@@ -1483,6 +1512,7 @@ final class Body {
     // to a corner to sit and watch, quietly; ten minutes with nothing happening, home.
 
     /// The front window has to stay on the other screen this long before she goes to it.
+    static let calmRadius: CGFloat = 250       // his cursor moving within this of her is a shake across her (sim 37); farther is his work (sim 54)
     static let withinReach: Double = 500       // pt from his hand: farther for farFor, and him busy elsewhere, her place pulls little
     static let settleAfter: Double = 60        // s standing near him with no walk, then she sits
     static let likesPerch: Double = 0.25       // her liking for a window top beside him (a trait)
@@ -1512,11 +1542,16 @@ final class Body {
     static let screenStillToDoze: Double = 60
     /// Away this long, his return gets the hop and the wave; a shorter pause (reading) only a look.
     static let trulyAway: Double = 300
+    /// A return after this long always gets the wave; a shorter one only if she hasn't waved in `waveEvery`.
+    static let longAway: Double = 1800
+    static let waveEvery: Double = 3600
     /// Seated, she stays seated at least this long, and gets up only to go somewhere worth it.
     static let sitHolds: Double = 60
     static let seatedStep: CGFloat = 160
     private var wokeAt = Date.distantPast
     private var wasAsleep = false
+    /// Her drawn wake_up: sitting up in bed, rubbing her eyes, a yawn — 8 frames at 0.3 s (SpriteView.pace).
+    static let wakeUpSeconds: Double = 2.4
     private var screenMovedAt = Date.distantPast        // his screens last changed (her eyes, or the sim)
     private var screenMovingSince: Date?                // and have kept changing since
     private var lastYawnAt = Date.distantPast
@@ -1531,7 +1566,10 @@ final class Body {
     private var noddedFor = Date.distantPast            // the burst of his typing she last nodded at
     private var noddedAt = Date.distantPast             // when she last nodded at one (Body.nodEveryS apart)
     // what each of her bodies is for, this moment — the cause in the world (Face.why, poses.jsonl)
-    private var actWhy = "", sleepWhy = "", waveWhy = "", walkWhy = "", restWhy = ""
+    private var actWhy = "", sleepWhy = "", waveWhy = "", walkWhy = "", restWhy = "", wakeWhy = ""
+    /// times his screens woke her since he last touched the Mac, none of it him
+    private var screenWokeHer = 0
+    private var lastWaveAt = Date.distantPast        // her last wave for his return (Body.waveEvery)
     /// The cause of each touch clip, in his terms.
     static let touchWhy = ["pet": "he petted her", "pets": "he petted her again and again", "double_click": "he double-clicked her",
                            "hover": "his cursor rested on her", "hover_again": "his cursor rested on her a third time in a minute",
@@ -1822,6 +1860,20 @@ final class Body {
                 }
             }
         }
+        // woken, she was lying under her blanket one frame
+        // and sitting up straight the next (sim 44 at 40.1 s, every wake in poses.jsonl: sleep -> sit held 0 s between).
+        // Her own drawn wake_up is that in-between: she sits up in bed, rubs her eyes and yawns, then sits. Only when
+        // nothing needs her at once — not carried, called (listening), greeting him, talking, walking off or already
+        // in a clip of his touch — and its why is what woke her.
+        // (the face she last showed was lying asleep — her sleep pose, not her snore, which sits up already)
+        if face.sleeping && face.act.isEmpty && !sleeping {
+            if performing.isEmpty && !held && !listening && waveT <= 0 && vy == 0 && now >= talkUntil && sit.target > 0.5 && targetX == nil {
+                // woken earlier this frame, restWhy says by what; later in it, wakeWhy still does
+                let why = !wakeWhy.isEmpty ? "woke: " + wakeWhy : wokeAt == now ? restWhy : "woke: \(Config.agentName) asked"
+                perform("wake_up", seconds: Body.wakeUpSeconds, own: true, why: why)
+                sit.target = 1                       // she sits up out of it; standing is a choice for later
+            }
+        }
         // deep asleep (Stages.deepSleepAfter): she snores, sitting up, instead of her sleep pose
         let snoring = performing.isEmpty && Stages.snoring(asleep: sleeping, asleepFor: now.timeIntervalSince(sleptAt))
         f.act = snoring ? "snore" : performing
@@ -1904,7 +1956,7 @@ final class Body {
         let bad = inTheWay(me)
         guard bad > 0.3 else { wayT = max(0, wayT - dt); return }
         wayT += dt
-        if sleeping { maybeWake(1) }        // asleep on what he's typing in: she wakes and moves
+        if sleeping { wake("in the way of his typing") }        // asleep on what he's typing in: she wakes and moves
         soul.feelPlace(me.midX, me.minY, -0.6 * Double(dt) * bad)
         if wayT > 0.12 && targetX != nil && !inTheWayAt(targetX!) { speed = max(speed, 240) }   // crossing it: quickly
         if wayT > 0.12 && (targetX == nil || inTheWayAt(targetX!)) && now.timeIntervalSince(wayThoughtAt) > 1 {
@@ -2178,7 +2230,8 @@ final class Body {
     }
 
     /// `why`: the cause in the world, for her own moves (traced, and in poses.jsonl).
-    func perform(_ id: String, seconds: Double, own: Bool = false, why: String = "") {
+    /// `asked`: your agent's cause when it asked for it (/iris/act's "why").
+    func perform(_ id: String, seconds: Double, own: Bool = false, why: String = "", asked: String = "") {
         guard let e = Body.catalog[id] else { return }
         let rig = e["rig"] == "yes"
         if !own {
@@ -2189,7 +2242,7 @@ final class Body {
             if refused { return }
         }
         if own { trace?("act", ["what": id, "why": why]) }
-        actWhy = own ? why : "\(Config.agentName) asked for it"        // /iris/act: her mind's or his own ask, with Core's reason
+        actWhy = own ? why : asked.isEmpty ? "\(Config.agentName) asked for it" : "\(Config.agentName): " + asked   // /iris/act, with Core's reason
         performing = id
         performUntil = world.now.addingTimeInterval(max(1.5, min(20, seconds)))
         performMoves = e["moves"] == "yes"      // only clips whose feet really move travel (catalog.json)
@@ -2210,7 +2263,7 @@ final class Body {
     /// What happened since her mind last asked (it asks with every thought).
     func takeEvents() -> [String] { defer { events.removeAll() }; return events }
 
-    func toggleNap() { if sleeping { maybeWake(1) } else { fallAsleep("he chose Nap") } }
+    func toggleNap() { if sleeping { wake("he chose Wake") } else { fallAsleep("he chose Nap") } }
 
     /// The simulator puts her somewhere to start (on that screen's floor unless told).
     func simPlace(x px: CGFloat, y py: Double?) {

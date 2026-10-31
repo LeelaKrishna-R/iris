@@ -51,7 +51,7 @@ final class Live: SKNode {
         self.pose = pose
         var sz = standing
         let dir = "live/" + pose
-        if let url = Bundle.main.url(forResource: "live", withExtension: "json", subdirectory: dir),
+        if let url = SpriteView.art.url(forResource: "live", withExtension: "json", subdirectory: dir),
            let data = try? Data(contentsOf: url),
            let j = try? JSONSerialization.jsonObject(with: data) as? [String: Any], let c = j["size"] as? [Double] {
             sz.width = standing.width * CGFloat(c[0]) / 434
@@ -59,7 +59,7 @@ final class Live: SKNode {
         self.size = sz
         self.dir = dir
         super.init()
-        guard let url = Bundle.main.url(forResource: "live", withExtension: "json", subdirectory: dir),
+        guard let url = SpriteView.art.url(forResource: "live", withExtension: "json", subdirectory: dir),
               let data = try? Data(contentsOf: url),
               let j = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
         func pt(_ k: String) -> CGPoint? { (j[k] as? [Double]).map { CGPoint(x: $0[0], y: $0[1]) } }
@@ -90,7 +90,7 @@ final class Live: SKNode {
     private let dir: String
 
     private func sprite(_ name: String) -> SKSpriteNode? {
-        guard let u = Bundle.main.url(forResource: name, withExtension: "png", subdirectory: dir),
+        guard let u = SpriteView.art.url(forResource: name, withExtension: "png", subdirectory: dir),
               let t = Textures.load(u, drawnAt: size) else { return nil }
         let s = SKSpriteNode(texture: t, size: size)
         s.anchorPoint = CGPoint(x: 0.5, y: 0)

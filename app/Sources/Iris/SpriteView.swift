@@ -83,17 +83,25 @@ final class SpriteView: SKView {
     private var clipNames = Set<String>()
     private var clipUse: [String: Date] = [:]
     private var loading = Set<String>()
+    private var unloadable = Set<String>()
     private var drawnSize = CGSize.zero
     // nothing preloaded: every everyday pose is her rig; drawn clips are rare moments, loaded when wanted
     static let everyday: [String] = []
     static let keepClips = 8
     static let loader = DispatchQueue(label: "iris.clips", qos: .userInitiated)
+    /// The simulator's real view (SimView, "real_view") steps her on its own clock and loads clips at once;
+    /// the live app keeps the wall clock and loads in the background.
+    static var now: () -> Date = { Date() }
+    static var loadNow = false
+    /// Where her art is (anim, live, sprites): the app bundle; the simulator's real view, run from .build/,
+    /// points it at the package's Resources (SimView).
+    static var art: Bundle = .main
 
     static func loadFrames(_ clip: String, drawnAt size: CGSize) -> [SKTexture]? {
         var frames: [SKTexture] = []
         for i in 0..<16 {
-            guard let url = Bundle.main.url(forResource: "\(i)", withExtension: "webp", subdirectory: "anim/\(clip)")
-                    ?? Bundle.main.url(forResource: "\(i)", withExtension: "png", subdirectory: "anim/\(clip)"),
+            guard let url = SpriteView.art.url(forResource: "\(i)", withExtension: "webp", subdirectory: "anim/\(clip)")
+                    ?? SpriteView.art.url(forResource: "\(i)", withExtension: "png", subdirectory: "anim/\(clip)"),
                   let t = Textures.load(url, drawnAt: size) else { break }
             frames.append(t)
         }
@@ -103,7 +111,11 @@ final class SpriteView: SKView {
     /// A clip's frames if they're loaded; otherwise start loading them and say not yet.
     private func frames(_ clip: String) -> [SKTexture]? {
         if let f = clips[clip] { clipUse[clip] = Date(); return f }
-        guard clipNames.contains(clip), !loading.contains(clip) else { return nil }
+        guard clipNames.contains(clip), !loading.contains(clip), !unloadable.contains(clip) else { return nil }
+        if SpriteView.loadNow {
+            if let f = SpriteView.loadFrames(clip, drawnAt: drawnSize) { clips[clip] = f; return f }
+            unloadable.insert(clip); return nil
+        }
         loading.insert(clip)
         let size = drawnSize
         SpriteView.loader.async { [weak self] in
@@ -111,7 +123,7 @@ final class SpriteView: SKView {
             DispatchQueue.main.async {
                 guard let self else { return }
                 self.loading.remove(clip)
-                if let f { self.clips[clip] = f; self.clipUse[clip] = Date() }
+                if let f { self.clips[clip] = f; self.clipUse[clip] = Date() } else { self.unloadable.insert(clip) }   // asked again every frame otherwise
                 // keep about 30 of her library loaded; the least recently used go first
                 let extra = self.clips.keys.filter { !SpriteView.everyday.contains($0) }
                 if extra.count > SpriteView.keepClips {
@@ -125,6 +137,9 @@ final class SpriteView: SKView {
     private var frameAt: CGFloat = 0
     private var blendFor: CGFloat = 0
     private var tapAt: CGFloat = 0
+    private var actShowing = ""                // the drawn clip of hers showing, as asked (f.act) — to play out when it ends
+    private var actShowingMoves = false
+    private var finishBy: Date?
     private var settle: CGFloat = 0
     private var dangle: CGFloat = 0
     private var rigAct = ""
@@ -138,10 +153,10 @@ final class SpriteView: SKView {
     private let cols = 8, rows = 12
     private var src: [SIMD2<Float>] = []
     private var clock: CGFloat = 0
-    private var lastUpdate = Date()
+    private var lastUpdate = SpriteView.now()
     /// Her last pose, for the pose journal.
-    private var journalPose = ""
-    private var journalPoseAt = Date()
+    private(set) var journalPose = ""
+    private var journalPoseAt = SpriteView.now()
 
     private var downAt: CGPoint?
     private var dragged = false
@@ -158,15 +173,15 @@ final class SpriteView: SKView {
         sceneK.anchorPoint = .zero
 
         for n in SpriteView.names {
-            guard let url = Bundle.main.url(forResource: n, withExtension: "png", subdirectory: "sprites")
-                ?? Bundle.main.url(forResource: n, withExtension: "png"),
+            guard let url = SpriteView.art.url(forResource: n, withExtension: "png", subdirectory: "sprites")
+                ?? SpriteView.art.url(forResource: n, withExtension: "png"),
                   let img = NSImage(contentsOf: url) else { continue }
             let t = SKTexture(image: img)
             t.filteringMode = .linear
             textures[n] = t
         }
         // her everyday loops load now; the rest of her library loads the first time she wants it
-        let animDir = Bundle.main.resourceURL?.appendingPathComponent("anim")
+        let animDir = SpriteView.art.resourceURL?.appendingPathComponent("anim")
         clipNames = Set((try? FileManager.default.contentsOfDirectory(atPath: animDir?.path ?? "")) ?? [])
         drawnSize = CGSize(width: (frame.height - 12) * 289 / 440, height: frame.height - 12)
         for clip in SpriteView.everyday where clipNames.contains(clip) {
@@ -224,7 +239,26 @@ final class SpriteView: SKView {
     /// rigged poses. Her feelings show on whichever pose she is in (expression()),
     /// so a smile never makes her stand up from sitting.
     private func pose(_ f: Face) -> String {
-        if !f.act.isEmpty && !SpriteView.rigActs.contains(f.act) && frames(f.act) != nil { return "@" + f.act }
+        if !f.act.isEmpty && !SpriteView.rigActs.contains(f.act) {
+            if frames(f.act) != nil { return "@" + f.act }
+            // poses.jsonl 23:23:25: chase -> idle for 0.16 s -> getup while getup's frames loaded. One
+            // drawn clip to the next holds the one showing until the next is ready, not a flash of her rig.
+            if loading.contains(f.act), showing != "@live", showing.hasPrefix("@"), clips[String(showing.dropFirst())] != nil { return showing }
+        }
+        // a drawn clip whose time was up was cut wherever
+        // it stood — mid-reach, mid-bite — and her rig popped in (sim 58: 7 of 12 clips left mid-way, mean of 10 runs). Standing
+        // still where she is, the clip plays on to the end of its loop (back to its first frame, the pose it
+        // set out from), or to its last frame if it plays once, at most 1.3 s more. Walking, carried,
+        // in the air or asleep, she goes at once.
+        if f.act.isEmpty, !actShowing.isEmpty, !SpriteView.ownPace.contains(actShowing), showing == "@" + actShowing, !actShowingMoves, !f.held, !f.sleeping,
+           f.walk <= 0.05, f.vy == 0, f.hint != "wave", let fr = clips[actShowing] {
+            let once = SpriteView.once.contains(actShowing)
+            let left = once ? fr.count - 1 - frameIndex : (frameIndex == 0 ? 0 : fr.count - frameIndex)
+            let now = SpriteView.now(), step = Double(SpriteView.pace("@" + actShowing)) * 1.35
+            if finishBy == nil && left > 0 && Double(left) * step <= 1.3 { finishBy = now.addingTimeInterval(Double(left) * step + 0.05) }
+            if left > 0, let by = finishBy, now < by { return showing }
+        }
+        finishBy = nil
         if f.sleeping { return "@sleep" }
         // (owner: the Iris panel's moves): her rig draws its actions only standing or
         // sitting (apply below), so a nod or a dance asked while she typed along or waved was taken,
@@ -241,21 +275,55 @@ final class SpriteView: SKView {
         let seatedNow = livePose == "sit" || livePose == "laptop" || showing == "@typing" || showing == "@" + f.seat
         if f.walk > (seatedNow ? 0.2 : 0.05) || (f.hop > 6 && f.vy != 0) {
             // walking and jumping: her rig, standing — or the drawn walk her walk's cause asks for
-            if !f.gait.isEmpty && f.vy == 0 && !rigAct && frames(f.gait) != nil { return "@" + f.gait }
+            if !f.gait.isEmpty && f.vy == 0 && !rigAct {
+                if frames(f.gait) != nil { return "@" + f.gait }
+                if let hold = holdWhileLoading(f.gait) { return hold }
+            }
             return "@idle"
         }
-        if f.hint == "typing" && !rigAct { return "@typing" }
+        // a nod or a shake of her head is her head only, and her laptop pose has one: she nods over her
+        // keys instead of putting the laptop away for a second and a half and taking it out again (sim 47 and
+        // poses.jsonl /29: typing -> sit -> typing for each "his typing stopped" nod). A dance still stands.
+        if f.hint == "typing" && (!rigAct || SpriteView.headActs.contains(f.act)) { return "@typing" }
         if f.hint == "watching" || f.sit > (seatedNow ? 0.4 : 0.6) {
             // seated, a drawn clip says it better when its state holds (Stages.seat)
-            if !f.seat.isEmpty && !rigAct && frames(f.seat) != nil { return "@" + f.seat }
+            if !f.seat.isEmpty && !rigAct {
+                if frames(f.seat) != nil { return "@" + f.seat }
+                if let hold = holdWhileLoading(f.seat) { return hold }
+            }
             return "@sit"
         }
         return "@idle"
     }
 
+    /// poses.jsonl..29: idle -> sit for 0.0-0.1 s -> fishing (16 times), snore -> sit -> fishing, read_book
+    /// -> sit -> fishing: her sit pose popped in for the moment the clip's frames took to load, then the clip cut over
+    /// it. While they load she stays in the body she is in, if it can still be drawn.
+    private func holdWhileLoading(_ clip: String) -> String? {
+        guard loading.contains(clip), !journalPose.isEmpty else { return nil }
+        if ["@idle", "@sit", "@typing", "@wave", "@sleep"].contains(journalPose) || clips[String(journalPose.dropFirst())] != nil { return journalPose }
+        return nil
+    }
+
     /// Little actions her rig performs itself, smoothly, on whatever pose she is in
     /// (catalog.json marks them "rig"): no drawn frames.
     static let rigActs: Set<String> = ["nod", "shake_head", "giggle", "yawn", "look_around", "dance", "sigh", "think", "shy"]
+    /// Her rig's actions that move only her head and face: shown on her laptop too.
+    static let headActs: Set<String> = rigActs.subtracting(["dance"])
+    /// Drawn clips that play once and hold their last frame instead of looping: getting up, waking up.
+    static let once: Set<String> = ["wake_up", "getup"]
+    /// Drawn clips her state ends, not her time: her doze (asleep or woken), her snore (woken) — these go at once.
+    static let ownPace: Set<String> = ["doze", "snore"]
+    /// Seconds a frame of a drawn clip shows, before her slight unevenness (×0.8…1.35).
+    static func pace(_ want: String) -> CGFloat {
+        ["@sleep": 0.75, "@blanket": 0.8, "@sit": 0.55, "@idle": 0.5, "@typing": 0.3, "@wave": 0.16, "@talk": 0.14,
+         // her body's own clips: a doze droops slowly, a snore breathes,
+         // legs swing, pages turn, a line waits for a bite
+         "@doze": 0.35, "@snore": 0.5, "@sit_legs": 0.18, "@read_book": 0.6,
+         "@fishing": 0.8, "@sulk": 0.3,
+         // waking, she sits up in bed, rubs her eyes and yawns, slowly (8 frames, about 2.4 s)
+         "@wake_up": 0.3][want] ?? 0.13
+    }
 
     /// What her face is feeling this instant.
     private func expression(_ f: Face) -> String {
@@ -272,7 +340,7 @@ final class SpriteView: SKView {
 
     private func apply() {
         let f = face
-        let now = Date()
+        let now = SpriteView.now()
         let dt = CGFloat(min(0.05, max(0, now.timeIntervalSince(lastUpdate))))   // a clock stepping back is no frame back
         clock += dt
         lastUpdate = now
@@ -284,6 +352,8 @@ final class SpriteView: SKView {
         let fps = f.sleeping ? 20 : moving ? 60 : 30
         if preferredFramesPerSecond != fps { preferredFramesPerSecond = fps }
         var want = pose(f)
+        if !f.act.isEmpty && want == "@" + f.act { actShowing = f.act; actShowingMoves = f.actMoves }
+        else if !(f.act.isEmpty && want == "@" + actShowing) { actShowing = "" }
         if want != journalPose {
             // from, to and why: what drove it (a clip, sleep, his typing, walking, sitting), and how long
             // the last pose held — the report reads this to find poses that flicker or never change
@@ -299,14 +369,17 @@ final class SpriteView: SKView {
             // with her why saying her walk was under 0.05; what pose() read when it chose is kept, so the next one says which input
             let seatedNow = livePose == "sit" || livePose == "laptop" || showing == "@typing" || showing == "@" + f.seat
             func r2(_ v: CGFloat) -> Double { Double(Int(v * 100)) / 100 }
-            Store.append(["at": Date().timeIntervalSince1970, "from": journalPose, "to": want, "why": why,
-                          "held_s": Double(Int(Date().timeIntervalSince(journalPoseAt) * 10)) / 10,
+            Store.append(["at": now.timeIntervalSince1970, "from": journalPose, "to": want, "why": why,
+                          "held_s": Double(Int(now.timeIntervalSince(journalPoseAt) * 10)) / 10,
                           "idle_s": Double(Int(min(idle, 86_400) * 10)) / 10,
                           "in": ["walk": r2(f.walk), "vy": r2(f.vy), "hop": r2(f.hop), "sit": r2(f.sit), "act": f.act,
-                                 "hint": f.hint, "seat": f.seat, "gait": f.gait, "seated": seatedNow]], to: "poses.jsonl",
+                                 "hint": f.hint, "seat": f.seat, "gait": f.gait, "seated": seatedNow],
+                          // a drawn clip left: the frame it was on, of how many (was it cut off mid-way)
+                          "left_at": journalPose.hasPrefix("@") && showing == journalPose ? [frameIndex, clips[String(journalPose.dropFirst())]?.count ?? 0] : []],
+                         to: "poses.jsonl",
                          cap: 5_000_000)
             journalPose = want
-            journalPoseAt = Date()
+            journalPoseAt = now
         }
         // she is her own picture, rigged, in every everyday pose: always moving, never a held image
         let poseFor: [String: String] = ["@idle": "stand", "@sit": "sit", "@typing": "laptop", "@wave": "wave", "@sleep": "sleep"]
@@ -364,13 +437,9 @@ final class SpriteView: SKView {
                 if frameAt >= nextFrameIn {
                     frameAt = 0
                     blendFor = nextFrameIn * 0.75             // the last frame melts into this one
-                    frameIndex = (frameIndex + 1) % n
-                    let base: CGFloat = ["@sleep": 0.75, "@blanket": 0.8, "@sit": 0.55, "@idle": 0.5, "@typing": 0.3, "@wave": 0.16, "@talk": 0.14,
-                                         // her body's own clips: a doze droops slowly, a snore breathes,
-                                         // legs swing, pages turn, a line waits for a bite
-                                         "@doze": 0.35, "@snore": 0.5, "@sit_legs": 0.18, "@read_book": 0.6,
-                                         "@fishing": 0.8, "@sulk": 0.3][want] ?? 0.13
-                    nextFrameIn = base * CGFloat.random(in: 0.8...1.35)
+                    // a clip that plays once stays on its last frame (getting up, waking up), a loop goes round
+                    frameIndex = SpriteView.once.contains(String(want.dropFirst())) ? min(n - 1, frameIndex + 1) : (frameIndex + 1) % n
+                    nextFrameIn = SpriteView.pace(want) * CGFloat.random(in: 0.8...1.35)
                 }
             }
             lastKeys = f.keys
@@ -446,7 +515,8 @@ final class SpriteView: SKView {
         }
         // a little action of her own, performed by the rig
         if f.act != rigAct { rigAct = f.act; actClock = 0 } else { actClock += dt }
-        if SpriteView.rigActs.contains(f.act) && (live.pose == "stand" || live.pose == "sit") {
+        let headActOnLaptop = live.pose == "laptop" && SpriteView.headActs.contains(f.act)
+        if SpriteView.rigActs.contains(f.act) && (live.pose == "stand" || live.pose == "sit" || headActOnLaptop) {
             let t = actClock
             switch f.act {
             case "nod":
@@ -506,9 +576,11 @@ final class SpriteView: SKView {
             // a dip on each of his keystrokes (she types along), else a gentle rhythm of her own
             if f.keys != lastKeys { tapAt = 0.12; lastKeys = f.keys } else { tapAt = max(0, tapAt - dt) }
             p.tap = tapAt > 0 ? 1 : max(0, CGFloat(sin(Double(f.clock) * 11))) * 0.6
-            p.gaze = CGPoint(x: -0.2, y: -0.8)
-            p.turn *= 0.3
-            p.mouth = ""
+            p.mouth = ""                           // her laptop picture has no mouths drawn
+            if !headActOnLaptop {                  // a nod or a look of hers keeps her own eyes and turn
+                p.gaze = CGPoint(x: -0.2, y: -0.8)
+                p.turn *= 0.3
+            }
         case "sleep":
             p.tilt = sin(f.clock * 0.4) * 0.01
             p.turn = 0

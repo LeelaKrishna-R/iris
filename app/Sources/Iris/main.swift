@@ -230,9 +230,10 @@ final class App: NSObject, NSApplicationDelegate {
         case "/iris/act":
             let id = body["id"] as? String ?? ""
             let secs = body["seconds"] as? Double ?? 6
+            let why = body["why"] as? String ?? ""          // Core's cause for it, for her journal
             main {
                 guard Body.catalog[id] != nil else { return (400, ["ok": false, "reason": "no_such_animation"]) }
-                self.body.perform(id, seconds: secs)
+                self.body.perform(id, seconds: secs, asked: why)
                 return (200, ["ok": true])
             }
         case "/iris/catalog":
@@ -271,7 +272,7 @@ final class App: NSObject, NSApplicationDelegate {
             main { (200, ["ok": true, "decisions": ApprovalCard.shared.pendingDecisions(),
                           "showing": ApprovalCard.shared.showing]) }
         case "/iris/decisions_ack":
-            // your agent confirms the clicks it acted on; only those leave her list
+            // Core confirms the clicks it decided; only those leave her list (review)
             let ids = (body["ids"] as? [Any] ?? []).compactMap { $0 as? String }
             main { ApprovalCard.shared.ack(ids); return (200, ["ok": true]) }
         case "/iris/hold":
@@ -405,6 +406,30 @@ if CommandLine.arguments.count == 4 && CommandLine.arguments[1] == "--cutout" {
     let dest = CGImageDestinationCreateWithURL(URL(fileURLWithPath: CommandLine.arguments[3]) as CFURL,
                                                "public.png" as CFString, 1, nil)!
     CGImageDestinationAddImage(dest, out, nil)
+    CGImageDestinationFinalize(dest)
+    exit(0)
+}
+
+/// `Iris --clips out.png name …`: each named drawn clip (Resources/anim) as a row of its frames, to look at.
+if CommandLine.arguments.count >= 4 && CommandLine.arguments[1] == "--clips" {
+    let names = Array(CommandLine.arguments.dropFirst(3))
+    let cw = 145, ch = 220, label = 16
+    let ctx = CGContext(data: nil, width: cw * 16, height: (ch + label) * names.count, bitsPerComponent: 8, bytesPerRow: 0,
+                        space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+    ctx.setFillColor(NSColor(white: 0.95, alpha: 1).cgColor); ctx.fill(CGRect(x: 0, y: 0, width: ctx.width, height: ctx.height))
+    NSGraphicsContext.current = NSGraphicsContext(cgContext: ctx, flipped: false)
+    let base = Bundle.main.resourceURL!.appendingPathComponent("anim")
+    for (r, n) in names.enumerated() {
+        let y = ctx.height - (r + 1) * (ch + label)
+        (n as NSString).draw(at: CGPoint(x: 4, y: y + 2), withAttributes: [.font: NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)])
+        for i in 0..<16 {
+            let u = ["webp", "png"].map { base.appendingPathComponent("\(n)/\(i).\($0)") }.first { FileManager.default.fileExists(atPath: $0.path) }
+            guard let u, let s = CGImageSourceCreateWithURL(u as CFURL, nil), let img = CGImageSourceCreateImageAtIndex(s, 0, nil) else { break }
+            ctx.draw(img, in: CGRect(x: i * cw, y: y + label, width: cw, height: ch))
+        }
+    }
+    let dest = CGImageDestinationCreateWithURL(URL(fileURLWithPath: CommandLine.arguments[2]) as CFURL, "public.png" as CFString, 1, nil)!
+    CGImageDestinationAddImage(dest, ctx.makeImage()!, nil)
     CGImageDestinationFinalize(dest)
     exit(0)
 }

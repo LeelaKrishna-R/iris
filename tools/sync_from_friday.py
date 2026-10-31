@@ -210,7 +210,11 @@ def sync(src: Path, dst: Path) -> None:
           ('waveWhy = "Friday asked her to wave"', 'waveWhy = "\\(Config.agentName) asked her to wave"'),
           ('fallAsleep("Friday asked her to nap")', 'fallAsleep("\\(Config.agentName) asked her to nap")'),
           ('why: "Friday used his mouse through her hands")', 'why: "\\(Config.agentName) used the mouse through her hands")'),
-          ('actWhy = own ? why : "Friday asked for it"', 'actWhy = own ? why : "\\(Config.agentName) asked for it"'),
+          ('(wakeWhy.isEmpty ? "Friday asked" : wakeWhy)', '(wakeWhy.isEmpty ? "\\(Config.agentName) asked" : wakeWhy)'),
+          (': "woke: Friday asked"', ': "woke: \\(Config.agentName) asked"'),
+          ("/// `asked`: Core's cause when Friday asked for it", "/// `asked`: your agent's cause when it asked for it"),
+          ('actWhy = own ? why : asked.isEmpty ? "Friday asked for it" : "Friday: " + asked',
+           'actWhy = own ? why : asked.isEmpty ? "\\(Config.agentName) asked for it" : "\\(Config.agentName): " + asked'),
           ('m.addItem(withTitle: "Quit Iris"',
            'm.addItem(withTitle: "Welcome…", action: #selector(Menu.welcome), keyEquivalent: "").target = Menu.shared\n'
            '        m.addItem(withTitle: "Quit Iris"'),

@@ -81,7 +81,10 @@ enum Stages {
         }
         return nil
     }
-    static let awayFor: Double = 180        // was 300, the moment she dozed too (fishing 5 s, then asleep)
+    // 23:00 and 23:15 she fished, "away 3 min", with him reading at
+    // the Mac. No input is all she has of him (no camera), and three still minutes is a page he's reading, not him gone:
+    // ten minutes is away; under it, seated, she reads her book beside him. (was 300, then 180.)
+    static let awayFor: Double = 600
     static let quietSitFor: Double = 60      // was 300; a long sit is her book, not a stare
 
     /// A hop down from one of his windows is a jump she lands from ("fall_land", "jumping down from a

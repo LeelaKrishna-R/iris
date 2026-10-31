@@ -895,6 +895,8 @@ final class Analyzer {
         if present {
             c["s_present"] = (c["s_present"] ?? 0) + dt
             if asleep { c["s_present_asleep"] = (c["s_present_asleep"] ?? 0) + dt }
+            // fishing is waiting for him gone, not him reading
+            if face.act == "fishing" { c["s_present_fishing"] = (c["s_present_fishing"] ?? 0) + dt }
         }
         // out of sleep (her snore is a clip she sleeps through, not a wake)
         if wasSleeping && !face.sleeping && !present { c["wakes_away"] = (c["wakes_away"] ?? 0) + 1 }

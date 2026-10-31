@@ -1541,7 +1541,7 @@ final class Body {
     /// half minute is him there, not an empty room (her eyes' "changing" lasts only 8 s after a change).
     static let screenStillToDoze: Double = 60
     /// Away this long, his return gets the hop and the wave; a shorter pause (reading) only a look.
-    static let trulyAway: Double = 300
+    static let trulyAway: Double = 600         // as Stages.awayFor — a long read is no return to greet
     /// A return after this long always gets the wave; a shorter one only if she hasn't waved in `waveEvery`.
     static let longAway: Double = 1800
     static let waveEvery: Double = 3600

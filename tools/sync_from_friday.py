@@ -131,6 +131,12 @@ PERSON = [(r"\bhis\b", "the person's"), (r"\bhimself\b", "themselves"), (r"\bhim
           (r"\bhe\b", "the person")]
 
 
+def public_text(text: str) -> str:
+    """Names that are the upstream app's, in code and comments alike: its defaults domain and screenshot folder."""
+    return (text.replace("defaults write dev.heyfriday.iris", "defaults write app.iris.companion")
+            .replace("Friday Screenshots", "Iris Screenshots"))
+
+
 def neutral_person(text: str) -> str:
     """The catalog's 'when' notes were written about one man; say them about whoever is at the Mac."""
     for old, new in PERSON:
@@ -178,7 +184,6 @@ def sync(src: Path, dst: Path) -> None:
           ("low.range(of: HerName.misheardFriday, options: .regularExpression) != nil",
            '(HerName.wakeWords.contains("friday") ? low.range(of: HerName.misheardFriday, options: .regularExpression) : nil) != nil'))
     _edit(s_dst / "Ask.swift", ('f.placeholderString = "Ask Friday…"', 'f.placeholderString = "Ask \\(Config.agentName)…"'))
-    _edit(s_dst / "Eyes.swift", ('"Pictures/Friday Screenshots"', '"Pictures/Iris Screenshots"'))
     _edit(s_dst / "Store.swift",
           ("""/// Where Iris keeps what she learns and sees: ~/Library/Application Support/Iris.
 /// Friday Core runs as the same macOS user on this Mac, so it reads the link
@@ -224,8 +229,7 @@ def sync(src: Path, dst: Path) -> None:
         p = Path(f)
         if p.name in PUBLIC_ONLY:
             continue
-        t = p.read_text(encoding="utf-8").replace("defaults write dev.heyfriday.iris", "defaults write app.iris.companion")
-        p.write_text(scrub_comments(t), encoding="utf-8")
+        p.write_text(scrub_comments(public_text(p.read_text(encoding="utf-8"))), encoding="utf-8")
     left = [f"{Path(f).name}:{i + 1}" for f in glob.glob(str(s_dst / "*.swift"))
             for i, ln in enumerate(Path(f).read_text(encoding="utf-8").split("\n"))
             if re.search(private_words(), ln, re.I)]

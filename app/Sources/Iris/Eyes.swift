@@ -324,7 +324,7 @@ final class Eyes {
     // MARK: a screenshot he asked for
 
     /// Every display as he sees it (Iris left out), saved as PNGs in
-    /// ~/Pictures/Friday Screenshots (not a folder macOS guards, so nothing is
+    /// ~/Pictures/Iris Screenshots (not a folder macOS guards, so nothing is
     /// asked of him). The saved files' paths, or [] when it couldn't be taken.
     func shot(_ done: @escaping ([String]) -> Void) {
         Task.detached(priority: .userInitiated) {

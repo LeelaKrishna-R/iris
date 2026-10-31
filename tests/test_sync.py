@@ -6,7 +6,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 
-from sync_from_friday import scrub_comments  # noqa: E402
+from sync_from_friday import public_text, scrub_comments  # noqa: E402
 
 
 def test_trailing_comment_notes_go():
@@ -61,3 +61,13 @@ def test_a_dated_quote_goes_with_its_date():
 def test_an_open_paren_loses_its_date_and_quote_cleanly():
     assert scrub_comments('/// an approval, answered on the Mac (10-26, owner: "Approvals on the Mac", decisions') == \
         "/// an approval, answered on the Mac (decisions"
+
+
+def test_the_screenshot_folder_is_irises_in_comments_too():
+    src = ('    /// ~/Pictures/Friday Screenshots (not a folder macOS guards)\n'
+           '            // "take a screenshot": saved to Pictures/Friday Screenshots\n'
+           '        let dir = "Pictures/Friday Screenshots"\n'
+           '    // defaults write dev.heyfriday.iris eyesOff -bool YES\n')
+    out = public_text(src)
+    assert "Friday Screenshots" not in out and out.count("Iris Screenshots") == 3
+    assert "defaults write app.iris.companion" in out

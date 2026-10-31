@@ -108,7 +108,7 @@ final class App: NSObject, NSApplicationDelegate {
                 return (200, out)
             }
         case "/eyes/shot":
-            // "take a screenshot": saved to Pictures/Friday Screenshots
+            // "take a screenshot": saved to Pictures/Iris Screenshots
             eyes.shot { paths in
                 reply(paths.isEmpty ? 500 : 200, paths.isEmpty ? ["ok": false, "reason": "capture_failed"]
                                                                 : ["ok": true, "paths": paths])

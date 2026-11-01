@@ -78,10 +78,15 @@ click answers it. Iris records the click and does nothing else; your agent acts 
 | `GET /eyes/now` | none | The front app and window, and the text she read off each display. Off while you've paused her eyes |
 | `POST /iris/senses` | `{"ears_off_s": n, "eyes_off_s": n}` | Turns her ears or eyes off for a while (0 turns them back on) |
 | `POST /iris/usage` | `{"day": "YYYY-MM-DD"}` | Your active minutes per app that day, from her eyes |
+| `GET /eyes/focus` | none, or `?app=<name>` | Where your keyboard focus is: `{"app", "role", "field": [x, y, w, h], "caret": [x, y, w, h], "into", "why"}`, or `{"ok": false, "reason": "no_focus"}`. With `?app=`, only `{"into", "why"}`: where that app's keystrokes would land |
+| `POST /eyes/shot` | none | Screenshots every display, leaving her own window out, into `~/Pictures/Iris Screenshots`: `{"paths": [str]}`, or 500 `capture_failed` |
+| `GET /iris/events` | none | What she noticed since the last read, as plain sentences (`he just came back to the Mac`, `music started playing`, `he opened "…" in Safari`); reading empties the list |
 
 ## Hands: not for agents by default
 
 `/hands/type`, `/hands/keys`, `/hands/click`, `/hands/press`, `/hands/move`, `/hands/scroll`, `/hands/drag`,
-`/hands/media` and `/hands/quit` act on your Mac as if you did it. They need Accessibility permission, and
+`/hands/media` and `/hands/quit` act on your Mac as if you did it. `/hands/see` (`{"app": str, "menus": bool}`)
+only looks: the buttons, fields and menus she can find in that app, `{"app", "things": [{"role", "name",
+"dialog", "frame"}]}`, 404 `no_such_app`. All of them return 403 `accessibility_not_allowed` without the permission. They need Accessibility permission, and
 the MCP server and CLI deliberately don't expose them. If you wire them into an agent yourself, put your
 own approval step in front.

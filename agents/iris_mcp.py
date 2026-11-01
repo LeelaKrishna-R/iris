@@ -84,6 +84,12 @@ def _spoken(text: str) -> dict:
 
 # ── tools ────────────────────────────────────────────────────────────────────
 
+def _seconds(args: dict, default: float) -> float:
+    """`seconds` as given (0 is 0, clamped by the caller), or the default when it's left out."""
+    v = args.get("seconds")
+    return default if v is None or v == "" else float(v)
+
+
 def t_say(args: dict) -> str:
     text = " ".join(str(args.get("text") or "").split())
     if not text:
@@ -128,7 +134,7 @@ def t_come(args: dict) -> str:
 
 def t_listen(args: dict) -> str:
     """What the person next says to her by name ("Iris, …") or types into her "Ask" box, waiting up to 25 s."""
-    wait = min(25.0, max(1.0, float(args.get("seconds") or 20)))
+    wait = min(25.0, max(1.0, _seconds(args, 20)))
     r = call("/ears/next", {"timeout": wait}, timeout=wait + 10)
     h = r.get("heard")
     if not h:
@@ -142,7 +148,7 @@ def t_ask(args: dict) -> str:
     text = " ".join(str(args.get("action") or "").split())
     if not text:
         return "Nothing to ask: action is empty."
-    wait = min(300.0, max(5.0, float(args.get("seconds") or 120)))
+    wait = min(300.0, max(5.0, _seconds(args, 120)))
     ask_id = "mcp-" + os.urandom(6).hex()
     r = call("/iris/ask", {"id": ask_id, "title": str(args.get("title") or "Your agent asks")[:60], "text": text[:420],
                            "until": time.time() + wait})
@@ -219,6 +225,8 @@ def handle(msg: dict) -> dict | None:
     mid, method, params = msg.get("id"), msg.get("method"), msg.get("params") or {}
     if mid is None:
         return None
+    if not isinstance(params, dict):
+        return {"jsonrpc": "2.0", "id": mid, "error": {"code": -32602, "message": "params must be an object"}}
     if method == "initialize":
         result = {"protocolVersion": PROTOCOL, "capabilities": {"tools": {}},
                   "serverInfo": {"name": "iris", "version": "0.1.0"}}
@@ -228,10 +236,15 @@ def handle(msg: dict) -> dict | None:
         name = params.get("name")
         if name not in TOOLS:
             return {"jsonrpc": "2.0", "id": mid, "error": {"code": -32602, "message": f"unknown tool {name!r}"}}
+        args = params.get("arguments") or {}
+        if not isinstance(args, dict):
+            return {"jsonrpc": "2.0", "id": mid, "error": {"code": -32602, "message": "arguments must be an object"}}
         try:
-            text, error = TOOLS[name][0](params.get("arguments") or {}), False
+            text, error = TOOLS[name][0](args), False
         except IrisUnreachable as e:
             text, error = str(e), True
+        except (TypeError, ValueError) as e:       # "seconds": "soon": said to the agent, the server stays up
+            text, error = f"Bad arguments for {name}: {e}", True
         result = {"content": [{"type": "text", "text": text}], "isError": error}
     elif method == "ping":
         result = {}
@@ -249,6 +262,8 @@ def main() -> int:
             msg = json.loads(line)
         except ValueError:
             continue
+        if not isinstance(msg, dict):
+            continue                                # a batch or a stray value: no message to answer
         reply = handle(msg)
         if reply is not None:
             sys.stdout.write(json.dumps(reply) + "\n")

@@ -216,3 +216,25 @@ def test_ask_with_no_answer_closes_the_card_and_allows_nothing(iris, monkeypatch
 def test_ask_needs_an_action(iris):
     assert tool("iris_ask", action="  ")[0] == "Nothing to ask: action is empty."
     assert iris == []
+
+
+def test_bad_arguments_are_said_and_the_server_stays_up(iris):
+    text, error = tool("iris_listen", seconds="soon")
+    assert error and text.startswith("Bad arguments for iris_listen: ")
+    r = iris_mcp.handle({"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "iris_say", "arguments": [1]}})
+    assert r["error"] == {"code": -32602, "message": "arguments must be an object"}
+    r = iris_mcp.handle({"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": ["iris_say"]})
+    assert r["error"]["message"] == "params must be an object"
+    import subprocess
+    lines = ["[1]", json.dumps({"jsonrpc": "2.0", "id": 4, "method": "tools/call",
+                                "params": {"name": "iris_listen", "arguments": {"seconds": "soon"}}}),
+             json.dumps({"jsonrpc": "2.0", "id": 5, "method": "ping"})]
+    p = subprocess.run([sys.executable, str(Path(iris_mcp.__file__))], capture_output=True, text=True, timeout=20,
+                       input="\n".join(lines) + "\n")
+    replies = [json.loads(x) for x in p.stdout.splitlines()]
+    assert p.returncode == 0 and [x["id"] for x in replies] == [4, 5] and replies[1]["result"] == {}
+
+
+def test_zero_seconds_is_the_shortest_wait_not_the_default(iris):
+    tool("iris_listen", seconds=0)
+    assert [b["timeout"] for m, p, b in iris if p == "/ears/next"] == [1.0]

@@ -59,13 +59,32 @@ def test_no_agent_given_is_an_error(capsys):
     assert "give the agent command after --" in capsys.readouterr().err
 
 
-def test_iris_not_running_exits_2(monkeypatch, capsys):
-    def down(*a, **k):
-        raise iris_mcp.IrisUnreachable("Iris isn't running")
-    monkeypatch.setattr(iris_mcp, "call", down)
-    assert voice_loop.main(["--", "echo"]) == 2
-    assert "Iris isn't running" in capsys.readouterr().err
+def test_iris_going_away_is_waited_out_said_once(monkeypatch, capsys):
+    """She quits or restarts: the loop says so once, waits, and carries on when she's back."""
+    replies = iter(["down", "down", "down", {"heard": None}])
 
+    def ears(path, payload=None, **k):
+        r = next(replies, None)
+        if r is None:
+            raise KeyboardInterrupt
+        if r == "down":
+            raise iris_mcp.IrisUnreachable("Iris isn't running")
+        return r
+    monkeypatch.setattr(iris_mcp, "call", ears)
+    monkeypatch.setattr(voice_loop.time, "sleep", lambda s: None)
+    assert voice_loop.main(["--", "echo"]) == 0
+    err = capsys.readouterr().err
+    assert err.count("Iris isn't running") == 1 and "she's back, listening again" in err
+
+
+def test_only_the_separator_is_dropped(monkeypatch):
+    heard = iter([{"heard": {"text": "hi"}}])
+    monkeypatch.setattr(iris_mcp, "call", lambda path, payload=None, **k: next(heard) if path == "/ears/next" and
+                        heard.__length_hint__() else (_ for _ in ()).throw(KeyboardInterrupt))
+    seen = []
+    monkeypatch.setattr(voice_loop, "turn", lambda agent, said, speak: seen.append(agent) or "ok")
+    assert voice_loop.main(["--", "my-agent", "--", "--flag"]) == 0
+    assert seen == [["my-agent", "--", "--flag"]]
 
 def test_what_she_heard_reaches_the_agent_until_ctrl_c(monkeypatch, iris, capsys):
     heard = iter([{"heard": {"text": "hello"}}, {"heard": None}])

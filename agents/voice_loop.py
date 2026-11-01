@@ -9,18 +9,21 @@ its reply comes back in her voice. Ctrl-C stops it.
     python3 voice_loop.py --bubble -- my-agent     # her speech bubble instead of her voice
 
 The agent's reply is said as it printed it (up to 600 characters aloud); nothing is sent anywhere else.
+If Iris quits or restarts, the loop waits for her and carries on.
 """
 from __future__ import annotations
 
 import argparse
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import iris_mcp as m  # noqa: E402
 
 THINKING = "think"
+RETRY_S = 5                     # how often it looks for Iris again while she's away
 
 
 def turn(agent: list[str], said: str, speak: bool, timeout: float = 180) -> str:
@@ -44,21 +47,28 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--bubble", action="store_true", help="her speech bubble instead of her voice")
     ap.add_argument("agent", nargs=argparse.REMAINDER, help="the agent command, after --")
     a = ap.parse_args(argv)
-    agent = [x for x in a.agent if x != "--"]
+    agent = a.agent[1:] if a.agent[:1] == ["--"] else a.agent      # only the separator; the agent's own -- stay
     if not agent:
         ap.error("give the agent command after --, e.g.: -- claude -p")
     print(f"Listening for \"Iris, …\" → {' '.join(agent)}  (Ctrl-C to stop)", file=sys.stderr)
+    away = False
     try:
         while True:
-            h = m.call("/ears/next", {"timeout": 25}, timeout=35).get("heard")
-            if h and h.get("text"):
-                print(f"you: {h['text']}", file=sys.stderr)
-                print(f"agent: {turn(agent, h['text'], speak=not a.bubble)}", file=sys.stderr)
+            try:
+                h = m.call("/ears/next", {"timeout": 25}, timeout=35).get("heard")
+                if away:
+                    print("iris: she's back, listening again", file=sys.stderr)
+                    away = False
+                if h and h.get("text"):
+                    print(f"you: {h['text']}", file=sys.stderr)
+                    print(f"agent: {turn(agent, h['text'], speak=not a.bubble)}", file=sys.stderr)
+            except m.IrisUnreachable as e:
+                if not away:                         # said once, not every few seconds
+                    print(f"iris: {e} (waiting for her; Ctrl-C to stop)", file=sys.stderr)
+                    away = True
+                time.sleep(RETRY_S)
     except KeyboardInterrupt:
         return 0
-    except m.IrisUnreachable as e:
-        print(f"iris: {e}", file=sys.stderr)
-        return 2
 
 
 if __name__ == "__main__":

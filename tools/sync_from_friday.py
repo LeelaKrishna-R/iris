@@ -225,6 +225,22 @@ def sync(src: Path, dst: Path) -> None:
            '        m.addItem(withTitle: "Quit Iris"'),
           ("@objc func ask() { body?.onAsk?() }",
            "@objc func ask() { body?.onAsk?() }\n    @objc func welcome() { Welcome.show() }"))
+    # The day card upstream is filled by its own agent; here any agent can fill it (/iris/day, docs/API.md), and
+    # her menu offers it only once one has, so an Iris with nothing behind it has no item that does nothing.
+    _edit(body,
+          ('        m.addItem(withTitle: DayCard.shared.hidden ? "Show My Day" : "Hide My Day", action: #selector(Menu.day),\n'
+           '                  keyEquivalent: "").target = Menu.shared\n',
+           '        if !DayCard.shared.rows.isEmpty {\n'
+           '            m.addItem(withTitle: DayCard.shared.hidden ? "Show My Day" : "Hide My Day", action: #selector(Menu.day),\n'
+           '                      keyEquivalent: "").target = Menu.shared\n'
+           '        }\n'))
+    _edit(s_dst / "DayCard.swift",
+          (r"/// His day at a glance.*?(?=final class DayCard)",
+           "/// A day card beside Iris, filled by your agent: rows it sends to /iris/day (a heading and a line each, a\n"
+           "/// row it couldn't read marked \"off\" and drawn greyed), with an optional button beside a line (\"Done\",\n"
+           "/// \"Paid\"). A click waits under its own token in /iris/day_state until the agent confirms it acted\n"
+           "/// (/iris/day_ack). The card never takes your typing and stays out of screen shares and recordings; x hides\n"
+           "/// it until you pick Show My Day in her menu.\n", True))
     for f in glob.glob(str(s_dst / "*.swift")):
         p = Path(f)
         if p.name in PUBLIC_ONLY:

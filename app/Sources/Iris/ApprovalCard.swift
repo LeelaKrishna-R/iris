@@ -11,6 +11,10 @@ final class ApprovalCard: NSObject {
     private var panel: NSPanel?
     private(set) var showing = ""           // the approval on screen now (Core closes it when answered elsewhere)
     private var closeTimer: Timer?
+    var frame: CGRect? { panel?.frame }       // where it is, for the day card to keep clear of (DayCard)
+    private var showingText = ""
+    /// his click, as it's made (choice, what the card asked): Iris answers his Allow (Body.approvalAnswered).
+    var onDecided: ((String, String) -> Void)?
 
     /// His clicks Core hasn't confirmed yet. Read, not taken (review emptied on read while Core waited 3 s
     /// for her busy main thread, a click was lost without a word); Core confirms each it decided (ack). One older
@@ -28,6 +32,7 @@ final class ApprovalCard: NSObject {
     func show(id: String, title: String, text: String, until: Date?, near: CGRect) {
         close()
         showing = id
+        showingText = text
         let width: CGFloat = 320
         let body = NSTextField(wrappingLabelWithString: text)
         body.font = .systemFont(ofSize: 13)
@@ -91,6 +96,7 @@ final class ApprovalCard: NSObject {
         panel?.orderOut(nil)
         panel = nil
         showing = ""
+        showingText = ""
     }
 
     @objc private func allowed() { decide("approve") }
@@ -100,7 +106,9 @@ final class ApprovalCard: NSObject {
         guard !showing.isEmpty else { return }
         decisions.append(Decision(id: showing, choice: choice, at: Date()))
         log("approval card: \(choice) \(showing.prefix(8))")
+        let what = showingText
         close()
+        onDecided?(choice, what)
     }
 
     /// Beside her head, kept on the screen she's on.

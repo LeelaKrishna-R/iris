@@ -189,6 +189,12 @@ enum Sim {
                 acts.append((t, what))
                 // every move of her own names its cause in the world
                 if ((info["why"] as? String) ?? "").isEmpty { extra["acts_uncaused", default: 0] += 1 }
+                // her stretch, her sticky note for a to-do come due, her bow for his Allow — and any over his typing
+                if ["yoga", "sticky_note", "bow"].contains(what) {
+                    extra["own_" + what, default: 0] += 1
+                    if A.typing { extra["own_" + what + "_typing", default: 0] += 1 }
+                    if w.callOn { extra["own_" + what + "_call", default: 0] += 1 }
+                }
                 if ["hop", "dash", "wave", "giggle", "dance"].contains(what) {
                     extra["loud_acts", default: 0] += 1
                     if w.callOn { extra["call_loud_acts", default: 0] += 1 }
@@ -203,6 +209,7 @@ enum Sim {
                !why.hasPrefix("home"), !why.hasPrefix("corner") {
                 extra["away_walks", default: 0] += 1
             }
+            if kind == "card_due" { extra[(info["noted"] as? Bool) == true ? "card_due_noted" : "card_due", default: 0] += 1 }
             if kind == "fell_asleep" { extra["naps", default: 0] += 1; if extra["first_sleep_t"] == nil { extra["first_sleep_t"] = t } }
             if kind == "boss_back" {
                 extra["boss_backs", default: 0] += 1
@@ -225,6 +232,7 @@ enum Sim {
         var scrolling: (until: Double, dy: Double)?
         var hovering = false
         var windowMove: (id: Int, from: CGRect, to: CGRect, t0: Double, t1: Double)?
+        var cardTodos: String?                 // the last day card's to-dos row
 
         // her mind, faked: every 40-70 s a want, maybe a face, maybe one of her rig moves, rarely words —
         // by core/iris's own rules, or (adversarial) ignoring them to prove her body holds its ground
@@ -307,6 +315,15 @@ enum Sim {
                 if let sp = e["speak"] as? [String: Any] { body.speaking(sp["text"] as? String ?? "", seconds: sp["seconds"] as? Double ?? 3) }
                 if let sh = e["show"] as? [String: Any] { body.showing(sh["text"] as? String ?? "", seconds: sh["seconds"] as? Double ?? 6) }
                 if let n = e["notify"] as? String { body.notified(n) }
+                // Core's day card (/iris/day): its to-dos row (null: unread), compared with the last card's
+                if let c = e["card"] as? [String: Any] {
+                    let todos = c["todos"] as? String
+                    body.dayCard(todosBefore: cardTodos, todosAfter: todos, card: nil); cardTodos = todos
+                }
+                // his click on Friday's approval card (ApprovalCard): "approve" or "reject"
+                if let a = e["approval"] as? [String: Any] {
+                    body.touched(); body.approvalAnswered(a["choice"] as? String ?? "", what: a["what"] as? String ?? "")
+                }
                 if let p = point(e["click"]) { w.mouse = p; body.touched(); body.clicked(at: p) }
                 if let d = e["drag"] as? [String: Any], let path = d["path"] as? [[Double]] {
                     dragPath = path.compactMap { point($0) }; dragT0 = t; dragT1 = t + ((d["over"] as? Double) ?? 1.5)

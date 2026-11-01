@@ -69,6 +69,19 @@ The card is a non-activating panel: it never takes your typing, and Allow has no
 click answers it. Iris records the click and does nothing else; your agent acts on it. `iris_ask` in
 `agents/iris_mcp.py` does all of it for you, confirming only its own card's click.
 
+## Day card
+
+| Request | Body | What it does |
+|---|---|---|
+| `POST /iris/day` | `{"rows": [{"key": str, "head": str, "text": str, "off": bool, "items": [{"id": str, "text": str, "act": str}]}], "at": unix seconds}` | Shows a card beside her with up to 8 rows: a heading and its text each. A row marked `off` is drawn greyed (say why in its `text`). `items` (up to 3) put one line each with a small button labelled `act` ("Done", "Paid"); an item with no `act` or `id` is plain text. Sending again replaces the card |
+| `GET /iris/day_state` | none | `{"hidden", "has", "refresh", "acts": [{"token", "id"}]}`: whether the person hid the card, whether it has rows, whether they clicked Iris since your last look (a good moment to send fresh rows; read once), and the button clicks waiting, each under its own token |
+| `POST /iris/day_ack` | `{"tokens": [str]}` | Confirms the clicks you acted on; only those leave the list |
+
+Iris only records a button click and shows it as pending; your agent does the work, says what happened
+(`/mouth/show`) and sends the card again. Act on a token once: one delivered again after a lost confirm is
+the same click. The card stays out of screen shares and recordings. Her menu offers Show / Hide My Day only
+once an agent has sent a card.
+
 ## Senses
 
 | Request | Body | What it gives |

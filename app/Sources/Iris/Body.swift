@@ -26,6 +26,8 @@ final class Body {
     weak var eyes: Eyes?
     var onTalk: (() -> Void)?
     var onAsk: (() -> Void)?
+    var onPetted: (() -> Void)?             // his click on her refreshes the day card (DayCard)
+    var onDayCard: (() -> Void)?            // her menu's Show / Hide My Day
 
     static let size = CGSize(width: 150, height: 196)
 
@@ -124,7 +126,7 @@ final class Body {
             w.sharingType = .none
             view = v; window = w; bubble = Bubble()
         }
-        view?.onPet = { [weak self] in self?.petted() }
+        view?.onPet = { [weak self] in self?.petted(); self?.onPetted?() }
         view?.onDoublePet = { [weak self] in self?.doublePetted() }
         view?.onDrag = { [weak self] p in self?.dragged(p) }
         view?.onDrop = { [weak self] in self?.dropped() }
@@ -477,7 +479,7 @@ final class Body {
             flickTimes.removeAll()                                 // his cursor darting to grab her isn't play
             held = true; _ = soul.feel(.dragged); wideT = 0.4; targetX = nil; perchTop = nil
             standingOn = nil; standingID = nil; perchID = nil; launch = nil; vx = 0; leapTo = nil
-            jumpDown = nil; shooWalkTo = nil; dozeWhy = nil
+            jumpDown = nil; shooWalkTo = nil; dozeWhy = nil; alongSince = nil   // carried, no stretch after
             pickedUpAt = CGPoint(x: x + Body.size.width / 2, y: y)
         }
         x = p.x - Body.size.width / 2
@@ -1009,7 +1011,8 @@ final class Body {
         // 30 of these nods in 3 h, then one each half hour; (owner: "no
         // reactions"): at most one each Body.nodEveryS (10 min), once per stretch of his typing
         if burst > 20 && now.timeIntervalSince(lastTyped) > 3 && noddedFor != typingSince && !sleeping && !held && !listening
-            && performing.isEmpty && targetX == nil && now.timeIntervalSince(noddedAt) > Body.nodEveryS {
+            && performing.isEmpty && targetX == nil && now.timeIntervalSince(noddedAt) > Body.nodEveryS
+            && dueToShow == nil {                  // a to-do come due waiting to be shown says more than a nod
             noddedFor = typingSince
             noddedAt = now
             perform("nod", seconds: 1.4, own: true, why: String(format: "his typing stopped after %.0f s", burst))
@@ -1091,6 +1094,75 @@ final class Body {
             perform("tap_foot", seconds: awaitingUntil.timeIntervalSince(now), own: true,
                     why: "\(Config.agentName)'s answer is taking over \(Int(Stages.impatientAfter)) s")
         }
+        // her laptop out, typing along with him for a long stretch of his typing,
+        // goes away (Body.typeAlongHoldS after his last key): she gets up and stretches ("yoga", "stretch break,
+        // calm"), at most hourly and not right after Friday's own stretch nudge. Its why is the stretch she typed.
+        if workingAlong {
+            if alongSince == nil { alongSince = now }
+        } else if let since = alongSince {
+            alongSince = nil
+            let alongFor = lastTyped.timeIntervalSince(since)
+            // (a walk she just set off on waits for it, unless it's out of his way or to a corner for his call or film;
+            // his carrying her, calling her over or shooing her ends the stretch she typed along, alongSince = nil)
+            let walkWaits = targetX == nil || (walkWhy != "out of his way" && !walkWhy.hasPrefix("corner"))
+            if Stages.stretches(alongFor: alongFor, keysRested: now.timeIntervalSince(lastTyped),
+                                sinceHerStretch: now.timeIntervalSince(herStretchAt), sinceFridayStretch: now.timeIntervalSince(fridayStretchAt)),
+               walkWaits, !sleeping, !held, !listening, performing.isEmpty, vy == 0, launch == nil,
+               now >= talkUntil, waveT <= 0, !watchingVideo, callSince == nil, now.timeIntervalSince(lastInput) < Stages.awayFor {
+                herStretchAt = now
+                perform("yoga", seconds: Body.yogaSeconds, own: true,
+                        why: String(format: "she typed along with him %.0f min and he stopped %.0f s ago", alongFor / 60,
+                                    now.timeIntervalSince(lastTyped)))
+            }
+        }
+        // a to-do on his day card came due (dayCard): her sticky note, once he can look, within
+        // Stages.showWithin of the card saying so (her eyes went to the card when it did)
+        if let d = dueToShow {
+            if now.timeIntervalSince(d.at) > Stages.showWithin { dueToShow = nil }
+            else if Stages.canShow(awake: !sleeping, hisIdle: now.timeIntervalSince(lastInput), sinceKeys: now.timeIntervalSince(lastTyped),
+                                   watching: watchingVideo, callOn: callSince != nil),
+                    !held, !listening, performing.isEmpty, targetX == nil, vy == 0, now >= talkUntil, waveT <= 0 {
+                dueToShow = nil
+                noddedFor = typingSince              // in place of her nod at this stretch of his typing, not before it
+                let c = dayCardAt(d.card)
+                lookToward(CGPoint(x: c.midX, y: c.midY), snap: 1)
+                perform("sticky_note", seconds: Body.noteSeconds, own: true, why: "a to-do on his day card came due: " + d.title)
+            }
+        }
+    }
+
+    /// Where his day card is: as DayCard placed it, or (the simulator, no panel) where it goes, left of her.
+    private func dayCardAt(_ card: CGRect?) -> CGRect {
+        card ?? CGRect(x: x - 288, y: y + Body.size.height - 200, width: 280, height: 200)
+    }
+
+    /// Core sent his day card (DayCard, every 10 min). A to-do on it came due
+    /// since the last card (Stages.cameDue: listed with its time ahead, now past) and no push or sticky note of
+    /// Friday's told him of it lately: her eyes go to the card now, and her sticky note follows once he can look.
+    /// `todosBefore` / `todosAfter`: the card's "todos" row text before and after (nil: unread, "off", or no card).
+    func dayCard(todosBefore: String?, todosAfter: String?, card: CGRect?) {
+        let now = world.now
+        toldTitles.removeAll { now.timeIntervalSince($0.at) > Stages.alreadyToldWithin }
+        guard let title = Stages.cameDue(before: todosBefore, after: todosAfter, told: toldTitles.map(\.title)) else { return }
+        let noted = now.timeIntervalSince(fridayNoteAt) < Stages.alreadyToldWithin    // Friday's sticky note just played
+        trace?("card_due", ["noted": noted, "asleep": sleeping])
+        guard !noted else { return }
+        notice("a to-do on his day card came due: " + String(title.prefix(60)))
+        dueToShow = (String(title.prefix(60)), now, card)
+        if !sleeping && !held {
+            let c = dayCardAt(card)
+            lookToward(CGPoint(x: c.midX, y: c.midY), snap: 1)
+            curiousT = max(curiousT, 1)
+        }
+    }
+
+    /// he answered Friday's approval on the card beside her (ApprovalCard). His
+    /// Allow gets her bow ("thank you"), its why the request he allowed; a Deny gets nothing of hers (Friday's
+    /// "Okay, I won't" says it). Never asleep, carried or listening.
+    func approvalAnswered(_ choice: String, what: String) {
+        trace?("approval_answered", ["choice": choice, "asleep": sleeping])
+        guard choice == "approve", !sleeping, !held, !listening, vy == 0 else { return }
+        perform("bow", seconds: 2.4, own: true, why: "he allowed Friday's request: " + String(what.prefix(60)))
     }
 
     private var lookUntil = Date.distantPast
@@ -1565,6 +1637,16 @@ final class Body {
     private var seatedAwakeSince: Date?
     private var noddedFor = Date.distantPast            // the burst of his typing she last nodded at
     private var noddedAt = Date.distantPast             // when she last nodded at one (Body.nodEveryS apart)
+    // her stretch after typing along, a to-do come due on his day card, his Allow
+    private var alongSince: Date?                       // her laptop came out to type along with him (Stages.stretches)
+    private var herStretchAt = Date.distantPast         // her last stretch (Stages.stretchEvery apart)
+    private var fridayStretchAt = Date.distantPast      // Friday's stretch nudge ("stretch_guide", /iris/act) last played
+    private var fridayNoteAt = Date.distantPast         // Friday's sticky note (his reminder going off, /iris/act) last played
+    private var toldTitles: [(title: String, at: Date)] = []   // pushes he got lately (notified), for Stages.cameDue
+    private var dueToShow: (title: String, at: Date, card: CGRect?)?   // a to-do come due, shown once he can look
+    /// Seconds of her drawn stretch ("yoga", 8 frames at SpriteView.pace 0.35) and sticky note (8 at 0.13, twice).
+    static let yogaSeconds: Double = 3
+    static let noteSeconds: Double = 2.2
     // what each of her bodies is for, this moment — the cause in the world (Face.why, poses.jsonl)
     private var actWhy = "", sleepWhy = "", waveWhy = "", walkWhy = "", restWhy = "", wakeWhy = ""
     /// times his screens woke her since he last touched the Mac, none of it him
@@ -2052,6 +2134,8 @@ final class Body {
     /// and if he isn't busy, a tiny wave — never a fuss while he types or watches, nothing while asleep.
     func notified(_ title: String) {
         notice("a notification came: " + title)
+        toldTitles.append((title, world.now))                // a to-do it named is told already (dayCard)
+        if toldTitles.count > 20 { toldTitles.removeFirst(toldTitles.count - 20) }
         guard !sleeping, !held else { return }
         let main = world.screens.first { $0.frame.origin == .zero } ?? world.screens[0]
         lookToward(CGPoint(x: main.visibleFrame.maxX - 160, y: main.visibleFrame.maxY - 40), snap: 1)
@@ -2122,7 +2206,7 @@ final class Body {
         let scr = screenAt(x + Body.size.width / 2).visibleFrame
         let way = Stages.shooDirection(me: Double(x), cursor: Double(world.mouse.x), minX: Double(scr.minX),
                                        maxX: Double(scr.maxX - Body.size.width), width: Double(Body.size.width))
-        performing = ""; performMoves = false; sit.target = 0; workingAlong = false
+        performing = ""; performMoves = false; sit.target = 0; workingAlong = false; alongSince = nil
         let to = clampIn(screenAt(x + Body.size.width / 2), x + CGFloat(way.dir) * 300)
         targetX = to
         shooWalkTo = abs(to - x) >= 3 ? to : nil
@@ -2160,7 +2244,7 @@ final class Body {
             return "unknown_place"
         }
         if sleeping { sleeping = false; wideT = 0.4 }
-        performing = ""; performMoves = false; sit.target = 0; workingAlong = false
+        performing = ""; performMoves = false; sit.target = 0; workingAlong = false; alongSince = nil
         perchTop = nil; perchID = nil
         happyT = 1.2
         if abs(tx - x) > 3 { targetX = tx; speed = 150; walkSince = world.now }
@@ -2176,6 +2260,10 @@ final class Body {
         ask.target = Menu.shared
         m.addItem(withTitle: "Talk to \(Config.agentName)  ⌃⌥⇧Space", action: #selector(Menu.talk), keyEquivalent: "").target = Menu.shared
         m.addItem(withTitle: sleeping ? "Wake Up" : "Nap", action: #selector(Menu.nap), keyEquivalent: "").target = Menu.shared
+        if !DayCard.shared.rows.isEmpty {
+            m.addItem(withTitle: DayCard.shared.hidden ? "Show My Day" : "Hide My Day", action: #selector(Menu.day),
+                      keyEquivalent: "").target = Menu.shared
+        }
         m.addItem(.separator())
         m.addItem(withTitle: "Welcome…", action: #selector(Menu.welcome), keyEquivalent: "").target = Menu.shared
         m.addItem(withTitle: "Quit Iris", action: #selector(Menu.quit), keyEquivalent: "").target = Menu.shared
@@ -2192,7 +2280,7 @@ final class Body {
         performing = ""
         performMoves = false
         sit.target = 0
-        workingAlong = false
+        workingAlong = false; alongSince = nil   // Friday's hold is no end of a stretch to stretch after
         sleeping = false
         nextThought = world.now.addingTimeInterval(seconds)
         postureUntil = nextThought
@@ -2242,6 +2330,9 @@ final class Body {
             if refused { return }
         }
         if own { trace?("act", ["what": id, "why": why]) }
+        // Friday's own stretch nudge and reminder sticky note, so hers don't repeat them (bodyClips, dayCard)
+        if !own && id == "stretch_guide" { fridayStretchAt = world.now }
+        if !own && id == "sticky_note" { fridayNoteAt = world.now }
         actWhy = own ? why : asked.isEmpty ? "\(Config.agentName) asked for it" : "\(Config.agentName): " + asked   // /iris/act, with Core's reason
         performing = id
         performUntil = world.now.addingTimeInterval(max(1.5, min(20, seconds)))
@@ -2312,5 +2403,6 @@ final class Menu: NSObject {
     @objc func ask() { body?.onAsk?() }
     @objc func welcome() { Welcome.show() }
     @objc func nap() { body?.toggleNap() }
+    @objc func day() { body?.onDayCard?() }
     @objc func quit() { body?.soul.save(); NSApp.terminate(nil) }
 }

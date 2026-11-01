@@ -111,4 +111,62 @@ enum Stages {
     static func impatient(waiting: Bool, waitedFor: Double, seated: Bool) -> Bool {
         waiting && waitedFor >= impatientAfter && !seated
     }
+
+    // MARK: — three more moves of her own, each from a signal she already has
+
+    /// Her laptop was out, typing along with him, at least this long of his typing when it goes away (Body.typeAlongHoldS
+    /// after his last key, or a walk with a reason once he has stopped): she gets up and stretches ("yoga", "stretch
+    /// break, calm"). His keys have rested at least quietFor first: a clip that stood her up mid-typing is no end of it.
+    static let longTypeAlong: Double = 1200
+    static let quietFor: Double = 20
+    /// At most one stretch of hers in this long, and none this soon after Friday's own stretch nudge
+    /// (core/iris_reflex's "stretch_guide", 50 min at the Mac): one stretch, not two in a row.
+    static let stretchEvery: Double = 3600
+    static let afterFridayStretch: Double = 1800
+
+    /// She stretches as her laptop goes away after typing along with him `alongFor` seconds of his typing.
+    static func stretches(alongFor: Double, keysRested: Double, sinceHerStretch: Double, sinceFridayStretch: Double) -> Bool {
+        alongFor >= longTypeAlong && keysRested >= quietFor && sinceHerStretch >= stretchEvery
+            && sinceFridayStretch >= afterFridayStretch
+    }
+
+    /// A moment she shows him (a to-do on his day card come due) waits until he can look: she's awake, he's
+    /// at the Mac (input within awayFor), his keys have rested this long, no video or call in front.
+    static let showAfterKeys: Double = 8      // past her nod's 3 s: a short pause between his lines isn't his keys at rest
+    static func canShow(awake: Bool, hisIdle: Double, sinceKeys: Double, watching: Bool, callOn: Bool) -> Bool {
+        awake && hisIdle < awayFor && sinceKeys >= showAfterKeys && !watching && !callOn
+    }
+    /// A to-do come due is shown within this long of the card saying so, or not at all (it's old news by then).
+    static let showWithin: Double = 600
+    /// A reminder push (or Friday's sticky note) for a to-do this recently means it was shown already.
+    static let alreadyToldWithin: Double = 900
+
+    /// The to-do on his day card (core/iris_day_card's "todos" row: "Title · 3:00 PM", "(past)" once its time
+    /// has passed, one per line) that came due between the last card and this one: listed before with its time
+    /// still ahead, listed now as past. A to-do that first shows up already past (moved up from "and N more",
+    /// or added late) didn't come due now; one whose title is in a push he got lately (`told`: its reminder went
+    /// off, and Friday already showed it) is left out. Nil before there was a card, or when none came due.
+    static func cameDue(before: String?, after: String?, told: [String] = []) -> String? {
+        guard let before, let after else { return nil }
+        func parse(_ text: String) -> [(title: String, past: Bool)] {
+            text.split(separator: "\n").compactMap { line in
+                let l = line.trimmingCharacters(in: .whitespaces)
+                guard let dot = l.range(of: " · ") else { return nil }       // "and 2 more" has no time
+                return (String(l[..<dot.lowerBound]), l.hasSuffix("(past)"))
+            }
+        }
+        func norm(_ s: String) -> String {
+            s.lowercased().unicodeScalars.map { CharacterSet.alphanumerics.contains($0) ? String($0) : " " }.joined()
+                .split(separator: " ").joined(separator: " ")
+        }
+        let ahead = Set(parse(before).filter { !$0.past }.map { norm($0.title) })
+        // whole words either way: "Pay rent" is in "Reminder: pay rent today"; "hi" is not in "this"
+        let toldN = told.map { " " + norm($0) + " " }.filter { $0.count > 2 }
+        for t in parse(after) where t.past && ahead.contains(norm(t.title)) {
+            let n = " " + norm(t.title) + " "
+            if n.count <= 2 || toldN.contains(where: { $0.contains(n) || n.contains($0) }) { continue }
+            return t.title
+        }
+        return nil
+    }
 }

@@ -321,6 +321,8 @@ final class SpriteView: SKView {
          // legs swing, pages turn, a line waits for a bite
          "@doze": 0.35, "@snore": 0.5, "@sit_legs": 0.18, "@read_book": 0.6,
          "@fishing": 0.8, "@sulk": 0.3,
+         // her stretch after typing along with him, a slow tree pose (Body.yogaSeconds)
+         "@yoga": 0.35,
          // waking, she sits up in bed, rubs her eyes and yawns, slowly (8 frames, about 2.4 s)
          "@wake_up": 0.3][want] ?? 0.13
     }

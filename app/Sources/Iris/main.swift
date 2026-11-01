@@ -39,6 +39,9 @@ final class App: NSObject, NSApplicationDelegate {
         ears.onVoice = { [weak self] in self?.body.heardVoice() }
         ears.start()
         body.onTalk = { [weak self] in self?.ears.listenNow() }
+        body.onPetted = { [weak self] in if let f = self?.body.frameOnScreen { DayCard.shared.petted(near: f) } }
+        body.onDayCard = { [weak self] in if let f = self?.body.frameOnScreen { DayCard.shared.toggle(near: f) } }
+        ApprovalCard.shared.onDecided = { [weak self] choice, what in self?.body.approvalAnswered(choice, what: what) }
         body.onAsk = { [weak self] in
             AskBox.shared.show { text in
                 self?.ears.typed(text)
@@ -275,6 +278,24 @@ final class App: NSObject, NSApplicationDelegate {
             // Core confirms the clicks it decided; only those leave her list (review)
             let ids = (body["ids"] as? [Any] ?? []).compactMap { $0 as? String }
             main { ApprovalCard.shared.ack(ids); return (200, ["ok": true]) }
+        case "/iris/day":
+            // his day at a glance beside her (core/iris_day_card), rows Core read, unreadable ones "off"
+            let rows = (body["rows"] as? [Any] ?? []).compactMap { $0 as? [String: Any] }
+            let at = (body["at"] as? Double).map { Date(timeIntervalSince1970: $0) }
+            main {
+                let todos = DayCard.shared.text("todos")       // a to-do come due since the last card (Body.dayCard)
+                DayCard.shared.update(rows: rows, at: at, near: self.body.frameOnScreen)
+                if !DayCard.shared.hidden {
+                    self.body.dayCard(todosBefore: todos, todosAfter: DayCard.shared.text("todos"), card: DayCard.shared.frame)
+                }
+                return (200, ["ok": true, "hidden": DayCard.shared.hidden])
+            }
+        case "/iris/day_state":
+            main { (200, DayCard.shared.state()) }
+        case "/iris/day_ack":
+            // Core acted on these card clicks (core/iris_day_card._take_acts); only those leave her list
+            let tokens = (body["tokens"] as? [Any] ?? []).compactMap { $0 as? String }
+            main { DayCard.shared.ack(tokens); return (200, ["ok": true]) }
         case "/iris/hold":
             let secs = body["seconds"] as? Double ?? 10
             let talk = body["talk"] as? Bool ?? false

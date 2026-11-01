@@ -39,6 +39,8 @@ def main() -> int:
         event = json.loads(sys.stdin.read() or "{}")
     except ValueError:
         return 0
+    if not isinstance(event, dict):
+        return 0                                      # valid JSON, but not an event
     try:
         react(event)
     except IrisUnreachable as e:

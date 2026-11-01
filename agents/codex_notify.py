@@ -33,6 +33,8 @@ def main(argv: list[str]) -> int:
         event = json.loads(argv[1]) if len(argv) > 1 else {}
     except ValueError:
         return 0
+    if not isinstance(event, dict):
+        return 0                                      # valid JSON, but not an event
     try:
         react(event)
     except IrisUnreachable as e:

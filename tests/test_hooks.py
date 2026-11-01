@@ -98,3 +98,12 @@ def test_unreadable_input_is_ignored(hook, iris, monkeypatch):
     stdin(monkeypatch, "not json at all")
     assert hook.main() == 0
     assert iris == []
+
+
+@pytest.mark.parametrize("text", ["[1, 2]", '"Stop"', "null", "7"])
+def test_json_that_isnt_an_event_is_ignored(iris, monkeypatch, text):
+    for hook in (claude_code_hook, cursor_hook):
+        stdin(monkeypatch, text)
+        assert hook.main() == 0
+    assert codex_notify.main(["codex_notify.py", text]) == 0
+    assert iris == []

@@ -8,7 +8,8 @@ its reply comes back in her voice. Ctrl-C stops it.
     python3 voice_loop.py -- codex exec            # Codex
     python3 voice_loop.py --bubble -- my-agent     # her speech bubble instead of her voice
 
-The agent's reply is said as it printed it (up to 600 characters aloud); nothing is sent anywhere else.
+The agent's reply is said as it printed it (up to 600 characters aloud), or shown in her bubble while you're on a
+call (`iris busy`); nothing is sent anywhere else.
 If Iris quits or restarts, the loop waits for her and carries on.
 """
 from __future__ import annotations
@@ -38,8 +39,19 @@ def turn(agent: list[str], said: str, speak: bool, timeout: float = 180) -> str:
         reply = "The agent didn't answer in time."
     except OSError as e:
         reply = f"I couldn't start the agent: {e.strerror}."
+    if speak and _on_call():
+        speak = False                                # the reply in her bubble: never aloud over a call
     m.t_say({"text": reply[:600], "speak": speak})
     return reply
+
+
+def _on_call() -> bool:
+    """Whether you're on a call now (iris_mcp.on_call over her eyes); False when she can't tell."""
+    try:
+        seen = m.call("/eyes/now", method="GET", timeout=5)
+    except m.IrisUnreachable:
+        return False
+    return bool(seen.get("ok")) and m.on_call(seen) is not None
 
 
 def main(argv: list[str] | None = None) -> int:

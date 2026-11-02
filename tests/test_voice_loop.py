@@ -99,3 +99,15 @@ def test_what_she_heard_reaches_the_agent_until_ctrl_c(monkeypatch, iris, capsys
     monkeypatch.setattr(iris_mcp, "call", ears)
     assert voice_loop.main(["--"] + PY + ["import sys; print(sys.argv[-1].upper())"]) == 0
     assert iris["said"] == [{"text": "HELLO", "speak": True}]
+
+
+def test_on_a_call_the_reply_goes_to_her_bubble(monkeypatch):
+    said = []
+    eyes = {"ok": True, "front_app": "Code", "front_title": "main.py", "mic_others": True,
+            "windows": [{"app": "Discord", "title": "#general - Discord"}]}
+    monkeypatch.setattr(iris_mcp, "call", lambda path, payload=None, **k: dict(eyes) if path == "/eyes/now" else {})
+    monkeypatch.setattr(iris_mcp, "t_say", lambda args: said.append(args) or "ok")
+    voice_loop.turn(PY + ["print('hi')"], "hello", speak=True)
+    eyes["mic_others"] = False                                   # Discord open for text: aloud as usual
+    voice_loop.turn(PY + ["print('hi')"], "hello", speak=True)
+    assert [s["speak"] for s in said] == [False, True]

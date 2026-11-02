@@ -86,3 +86,14 @@ def test_busy_only_on_a_call(iris, monkeypatch):
     assert iris_cli.run(["busy"]) == (0, "On a call: Google Meet.")  # a meeting's own window counts by itself
     seen.update(ok=False, reason="paused")
     assert iris_cli.run(["busy"]) == (1, "Iris can't tell: paused.")
+
+
+def test_say_uses_her_bubble_while_you_are_on_a_call(iris, monkeypatch):
+    _fake_say(monkeypatch)
+    real = iris_mcp.call
+    eyes = {"ok": True, "front_app": "Code", "front_title": "x", "mic_others": True,
+            "windows": [{"app": "zoom.us", "title": "Zoom Meeting"}]}
+    monkeypatch.setattr(iris_mcp, "call", lambda path, payload=None, method="POST", timeout=10:
+                        dict(eyes) if path == "/eyes/now" else real(path, payload, method, timeout))
+    assert iris_cli.run(["say", "Build", "finished"]) == (0, "Iris showed it in her bubble (you're on a call).")
+    assert iris[-1] == ("POST", "/mouth/show", {"text": "Build finished", "seconds": 6.0})

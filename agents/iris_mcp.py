@@ -94,14 +94,26 @@ def t_say(args: dict) -> str:
     text = " ".join(str(args.get("text") or "").split())
     if not text:
         return "Nothing to say: text is empty."
-    if args.get("speak", True):
+    busy = bool(args.get("speak", True)) and _busy()
+    if args.get("speak", True) and not busy:
         r = _spoken(text)
         if r.get("ok"):
             return f"Iris said it aloud ({r.get('seconds', 0):.1f} s)."
         if r.get("reason") != "no_voice":
             return f"Iris didn't speak: {r.get('reason') or 'no reason given'}."
     r = call("/mouth/show", {"text": text[:300], "seconds": float(args.get("seconds") or 6)})
-    return "Iris showed it in her bubble." if r.get("ok") else f"Iris didn't show it: {r.get('reason')}."
+    if not r.get("ok"):
+        return f"Iris didn't show it: {r.get('reason')}."
+    return "Iris showed it in her bubble (you're on a call)." if busy else "Iris showed it in her bubble."
+
+
+def _busy() -> bool:
+    """On a call now (on_call over her eyes): her voice would talk over it. False when she can't tell."""
+    try:
+        seen = call("/eyes/now", method="GET", timeout=5)
+    except IrisUnreachable:
+        return False
+    return bool(seen.get("ok")) and on_call(seen) is not None
 
 
 def t_react(args: dict) -> str:
@@ -214,8 +226,9 @@ def t_busy(args: dict) -> str:
 
 
 TOOLS = {
-    "iris_say": (t_say, "Make Iris say something to the person at the Mac, aloud with her lips moving (falls back "
-                        "to her speech bubble when no voice is available). Keep it short and natural.",
+    "iris_say": (t_say, "Make Iris say something to the person at the Mac, aloud with her lips moving (her speech "
+                        "bubble instead while they're on a call, or when no voice is available). Keep it short and "
+                        "natural.",
                  {"text": {"type": "string", "description": "What she says."},
                   "speak": {"type": "boolean", "description": "Aloud (default) or bubble only."},
                   "seconds": {"type": "number", "description": "How long the bubble stays."}}, ["text"]),

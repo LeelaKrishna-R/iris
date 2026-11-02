@@ -39,19 +39,8 @@ def turn(agent: list[str], said: str, speak: bool, timeout: float = 180) -> str:
         reply = "The agent didn't answer in time."
     except OSError as e:
         reply = f"I couldn't start the agent: {e.strerror}."
-    if speak and _on_call():
-        speak = False                                # the reply in her bubble: never aloud over a call
-    m.t_say({"text": reply[:600], "speak": speak})
+    m.t_say({"text": reply[:600], "speak": speak})       # her bubble while you're on a call (iris_mcp.t_say)
     return reply
-
-
-def _on_call() -> bool:
-    """Whether you're on a call now (iris_mcp.on_call over her eyes); False when she can't tell."""
-    try:
-        seen = m.call("/eyes/now", method="GET", timeout=5)
-    except m.IrisUnreachable:
-        return False
-    return bool(seen.get("ok")) and m.on_call(seen) is not None
 
 
 def main(argv: list[str] | None = None) -> int:

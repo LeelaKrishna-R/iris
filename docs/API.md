@@ -29,7 +29,13 @@ python3 agents/iris_cli.py react giggle                  # one of her animations
 python3 agents/iris_cli.py animations                    # lists them
 python3 agents/iris_cli.py come other_screen             # cursor (default) or other_screen
 python3 agents/iris_cli.py listen 10                     # prints what's said to her by name next, up to 25 s
+python3 agents/iris_cli.py busy                          # exit 0 if you're on a call, 1 if not
 ```
+
+`busy` reads her eyes (`GET /eyes/now`): a meeting's own window anywhere on screen, or FaceTime, Zoom, Teams, Webex,
+Discord, Slack, WhatsApp, Signal, Telegram or Skype while another app has the mic. Discord open for text isn't a call.
+So `python3 agents/iris_cli.py busy || python3 agents/iris_cli.py say "Build finished"` stays quiet during a call.
+MCP agents get the same check as `iris_busy`.
 
 What she answered goes to stdout; a refusal or an error goes to stderr. Exit status: `0` done, `1` Iris said no
 (the reason is printed: no such animation, nothing to say), `2` Iris isn't running or can't be reached, `64` the

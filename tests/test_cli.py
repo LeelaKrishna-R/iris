@@ -73,3 +73,16 @@ def test_without_macos_say_she_shows_it_instead(iris, monkeypatch):
         raise FileNotFoundError(cmd[0])
     monkeypatch.setattr(iris_mcp.subprocess, "run", run)
     assert iris_cli.run(["say", "Build", "finished"]) == (0, "Iris showed it in her bubble.")
+
+
+def test_busy_only_on_a_call(iris, monkeypatch):
+    seen = {"ok": True, "front_app": "Code", "front_title": "main.py",
+            "windows": [{"app": "Discord", "title": "#general - Discord"}], "mic_others": False}
+    monkeypatch.setattr(iris_mcp, "call", lambda path, payload=None, method="POST", timeout=10: dict(seen))
+    assert iris_cli.run(["busy"]) == (1, "Not on a call.")          # Discord open for text
+    seen["mic_others"] = True
+    assert iris_cli.run(["busy"]) == (0, "On a call: Discord.")     # someone holds the mic with Discord open
+    seen.update(windows=[{"app": "Safari", "title": "Meet - abc-defg-hij"}], mic_others=None)
+    assert iris_cli.run(["busy"]) == (0, "On a call: Google Meet.")  # a meeting's own window counts by itself
+    seen.update(ok=False, reason="paused")
+    assert iris_cli.run(["busy"]) == (1, "Iris can't tell: paused.")

@@ -181,6 +181,38 @@ def t_screen(args: dict) -> str:
     return "\n".join(parts)
 
 
+# A call: a meeting's own window anywhere on screen, or a call app with the mic in use by another app. Discord,
+# Slack and the like are open all day for text, so those count only while something other than Iris holds the mic.
+CALL_APPS = ("facetime", "zoom.us", "microsoft teams", "webex")
+VOICE_APPS = ("discord", "slack", "whatsapp", "signal", "telegram", "skype")
+LIVE_TITLES = ("zoom meeting", "zoom webinar", "meet.google", "google meet", "meet - ", "huddle")
+CALL_NAMES = (("facetime", "FaceTime"), ("zoom", "Zoom"), ("teams", "Teams"), ("webex", "Webex"),
+              ("meet", "Google Meet"), ("huddle", "a Slack huddle"), ("discord", "Discord"), ("slack", "Slack"),
+              ("whatsapp", "WhatsApp"), ("signal", "Signal"), ("telegram", "Telegram"), ("skype", "Skype"))
+
+
+def on_call(seen: dict) -> str | None:
+    """The call /eyes/now shows ("Zoom", "Discord"), or None."""
+    mic = seen.get("mic_others")
+    if mic is False:
+        return None
+    wins = [(seen.get("front_app"), seen.get("front_title"))] + [
+        (w.get("app"), w.get("title")) for w in seen.get("windows") or [] if isinstance(w, dict)]
+    for app, title in wins:
+        a, t = str(app or "").lower(), str(title or "").lower()
+        if any(c in t for c in LIVE_TITLES) or (mic is True and any(c in a for c in CALL_APPS + VOICE_APPS)):
+            return next((name for key, name in CALL_NAMES if key in a or key in t), str(app or "a call"))
+    return None
+
+
+def t_busy(args: dict) -> str:
+    r = call("/eyes/now", method="GET", timeout=5)
+    if not r.get("ok"):
+        return f"Iris can't tell: {r.get('reason') or 'no reason given'}."
+    who = on_call(r)
+    return f"On a call: {who}." if who else "Not on a call."
+
+
 TOOLS = {
     "iris_say": (t_say, "Make Iris say something to the person at the Mac, aloud with her lips moving (falls back "
                         "to her speech bubble when no voice is available). Keep it short and natural.",
@@ -191,6 +223,9 @@ TOOLS = {
                             "Use iris_animations for the names.",
                    {"animation": {"type": "string"}, "seconds": {"type": "number"}}, ["animation"]),
     "iris_animations": (t_animations, "List Iris's animations by name.", {}, []),
+    "iris_busy": (t_busy, "Whether the person is on a call (a meeting window, or Discord, Slack, Zoom and the like with "
+                          "the mic in use). Check it before iris_say: use her bubble instead of speaking over a call.",
+                  {}, []),
     "iris_notice": (t_notice, "Have Iris glance up at something that just happened (a task finished, a test failed, "
                               "an approval is waiting): a look and a small '!', no words.",
                     {"what": {"type": "string", "description": "A few words on what happened."}}, ["what"]),

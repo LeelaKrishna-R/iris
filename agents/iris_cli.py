@@ -6,6 +6,7 @@
     iris react giggle                  one of her animations (`iris animations` lists them)
     iris come [cursor|other_screen]    she comes over
     iris listen [seconds]              prints what's said to her by name next (up to 25 s), or nothing
+    iris busy                          exit 0 if you're on a call (Zoom, Meet, Discord with the mic in use, …), else 1
 
 Exit status: 0 done, 1 Iris said no (the reason is printed), 2 Iris isn't reachable, 64 usage.
 """
@@ -41,6 +42,9 @@ def run(argv: list[str]) -> tuple[int, str]:
         if cmd == "come":
             out = m.t_come({"to": rest[0] if rest else "cursor"})
             return (0 if out.startswith("Iris is on her way") else 1), out
+        if cmd == "busy":
+            out = m.t_busy({})
+            return (0 if out.startswith("On a call") else 1), out
         if cmd == "listen":
             out = m.t_listen({"seconds": float(rest[0]) if rest else 20})
             return 0, out

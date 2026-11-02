@@ -28,6 +28,7 @@ Agents connect in several ways:
 | **Claude Code hook** (`agents/claude_code_hook.py`): she glances up when Claude finishes, comes over when it needs you | Claude Code | shipped |
 | **Codex notify** (`agents/codex_notify.py`): she glances up when Codex finishes a turn | OpenAI Codex CLI | shipped |
 | **Cursor hook** (`agents/cursor_hook.py`): she glances up when Cursor's agent finishes (or stops on an error) | Cursor | shipped |
+| **Shell hook** (`agents/shell_hook.zsh`): source it in `~/.zshrc` and she says when a command that ran 30 s or more finishes or fails (by its name only), or just glances up while you're on a call | zsh | shipped |
 | **`iris` CLI** (`agents/iris_cli.py`): `iris say …`, `iris notice …`, `iris react giggle`, `iris listen` | scripts, custom agents | shipped |
 | **HTTP API** (`docs/API.md`): every endpoint, signing, and why her hands stay out of agents | custom agents | documented |
 

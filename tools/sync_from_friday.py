@@ -97,6 +97,14 @@ def _scrub_note(body: str) -> str:
     return re.sub(r"^[,;:.]\s*", "", new).strip()
 
 
+def upstream_name_shown(ln: str) -> bool:
+    """"Friday" inside a string literal of a Swift line (comments aside): something she shows, says or journals that
+    would name the upstream agent instead of Config.agentName."""
+    at = _comment_at(ln)
+    code = ln if at < 0 else ln[:at]
+    return any(re.search(r"\bFriday\b", lit) for lit in re.findall(r'"(?:[^"\\]|\\.)*"', code))
+
+
 def _comment_at(ln: str) -> int:
     """Where a trailing // comment starts in a line of Swift, outside any string; -1 if none."""
     quoted = False
@@ -218,6 +226,17 @@ def sync(src: Path, dst: Path) -> None:
           ('(wakeWhy.isEmpty ? "Friday asked" : wakeWhy)', '(wakeWhy.isEmpty ? "\\(Config.agentName) asked" : wakeWhy)'),
           (': "woke: Friday asked"', ': "woke: \\(Config.agentName) asked"'),
           ("/// `asked`: Core's cause when Friday asked for it", "/// `asked`: your agent's cause when it asked for it"),
+          ('why: "he allowed Friday\'s request: "', 'why: "he allowed \\(Config.agentName)\'s request: "'),
+          (r"    // [^\n]*his Nap \(the app's Iris panel, a 60 s hold\) lasted 7 s[^\n]*\n",
+           "    // a nap asked for (the agent's 60 s hold) used to end at the first touch of the mouse. A nap he\n", True),
+          (r"    // [^\n]*poses\.jsonl 00:00-01:30: [^\n]*\n    // and Code: [^\n]*\n",
+           "    // switching between apps, each with its text field somewhere else, sent her \"out of his way\" every\n"
+           "    // minute or two: her clear spot for one field was in the way of the next.\n", True),
+          ('wakeWhy = "he asked Friday something"', 'wakeWhy = "he asked \\(Config.agentName) something"'),
+          ('wakeWhy = "Friday had something to tell him"', 'wakeWhy = "\\(Config.agentName) had something to tell him"'),
+          ('"Friday asked: " + asked', '"\\(Config.agentName) asked: " + asked'),
+          (r"        // [^\n]*her journal said \"woke: Friday asked\" for this[^\n]*\n",
+           "        // what woke her is said in her journal (without it, \"woke: <agent> asked\" was all it said)\n", True),
           ('actWhy = own ? why : asked.isEmpty ? "Friday asked for it" : "Friday: " + asked',
            'actWhy = own ? why : asked.isEmpty ? "\\(Config.agentName) asked for it" : "\\(Config.agentName): " + asked'),
           ('m.addItem(withTitle: "Quit Iris"',
@@ -241,11 +260,20 @@ def sync(src: Path, dst: Path) -> None:
            "/// \"Paid\"). A click waits under its own token in /iris/day_state until the agent confirms it acted\n"
            "/// (/iris/day_ack). The card never takes your typing and stays out of screen shares and recordings; x hides\n"
            "/// it until you pick Show My Day in her menu.\n", True))
+    _edit(s_dst / "Sim.swift",
+          (r"            // [^\n]*journaled \"woke: Friday asked\"[^\n]*\n",
+           "            // a wake with no cause of its own, journaled as the agent's ask\n", True),
+          ('(info["why"] as? String) == "woke: Friday asked"', '(info["why"] as? String) == "woke: \\(Config.agentName) asked"'))
     for f in glob.glob(str(s_dst / "*.swift")):
         p = Path(f)
         if p.name in PUBLIC_ONLY:
             continue
         p.write_text(scrub_comments(public_text(p.read_text(encoding="utf-8"))), encoding="utf-8")
+    named = [f"{Path(f).name}:{i + 1}" for f in glob.glob(str(s_dst / "*.swift")) if Path(f).name not in PUBLIC_ONLY
+             for i, ln in enumerate(Path(f).read_text(encoding="utf-8").split("\n")) if upstream_name_shown(ln)]
+    if named:
+        raise SyncError("the upstream agent's name in text she shows or logs (use Config.agentName): "
+                        + ", ".join(named[:10]))
     left = [f"{Path(f).name}:{i + 1}" for f in glob.glob(str(s_dst / "*.swift"))
             for i, ln in enumerate(Path(f).read_text(encoding="utf-8").split("\n"))
             if re.search(private_words(), ln, re.I)]

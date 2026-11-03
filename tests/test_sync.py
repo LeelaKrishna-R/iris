@@ -6,7 +6,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 
-from sync_from_friday import public_text, scrub_comments  # noqa: E402
+from sync_from_friday import public_text, scrub_comments, upstream_name_shown  # noqa: E402
 
 
 def test_trailing_comment_notes_go():
@@ -71,3 +71,15 @@ def test_the_screenshot_folder_is_irises_in_comments_too():
     out = public_text(src)
     assert "Friday Screenshots" not in out and out.count("Iris Screenshots") == 3
     assert "defaults write app.iris.companion" in out
+
+
+def test_the_upstream_name_in_a_string_she_shows_is_caught():
+    assert upstream_name_shown('        perform("bow", seconds: 2.4, own: true, why: "he allowed Friday\'s request: ")')
+    assert upstream_name_shown('        wakeWhy = "Friday had something to tell him"')
+
+
+def test_the_name_in_a_comment_or_through_config_is_fine():
+    assert not upstream_name_shown('        x = 1   // "woke: Friday asked" was all it said')
+    assert not upstream_name_shown('        wakeWhy = "\\(Config.agentName) had something to tell him"')
+    assert not upstream_name_shown('    /// Friday\'s answer to him taking a while')
+    assert not upstream_name_shown('        let day = "Fridays"')

@@ -184,6 +184,8 @@ enum Sim {
                 if (info["air"] as? Bool) == true { extra["touch_in_air", default: 0] += 1 }   // a touch clip begun mid-fall
             }
             if kind == "come", let x = info["x"] as? Double { extra["comes", default: 0] += 1; coming = (t, x) }   // he called her over
+            // a wake with no cause of its own, journaled as the agent's ask
+            if kind == "woke", (info["why"] as? String) == "woke: \(Config.agentName) asked" { extra["woke_friday_asked", default: 0] += 1 }
             if kind == "notified" { extra[(info["busy"] as? Bool) == true ? "notices_busy" : "notices_cued", default: 0] += 1 }
             if kind == "act", let what = info["what"] as? String {
                 acts.append((t, what))

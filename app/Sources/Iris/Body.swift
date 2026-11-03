@@ -404,7 +404,8 @@ final class Body {
         let greets = k > 0.25 && away >= Body.trulyAway
             && (away >= Body.longAway || world.now.timeIntervalSince(lastWaveAt) >= Body.waveEvery)
         trace?("boss_back", ["k": k, "was_sleeping": sleeping, "away": away, "greets": greets])
-        if sleeping { sleeping = false; wideT = 0.6; sit.target = 1 }       // waking, she sits up (standing comes after)
+        // what woke her is said in her journal (without it, "woke: <agent> asked" was all it said)
+        if sleeping { wakeWhy = "he came back to the Mac"; sleeping = false; wideT = 0.6; sit.target = 1 }
         guard k > 0.25 else { return }
         happyT = 1.6
         lookToward(world.mouse, snap: 0.6)               // a look at where his hand came back
@@ -436,7 +437,7 @@ final class Body {
         soul.reward(1)
         notice("he petted you")
         soul.feelPlace(x + Body.size.width / 2, y, 0.3)
-        if sleeping { sleeping = false; sit.target = 1; wideT = 0.3 }
+        if sleeping { wakeWhy = "he petted her"; sleeping = false; sit.target = 1; wideT = 0.3 }
         happyT = 1.4; giggleT = 0.9
         show("♥")
         blush.kick(4)
@@ -457,7 +458,7 @@ final class Body {
     /// A double-click on her: a polite bow, coming up smiling (the first click was a pet already).
     func doublePetted() {
         notice("he double-clicked you")
-        if sleeping { sleeping = false; sit.target = 1 }
+        if sleeping { wakeWhy = "he double-clicked her"; sleeping = false; sit.target = 1 }
         happyT = 2.2; giggleT = 0
         petTimes.removeAll()
         if hovering { hoverSince = world.now }
@@ -579,6 +580,7 @@ final class Body {
         let s = soul
         let now = world.now
         if sleeping {
+            if now < napUntil { return }            // the nap he asked for (hold "sleep")
             if idle < 3 { wake("his hands on the Mac") }
             // something happening on a screen wakes her too, him there or not —
             // when it keeps happening; a few seconds of change is a flicker. poses.jsonl
@@ -956,10 +958,12 @@ final class Body {
         var bad = 0.0
         if let caret = focusCaret {
             let zone = caret.insetBy(dx: -170, dy: -90)
+            noteWay(zone)
             if me.intersects(zone) { bad += 1.0 }
         }
         if let field = focusField {
             let z = field.insetBy(dx: -20, dy: -20)
+            noteWay(z)
             if me.intersects(z) {
                 let i = me.intersection(z)
                 bad += 0.8 * Double(i.width * i.height / (me.width * me.height))
@@ -971,7 +975,16 @@ final class Body {
 
     private func inTheWayAt(_ px: CGFloat) -> Bool {
         let y = screenAt(px + Body.size.width / 2).visibleFrame.minY
-        return inTheWay(CGRect(x: px, y: y, width: Body.size.width, height: Body.size.height)) > 0.3
+        let me = CGRect(x: px, y: y, width: Body.size.width, height: Body.size.height)
+        return inTheWay(me) > 0.3 || recentWays.contains { $0.0.intersects(me) }
+    }
+
+    /// A text field or caret zone he used, kept 10 min (the same spot is noted once).
+    private func noteWay(_ zone: CGRect) {
+        let now = world.now
+        recentWays.removeAll { now.timeIntervalSince($0.1) > 600 || $0.0 == zone }
+        recentWays.append((zone, now))
+        if recentWays.count > 24 { recentWays.removeFirst(recentWays.count - 24) }
     }
 
     private func fallAsleep(_ why: String) {
@@ -1003,7 +1016,10 @@ final class Body {
         lastTick = now
         clock += dt
         // when she last woke (by any path), and how long his screens have kept changing or been still
-        if wasAsleep && !sleeping { wokeAt = now; restWhy = "woke: " + (wakeWhy.isEmpty ? "\(Config.agentName) asked" : wakeWhy); wakeWhy = "" }
+        if wasAsleep && !sleeping {
+            wokeAt = now; restWhy = "woke: " + (wakeWhy.isEmpty ? "\(Config.agentName) asked" : wakeWhy); wakeWhy = ""
+            trace?("woke", ["why": restWhy])
+        }
         wasAsleep = sleeping
         if screenMoving { screenMovedAt = now; if screenMovingSince == nil { screenMovingSince = now } } else { screenMovingSince = nil }
         // he stopped after a real stretch of typing (20 s or more, quiet 3 s): she nods, once per stretch
@@ -1162,7 +1178,7 @@ final class Body {
     func approvalAnswered(_ choice: String, what: String) {
         trace?("approval_answered", ["choice": choice, "asleep": sleeping])
         guard choice == "approve", !sleeping, !held, !listening, vy == 0 else { return }
-        perform("bow", seconds: 2.4, own: true, why: "he allowed Friday's request: " + String(what.prefix(60)))
+        perform("bow", seconds: 2.4, own: true, why: "he allowed \(Config.agentName)'s request: " + String(what.prefix(60)))
     }
 
     private var lookUntil = Date.distantPast
@@ -1809,6 +1825,13 @@ final class Body {
     private var nextSaccade = world.now
     private var lastFaceX: CGFloat = 0
     private var sleptAt = world.now
+    // a nap asked for (the agent's 60 s hold) used to end at the first touch of the mouse. A nap he
+    // asked for holds until then; only his touch on her (touched) or Wake ends it sooner.
+    private var napUntil = Date.distantPast
+    // switching between apps, each with its text field somewhere else, sent her "out of his way" every
+    // minute or two: her clear spot for one field was in the way of the next.
+    // Every field he used in the last 10 min counts when she picks where to be (inTheWayAt).
+    private var recentWays: [(CGRect, Date)] = []
     private var performing = ""                 // a library animation (Resources/anim/<id>)
     private var performUntil = Date.distantPast
     private var performMoves = false
@@ -2074,7 +2097,7 @@ final class Body {
             // woken by her name she sits up and listens sitting (standing straight out of
             // sleep flashed a sitting frame for 0.08 s on the way up, the sim's 40_talking_to_her)
             listenSeated = sleeping
-            if sleeping { sleeping = false; wideT = 0.4 }
+            if sleeping { wakeWhy = "he said her name"; sleeping = false; wideT = 0.4 }
             targetX = nil
             show("!")
         } else {
@@ -2090,7 +2113,7 @@ final class Body {
     func awaitingAnswer() {
         awaitingUntil = world.now.addingTimeInterval(8)
         awaitingSince = world.now
-        if sleeping { sleeping = false; wideT = 0.4 }
+        if sleeping { wakeWhy = "he asked \(Config.agentName) something"; sleeping = false; wideT = 0.4 }
         targetX = nil
         perform("think", seconds: 8, own: true, why: "waiting for \(Config.agentName)'s answer")
         trace?("awaiting", ["seconds": 8.0])
@@ -2123,7 +2146,7 @@ final class Body {
     }
 
     private func turnToHim() {
-        if sleeping { sleeping = false; sit.target = 1; wideT = 0.3 }
+        if sleeping { wakeWhy = "\(Config.agentName) had something to tell him"; sleeping = false; sit.target = 1; wideT = 0.3 }
         lookAtHim()
         lookUntil = .distantPast            // she keeps looking at him while she talks (attend)
         turn.kick(turn.target * 6)
@@ -2198,7 +2221,7 @@ final class Body {
         touch("shoo")
         soul.reward(-1)
         // QA: "go away" while she napped slid her 300 pt along the floor still lying asleep
-        if sleeping { sleeping = false; sit.target = 0 }   // she gets up first, then walks off
+        if sleeping { wakeWhy = "he shooed her"; sleeping = false; sit.target = 0 }   // she gets up first, then walks off
         poutT = 2
         // she walks off sadly ("sad_walk", "sad, ignored") and sulks where she stops ("sulk", in
         // bodyClips); which way is away from his cursor, or toward the room when that side has none (it was
@@ -2276,6 +2299,7 @@ final class Body {
     /// a pose — "sit", "work" (her laptop), "wave", "sleep", "carry" (as if held by the mouse).
     func hold(_ seconds: Double, talk: Bool, pose: String = "") {
         targetX = nil
+        napUntil = .distantPast                 // Wake (a hold of its own) ends a nap he asked for
         waveT = 0; held = false                 // a hold starts clean: no wave or carry left from the last one
         performing = ""
         performMoves = false
@@ -2290,6 +2314,7 @@ final class Body {
         case "work": workingAlong = true; sit.target = 1
         case "wave": waveT = CGFloat(seconds); waveWhy = "\(Config.agentName) asked her to wave"
         case "sleep": fallAsleep("\(Config.agentName) asked her to nap"); sleptAt = world.now.addingTimeInterval(-200)
+            napUntil = world.now.addingTimeInterval(seconds)
         case "carry":
             held = true
             DispatchQueue.main.asyncAfter(deadline: .now() + seconds) { [weak self] in self?.held = false }
@@ -2337,6 +2362,7 @@ final class Body {
         performing = id
         performUntil = world.now.addingTimeInterval(max(1.5, min(20, seconds)))
         performMoves = e["moves"] == "yes"      // only clips whose feet really move travel (catalog.json)
+        if sleeping && wakeWhy.isEmpty { wakeWhy = !asked.isEmpty ? "\(Config.agentName) asked: " + asked : !why.isEmpty ? why : "" }
         sleeping = false
         if e["rig"] != "yes" { sit.target = 0 }   // her rig's little actions work sitting too
         if performMoves {

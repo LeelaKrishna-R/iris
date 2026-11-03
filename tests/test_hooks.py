@@ -1,4 +1,4 @@
-"""The agent hooks (Claude Code, Codex, Cursor), against the same signed fake Iris as the MCP tests: what each
+"""The agent hooks (Claude Code, Codex, Cursor, Gemini CLI), against the same signed fake Iris as the MCP tests: what each
 event asks of her, and that nothing about Iris ever gets in the agent's way (exit 0, nothing on stdout)."""
 import io
 import json
@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "agents"))
 import claude_code_hook  # noqa: E402
 import codex_notify  # noqa: E402
 import cursor_hook  # noqa: E402
+import gemini_hook  # noqa: E402
 import iris_mcp  # noqa: E402
 from test_mcp import iris  # noqa: E402,F401  (the fixture)
 
@@ -72,6 +73,25 @@ def test_cursor_aborted_or_another_hook_asks_nothing(iris):
     assert iris == []
 
 
+def test_gemini_finishing_is_a_glance_and_its_stdout_is_no_decision(iris, monkeypatch, capsys):
+    stdin(monkeypatch, json.dumps({"hook_event_name": "AfterAgent", "prompt": "fix it", "prompt_response": "done"}))
+    assert gemini_hook.main() == 0
+    assert iris == [("POST", "/iris/notice", {"title": "Gemini finished"})]
+    assert json.loads(capsys.readouterr().out) == {}
+
+
+def test_gemini_asking_permission_brings_her_over(iris):
+    assert gemini_hook.react({"hook_event_name": "Notification", "notification_type": "ToolPermission",
+                              "message": "Allow   run_shell_command?", "details": {}}) == "needs_you"
+    assert iris == [("POST", "/iris/come", {"to": "cursor"}),
+                    ("POST", "/mouth/show", {"text": "Allow run_shell_command?", "seconds": 8})]
+
+
+def test_other_gemini_events_ask_nothing(iris):
+    assert gemini_hook.react({"hook_event_name": "BeforeTool"}) == ""
+    assert iris == []
+
+
 def _closed_port() -> int:
     s = socket.socket()
     s.bind(("127.0.0.1", 0))
@@ -80,20 +100,20 @@ def _closed_port() -> int:
     return port
 
 
-@pytest.mark.parametrize("hook", [claude_code_hook, cursor_hook])
+@pytest.mark.parametrize("hook", [claude_code_hook, cursor_hook, gemini_hook])
 def test_iris_not_running_never_blocks_the_agent(hook, tmp_path, monkeypatch, capsys):
     key = tmp_path / "link.key"
     key.write_bytes(b"k" * 32)
     monkeypatch.setattr(iris_mcp, "URL", f"http://127.0.0.1:{_closed_port()}")
     monkeypatch.setattr(iris_mcp, "KEY_FILE", key)
-    stdin(monkeypatch, json.dumps({"hook_event_name": "Stop", "status": "completed"} if hook is claude_code_hook
-                                  else {"hook_event_name": "stop", "status": "completed"}))
+    event = {claude_code_hook: "Stop", cursor_hook: "stop", gemini_hook: "AfterAgent"}[hook]
+    stdin(monkeypatch, json.dumps({"hook_event_name": event, "status": "completed"}))
     assert hook.main() == 0
     out = capsys.readouterr()
-    assert out.out == "" and out.err.startswith("iris: ")
+    assert out.out == ("{}\n" if hook is gemini_hook else "") and out.err.startswith("iris: ")
 
 
-@pytest.mark.parametrize("hook", [claude_code_hook, cursor_hook])
+@pytest.mark.parametrize("hook", [claude_code_hook, cursor_hook, gemini_hook])
 def test_unreadable_input_is_ignored(hook, iris, monkeypatch):
     stdin(monkeypatch, "not json at all")
     assert hook.main() == 0
@@ -102,7 +122,7 @@ def test_unreadable_input_is_ignored(hook, iris, monkeypatch):
 
 @pytest.mark.parametrize("text", ["[1, 2]", '"Stop"', "null", "7"])
 def test_json_that_isnt_an_event_is_ignored(iris, monkeypatch, text):
-    for hook in (claude_code_hook, cursor_hook):
+    for hook in (claude_code_hook, cursor_hook, gemini_hook):
         stdin(monkeypatch, text)
         assert hook.main() == 0
     assert codex_notify.main(["codex_notify.py", text]) == 0

@@ -24,10 +24,11 @@ Agents connect in several ways:
 
 | Way | For | Status |
 |---|---|---|
-| **MCP server** (`agents/iris_mcp.py`) | Claude Code, Codex, Cursor, OpenClaw and any MCP client | shipped |
+| **MCP server** (`agents/iris_mcp.py`) | Claude Code, Codex, Cursor, Gemini CLI, OpenClaw and any MCP client | shipped |
 | **Claude Code hook** (`agents/claude_code_hook.py`): she glances up when Claude finishes, comes over when it needs you | Claude Code | shipped |
 | **Codex notify** (`agents/codex_notify.py`): she glances up when Codex finishes a turn | OpenAI Codex CLI | shipped |
 | **Cursor hook** (`agents/cursor_hook.py`): she glances up when Cursor's agent finishes (or stops on an error) | Cursor | shipped |
+| **Gemini CLI hook** (`agents/gemini_hook.py`): she glances up when Gemini finishes a turn, comes over when it asks permission for a tool | Gemini CLI | shipped |
 | **Shell hook** (`agents/shell_hook.zsh`): source it in `~/.zshrc` and she says when a command that ran 30 s or more finishes or fails (by its name only), or just glances up while you're on a call | zsh | shipped |
 | **`iris` CLI** (`agents/iris_cli.py`): `iris say …`, `iris notice …`, `iris react giggle`, `iris listen` | scripts, custom agents | shipped |
 | **HTTP API** (`docs/API.md`): every endpoint, signing, and why her hands stay out of agents | custom agents | documented |
@@ -65,6 +66,11 @@ args = ["/path/to/iris/agents/iris_mcp.py"]
 {"mcpServers": {"iris": {"command": "python3", "args": ["/path/to/iris/agents/iris_mcp.py"]}}}
 ```
 
+```json
+// Gemini CLI: ~/.gemini/settings.json
+{"mcpServers": {"iris": {"command": "python3", "args": ["/path/to/iris/agents/iris_mcp.py"]}}}
+```
+
 ```json5
 // OpenClaw: its config, under mcp.servers (OpenClaw's tool policy still applies to her tools)
 mcp: { servers: { iris: { command: "python3", args: ["/path/to/iris/agents/iris_mcp.py"] } } }
@@ -85,7 +91,8 @@ python3 agents/voice_loop.py -- codex exec     # or Codex, or any command that t
 2. **The Iris app itself** (`app/`): her body, animations and senses, with no assumptions about who you are.
    In progress: it builds, and her wake words, agent name, port and data folder are settings. Her original art
    stays private; [docs/ART.md](docs/ART.md) is how it was made, so you can make your own set.
-3. **Agent hooks**: Claude Code, Codex and Cursor shipped (`agents/claude_code_hook.py`, `agents/codex_notify.py`, `agents/cursor_hook.py`).
+3. **Agent hooks**: Claude Code, Codex, Cursor and Gemini CLI shipped (`agents/claude_code_hook.py`, `agents/codex_notify.py`,
+   `agents/cursor_hook.py`, `agents/gemini_hook.py`).
 4. **`iris` CLI** and **HTTP API docs** (`docs/API.md`): shipped.
 5. **First-run welcome**: shipped. It explains each permission (with buttons that open the Screen Recording and Microphone panes), and
    "Welcome…" in her menu shows it again. What she does with each one refused is in [docs/PERMISSIONS.md](docs/PERMISSIONS.md).

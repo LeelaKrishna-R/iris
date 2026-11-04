@@ -2220,6 +2220,9 @@ final class Body {
     func shooed() {
         touch("shoo")
         soul.reward(-1)
+        // where he shooed her from is a spot she learns to keep off, as where he picked her up from (only a shoo
+        // within 20 s of one of her reactions taught her anything, so she kept going back to the same place)
+        soul.feelPlace(x + Body.size.width / 2, y, -0.45)
         // QA: "go away" while she napped slid her 300 pt along the floor still lying asleep
         if sleeping { wakeWhy = "he shooed her"; sleeping = false; sit.target = 0 }   // she gets up first, then walks off
         poutT = 2

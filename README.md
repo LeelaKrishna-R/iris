@@ -29,6 +29,7 @@ Agents connect in several ways:
 | **Codex notify** (`agents/codex_notify.py`): she glances up when Codex finishes a turn | OpenAI Codex CLI | shipped |
 | **Cursor hook** (`agents/cursor_hook.py`): she glances up when Cursor's agent finishes (or stops on an error) | Cursor | shipped |
 | **Gemini CLI hook** (`agents/gemini_hook.py`): she glances up when Gemini finishes a turn, comes over when it asks permission for a tool | Gemini CLI | shipped |
+| **Aider** (its own `--notifications-command`, no script): she glances up when Aider is done and waiting for you | Aider | documented |
 | **Shell hook** (`agents/shell_hook.zsh`): source it in `~/.zshrc` and she says when a command that ran 30 s or more finishes or fails (by its name only), or just glances up while you're on a call | zsh | shipped |
 | **`iris` CLI** (`agents/iris_cli.py`): `iris say …`, `iris notice …`, `iris react giggle`, `iris listen` | scripts, custom agents | shipped |
 | **HTTP API** (`docs/API.md`): every endpoint, signing, and why her hands stay out of agents | custom agents | documented |
@@ -78,6 +79,19 @@ mcp: { servers: { iris: { command: "python3", args: ["/path/to/iris/agents/iris_
 ```
 
 The server is one Python file with no dependencies beyond the standard library.
+
+Aider runs a command of your choice when it finishes and waits for you, so the `iris` CLI can be that command:
+
+```sh
+aider --notifications --notifications-command "python3 /path/to/iris/agents/iris_cli.py notice 'Aider is waiting'"
+```
+
+or in `~/.aider.conf.yml`:
+
+```yaml
+notifications: true
+notifications_command: "python3 /path/to/iris/agents/iris_cli.py notice 'Aider is waiting'"
+```
 
 ### Talk to your agent through her
 

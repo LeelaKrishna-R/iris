@@ -30,7 +30,7 @@ Agents connect in several ways:
 | **Cursor hook** (`agents/cursor_hook.py`): she glances up when Cursor's agent finishes (or stops on an error) | Cursor | shipped |
 | **Gemini CLI hook** (`agents/gemini_hook.py`): she glances up when Gemini finishes a turn, comes over when it asks permission for a tool | Gemini CLI | shipped |
 | **Aider** (its own `--notifications-command`, no script): she glances up when Aider is done and waiting for you | Aider | documented |
-| **Shell hook** (`agents/shell_hook.zsh`): source it in `~/.zshrc` and she says when a command that ran 30 s or more finishes or fails (by its name only), or just glances up while you're on a call | zsh | shipped |
+| **Shell hook** (`agents/shell_hook.zsh`, or `agents/shell_hook.bash` for bash): source it in `~/.zshrc` (or `~/.bashrc`) and she says when a command that ran 30 s or more finishes or fails (by its name only), or just glances up while you're on a call | zsh, bash | shipped |
 | **`iris` CLI** (`agents/iris_cli.py`): `iris say …`, `iris notice …`, `iris react giggle`, `iris listen` | scripts, custom agents | shipped |
 | **HTTP API** (`docs/API.md`): every endpoint, signing, and why her hands stay out of agents | custom agents | documented |
 

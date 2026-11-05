@@ -35,17 +35,27 @@ final class ApprovalCard: NSObject {
         showingText = text
         let width: CGFloat = 320
         let body = NSTextField(wrappingLabelWithString: text)
-        body.font = .systemFont(ofSize: 13)
+        body.font = .preferredFont(forTextStyle: .body)
         body.textColor = .labelColor
         body.preferredMaxLayoutWidth = width - 28
-        let head = NSTextField(labelWithString: title)
-        head.font = .systemFont(ofSize: 13, weight: .semibold)
+        // accessibility pass: the title wraps too (a long one was cut off on one line)
+        let head = NSTextField(wrappingLabelWithString: title)
+        head.font = .systemFont(ofSize: NSFont.preferredFont(forTextStyle: .body).pointSize, weight: .semibold)
         head.textColor = .secondaryLabelColor
+        head.preferredMaxLayoutWidth = width - 28
         let deny = NSButton(title: "Deny", target: self, action: #selector(denied))
         let allow = NSButton(title: "Allow", target: self, action: #selector(allowed))
-        allow.keyEquivalent = ""                     // never answered by a key he happens to press
+        // Allow is never a key he might press while typing elsewhere: the card doesn't take focus when it shows,
+        // and Allow has no key at all. Once he clicks into the card, Tab moves between the buttons, Space presses
+        // the focused one, and Esc denies (nothing runs).
+        allow.keyEquivalent = ""
+        deny.keyEquivalent = "\u{1b}"
         allow.bezelColor = .controlAccentColor
-        for b in [deny, allow] { b.bezelStyle = .rounded; b.controlSize = .regular }
+        for b in [deny, allow] { b.bezelStyle = .rounded; b.controlSize = .large }
+        deny.setAccessibilityLabel("Deny: \(text)")
+        allow.setAccessibilityLabel("Allow: \(text)")
+        deny.nextKeyView = allow
+        allow.nextKeyView = deny
         let buttons = NSStackView(views: [NSView(), deny, allow])
         buttons.orientation = .horizontal
         buttons.spacing = 8
@@ -70,8 +80,8 @@ final class ApprovalCard: NSObject {
         ])
         fx.layoutSubtreeIfNeeded()
         let size = NSSize(width: width, height: max(96, fx.fittingSize.height))
-        let p = NSPanel(contentRect: NSRect(origin: .zero, size: size),
-                        styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        let p = ApprovalPanel(contentRect: NSRect(origin: .zero, size: size),
+                              styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         p.isOpaque = false
         p.backgroundColor = .clear
         p.hasShadow = true
@@ -80,8 +90,12 @@ final class ApprovalCard: NSObject {
         p.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         p.contentView = fx
         p.setFrameOrigin(ApprovalCard.place(size: size, near: near))
-        p.orderFrontRegardless()
+        p.initialFirstResponder = deny
+        p.orderFrontRegardless()                     // shown, never made key: his typing stays where it is
         panel = p
+        NSAccessibility.post(element: fx, notification: .announcementRequested,
+                             userInfo: [.announcement: "\(Config.agentName) asks for your approval: \(text)",
+                                        .priority: NSAccessibilityPriorityLevel.high.rawValue])
         let left = until.map { $0.timeIntervalSinceNow } ?? 600
         closeTimer = Timer.scheduledTimer(withTimeInterval: max(5, min(3600, left)), repeats: false) { [weak self] _ in
             self?.close()
@@ -121,4 +135,10 @@ final class ApprovalCard: NSObject {
         o.y = min(max(o.y, vf.minY + 8), vf.maxY - size.height - 8)
         return o
     }
+}
+
+/// The approval card's panel: shown without taking focus (non-activating), but able to be the key window once he
+/// clicks into it, so its buttons take Tab, Space and Esc (accessibility pass). It never makes itself key.
+final class ApprovalPanel: NSPanel {
+    override var canBecomeKey: Bool { true }
 }

@@ -33,7 +33,8 @@ final class AskBox: NSObject, NSTextFieldDelegate {
         if field == nil {
             let f = NSTextField(frame: NSRect(x: 12, y: 8, width: size.width - 24, height: 28))
             f.placeholderString = "Ask \(Config.agentName)…"
-            f.font = .systemFont(ofSize: 15)
+            f.font = .preferredFont(forTextStyle: .title3)          // the system's text style (15 pt by default)
+            f.setAccessibilityLabel("Ask \(Config.agentName)")
             f.isBordered = false
             f.focusRingType = .none
             f.drawsBackground = false

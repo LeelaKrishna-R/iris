@@ -36,6 +36,10 @@ final class Bubble {
         window.setContentSize(size)
         view.frame = NSRect(origin: .zero, size: size)
         view.text = ""
+        view.spoken = text
+        // accessibility pass: the bubble is drawn, so VoiceOver had nothing to read; it is told her words
+        NSAccessibility.post(element: view, notification: .announcementRequested,
+                             userInfo: [.announcement: "Iris: \(text)", .priority: NSAccessibilityPriorityLevel.medium.rawValue])
         hideAt = Date().addingTimeInterval(seconds + Double(text.count) * 0.03)
         window.alphaValue = 0
         window.orderFrontRegardless()
@@ -137,6 +141,13 @@ final class BubbleView: NSView {
     /// The little sound wave by her name moves while she speaks (0 = still).
     var phase: CGFloat = 0 { didSet { needsDisplay = true } }
     var speaking = false { didSet { needsDisplay = true } }
+    /// Her whole line, for VoiceOver (the drawn text types out a character at a time).
+    var spoken = ""
+
+    override func isAccessibilityElement() -> Bool { true }
+    override func accessibilityRole() -> NSAccessibility.Role? { .staticText }
+    override func accessibilityLabel() -> String? { "Iris" }
+    override func accessibilityValue() -> Any? { spoken }
 
     private static let pad = NSEdgeInsets(top: 10, left: 14, bottom: 13, right: 15)
     private static let header: CGFloat = 16
@@ -160,7 +171,8 @@ final class BubbleView: NSView {
 
     /// The bubble's size for the whole text (so it doesn't grow while typing).
     func fit(_ text: String) -> NSSize {
-        let r = (text as NSString).boundingRect(with: NSSize(width: BubbleView.maxW, height: 400),
+        // no height cap: a long line was cut at 400 pt
+        let r = (text as NSString).boundingRect(with: NSSize(width: BubbleView.maxW, height: .greatestFiniteMagnitude),
                                                 options: [.usesLineFragmentOrigin], attributes: attrs)
         let p = BubbleView.pad
         return NSSize(width: max(96, ceil(r.width) + p.left + p.right),

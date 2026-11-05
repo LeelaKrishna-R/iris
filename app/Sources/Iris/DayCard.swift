@@ -61,7 +61,7 @@ final class DayCard: NSObject {
     private func lines(_ r: Row, width: CGFloat) -> [NSView] {
         let wrap = { (s: String, w: CGFloat) -> NSTextField in
             let t = NSTextField(wrappingLabelWithString: s)
-            t.font = .systemFont(ofSize: 12)
+            t.font = .preferredFont(forTextStyle: .body)            // 13 pt by default (was a fixed 12)
             t.textColor = r.off ? .secondaryLabelColor : .labelColor
             t.preferredMaxLayoutWidth = w
             return t
@@ -70,15 +70,15 @@ final class DayCard: NSObject {
         var out: [NSView] = r.items.map { item in
             guard !item.act.isEmpty, !item.id.isEmpty else { return wrap(item.text, width) }
             let b = NSButton(title: item.act, target: self, action: #selector(clicked(_:)))
-            b.bezelStyle = .inline
-            b.controlSize = .small
-            b.font = .systemFont(ofSize: 11)
+            b.bezelStyle = .rounded
+            b.controlSize = .regular                                // a 22-pt button (an 11-pt inline one was ~16)
             b.toolTip = "\(item.act): \(item.text)"
+            b.setAccessibilityLabel("\(item.act): \(item.text)")      // "Done" alone said nothing of which
             b.setContentHuggingPriority(.required, for: .horizontal)
             b.setContentCompressionResistancePriority(.required, for: .horizontal)
             if acts.contains(where: { $0.id == item.id }) { b.isEnabled = false; b.title = "…" }
             buttons[b] = item.id
-            let line = NSStackView(views: [wrap(item.text, width - 60), NSView(), b])
+            let line = NSStackView(views: [wrap(item.text, width - 76), NSView(), b])
             line.orientation = .horizontal
             line.alignment = .firstBaseline
             line.spacing = 6
@@ -120,16 +120,20 @@ final class DayCard: NSObject {
     var frame: CGRect? { panel?.frame }
 
     private func show(near: CGRect) {
-        let width: CGFloat = 280
+        let width: CGFloat = 300
         let title = NSTextField(labelWithString: "Your day")
-        title.font = .systemFont(ofSize: 13, weight: .semibold)
+        title.font = .preferredFont(forTextStyle: .headline)
+        title.setAccessibilityRole(.staticText)
         let when = NSTextField(labelWithString: at.map { "Updated " + DayCard.clock.string(from: $0) } ?? "")
-        when.font = .systemFont(ofSize: 11)
-        when.textColor = .tertiaryLabelColor
+        when.font = .preferredFont(forTextStyle: .subheadline)
+        when.textColor = .secondaryLabelColor                       // tertiary read too faint on the popover
         let x = NSButton(image: NSImage(systemSymbolName: "xmark", accessibilityDescription: "Hide my day") ?? NSImage(),
                          target: self, action: #selector(dismissed))
         x.isBordered = false
         x.contentTintColor = .secondaryLabelColor
+        x.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([x.widthAnchor.constraint(equalToConstant: 24),
+                                     x.heightAnchor.constraint(equalToConstant: 24)])   // a 24-pt target, not the glyph
         x.toolTip = "Hide (Show My Day in Iris's menu brings it back)"
         let top = NSStackView(views: [title, when, NSView(), x])
         top.orientation = .horizontal
@@ -137,8 +141,9 @@ final class DayCard: NSObject {
         var views: [NSView] = [top]
         buttons = [:]
         for r in rows {
-            let head = NSTextField(labelWithString: r.head.uppercased())
-            head.font = .systemFont(ofSize: 10, weight: .semibold)
+            // sentence case, the style's own size (DESIGN.md: never small caps); was 10-pt capitals
+            let head = NSTextField(labelWithString: r.head)
+            head.font = .systemFont(ofSize: NSFont.preferredFont(forTextStyle: .subheadline).pointSize, weight: .semibold)
             head.textColor = .secondaryLabelColor
             let one = NSStackView(views: [head] + lines(r, width: width - 28))
             one.orientation = .vertical

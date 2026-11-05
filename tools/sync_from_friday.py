@@ -191,7 +191,8 @@ def sync(src: Path, dst: Path) -> None:
            '    }\n', True),
           ("low.range(of: HerName.misheardFriday, options: .regularExpression) != nil",
            '(HerName.wakeWords.contains("friday") ? low.range(of: HerName.misheardFriday, options: .regularExpression) : nil) != nil'))
-    _edit(s_dst / "Ask.swift", ('f.placeholderString = "Ask Friday…"', 'f.placeholderString = "Ask \\(Config.agentName)…"'))
+    _edit(s_dst / "Ask.swift", ('f.placeholderString = "Ask Friday…"', 'f.placeholderString = "Ask \\(Config.agentName)…"'),
+          ('f.setAccessibilityLabel("Ask Friday")', 'f.setAccessibilityLabel("Ask \\(Config.agentName)")'))
     _edit(s_dst / "Store.swift",
           ("""/// Where Iris keeps what she learns and sees: ~/Library/Application Support/Iris.
 /// Friday Core runs as the same macOS user on this Mac, so it reads the link
@@ -205,8 +206,16 @@ def sync(src: Path, dst: Path) -> None:
            "/// An approval your agent asks for, answered on the Mac: what it wants to do, beside Iris, with Allow and\n"
            "/// Deny. A click is only recorded here (`decisions`); your agent collects it from /iris/decisions and acts\n"
            "/// on it once. The card never takes your typing (a non-activating panel); it goes when the ask runs out,\n"
-           "/// when your agent says it was answered elsewhere (/iris/ask_done), or when you click.\n", True))
+           "/// when your agent says it was answered elsewhere (/iris/ask_done), or when you click.\n", True),
+          ('"Friday asks for your approval: ', '"\\(Config.agentName) asks for your approval: '))
     _edit(s_dst / "Link.swift", ("static let port: UInt16 = 7791", "static var port: UInt16 { Config.port }"))
+    _edit(s_dst / "EndOfSpeech.swift",
+          (r"/// When what he said to her is over.*?(?=enum EndOfSpeech)",
+           "/// When what you said to her is over (Ears.checkSilence), as rules alone so they can be checked without a\n"
+           "/// microphone: 1.3 s after the last word with the mic quiet, 2.2 s at most, 1.2 s more when the last word\n"
+           "/// plainly goes on (\"and\", \"to\", \"my\", \"what\" …), 2 s after her name alone. An ask that closes itself\n"
+           "/// (\"… please\", \"… thanks\", \"… thank you\", \"… right now\"), two words or more, ends 0.8 s after its last\n"
+           "/// word; everything else waits as long as before, so \"Can you check\" isn't cut off.\n", True))
     _edit(s_dst / "main.swift",
           ('log("iris: awake")\n', 'log("iris: awake")\n        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { Welcome.showIfFirstRun() }\n'),
           (r"            //[^\n]*a Friday approval with Allow / Deny beside her[^\n]*\n[^\n]*\n",

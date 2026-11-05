@@ -73,12 +73,14 @@ final class DayCard: NSObject {
             b.bezelStyle = .rounded
             b.controlSize = .regular                                // a 22-pt button (an 11-pt inline one was ~16)
             b.toolTip = "\(item.act): \(item.text)"
-            b.setAccessibilityLabel("\(item.act): \(item.text)")      // "Done" alone said nothing of which
+            b.setAccessibilityLabel("\(item.act): \(item.text)")      // "Check off" alone said nothing of which
             b.setContentHuggingPriority(.required, for: .horizontal)
             b.setContentCompressionResistancePriority(.required, for: .horizontal)
             if acts.contains(where: { $0.id == item.id }) { b.isEnabled = false; b.title = "…" }
             buttons[b] = item.id
-            let line = NSStackView(views: [wrap(item.text, width - 76), NSView(), b])
+            // the text gives up the button's own width ("Check off", "I paid it" are wider than the "Done"
+            // and "Paid" the fixed 76 pt was set for)
+            let line = NSStackView(views: [wrap(item.text, width - max(76, b.fittingSize.width + 12)), NSView(), b])
             line.orientation = .horizontal
             line.alignment = .firstBaseline
             line.spacing = 6

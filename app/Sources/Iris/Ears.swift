@@ -349,21 +349,8 @@ final class Ears {
     // him off mid-sentence ("How", "s sick", "I was", "Can you check" reached Friday). Now 1.3 s
     // after the last word with the mic quiet, 2.2 s at most, and 1.2 s more when his last word
     // plainly goes on ("and", "to", "my", "what" …).
-    static let endAfterWords = 1.3          // no new word for this long, and the mic quiet...
-    static let endQuietMic = 0.7            // ...for this long, ends it
-    static let endAnyway = 2.2              // no new word for this long ends it, mic or not
-    static let goesOn: Set<String> = ["and", "or", "but", "so", "to", "the", "a", "an", "my", "your", "for", "with",
-                                      "of", "in", "on", "at", "about", "from", "is", "are", "was", "can", "could",
-                                      "would", "will", "should", "what", "how", "when", "where", "who", "why",
-                                      "if", "that", "this", "because", "um", "uh", "like", "then"]
-    static let goesOnExtra = 1.2
-
-    /// His last word plainly goes on ("remind me to …"): give him longer.
-    private var trailing: Bool {
-        guard let last = lastText.lowercased().split(whereSeparator: { !$0.isLetter && $0 != "'" }).last else { return false }
-        return Ears.goesOn.contains(String(last))
-    }
-    static let endAfterBareWake = 2.0       // only her name so far: he's still finding the words
+    // The rules themselves: EndOfSpeech (an ask that closes itself, ends at 0.8 s).
+    static let endQuietMic = EndOfSpeech.quietMic
 
     /// Only her name so far ("Friday", "hey Iris"): nothing said after it yet.
     private var bareWake: Bool {
@@ -378,10 +365,7 @@ final class Ears {
             gate.lock()
             let micQuiet = Date().timeIntervalSince(lastVoiceAt) > Ears.endQuietMic
             gate.unlock()
-            let extra = trailing ? Ears.goesOnExtra : 0
-            let done = bareWake ? since > Ears.endAfterBareWake
-                                : since > Ears.endAnyway + extra || (since > Ears.endAfterWords + extra && micQuiet)
-            guard done else { return }
+            guard EndOfSpeech.done(text: lastText, since: since, micQuiet: micQuiet, bareWake: bareWake) else { return }
             finish()
             nextOrSleep()
             return

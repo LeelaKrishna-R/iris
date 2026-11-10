@@ -68,7 +68,7 @@ command wasn't understood. So `make test || python3 agents/iris_cli.py notice "t
 |---|---|---|
 | `POST /iris/ask` | `{"id": str, "text": str, "title": str, "until": unix seconds}` | Shows a card beside her with `text`, Allow and Deny, until `until` (10 minutes by default, an hour at most). One card at a time; a new ask replaces the old one |
 | `GET /iris/decisions` | none | Clicks not yet confirmed: `{"decisions": [{"id", "choice": "approve" \| "reject"}], "showing": id}`. A click stays until you confirm it (or for 10 minutes), so a slow read can't lose it and another agent's read can't take yours |
-| `POST /iris/decisions_ack` | `{"ids": [str]}` | Confirms the clicks you acted on; only those leave the list |
+| `POST /iris/decisions_ack` | `{"ids": [str]}` | Confirms the clicks you acted on; only those leave the list. Confirming the card's own click closes it: after a click the card stays, its buttons waiting, until you confirm (or 20 s pass, when the buttons come back) |
 | `POST /iris/ask_done` | `{"id": str}` | Closes the card when the ask was answered somewhere else or ran out |
 
 The card is a non-activating panel: it never takes your typing, and Allow has no key equivalent, so only a

@@ -3,7 +3,9 @@ import AppKit
 /// An approval your agent asks for, answered on the Mac: what it wants to do, beside Iris, with Allow and
 /// Deny. A click is only recorded here (`decisions`); your agent collects it from /iris/decisions and acts
 /// on it once. The card never takes your typing (a non-activating panel); it goes when the ask runs out,
-/// when your agent says it was answered elsewhere (/iris/ask_done), or when you click.
+/// when your agent says it was answered elsewhere (/iris/ask_done), or when your agent confirms your click
+/// (/iris/decisions_ack). Until then it stays, its buttons waiting, so a click your agent never picked up
+/// doesn't look like an answer.
 final class ApprovalCard: NSObject {
     static let shared = ApprovalCard()
     struct Decision { let id: String; let choice: String; let at: Date }
@@ -13,6 +15,11 @@ final class ApprovalCard: NSObject {
     private var closeTimer: Timer?
     var frame: CGRect? { panel?.frame }       // where it is, for the day card to keep clear of (DayCard)
     private var showingText = ""
+    private var buttons: [NSButton] = []
+    private var waitTimer: Timer?
+    /// after your click the card waits for your agent to confirm it (/iris/decisions_ack closes it). No word in
+    /// this long (the agent stopped polling, or never does): your buttons come back, so the card is never stuck.
+    static let WAIT_S: TimeInterval = 20
     /// his click, as it's made (choice, what the card asked): Iris answers his Allow (Body.approvalAnswered).
     var onDecided: ((String, String) -> Void)?
 
@@ -26,6 +33,7 @@ final class ApprovalCard: NSObject {
 
     func ack(_ ids: [String]) {
         decisions.removeAll { ids.contains($0.id) }
+        if ids.contains(showing) { close() }      // your agent took the click: the card's question is answered
     }
 
     /// Shows the approval `id` next to `near` (her frame) until `until` (or 10 minutes, at most an hour).
@@ -45,6 +53,7 @@ final class ApprovalCard: NSObject {
         head.preferredMaxLayoutWidth = width - 28
         let deny = NSButton(title: "Deny", target: self, action: #selector(denied))
         let allow = NSButton(title: "Allow", target: self, action: #selector(allowed))
+        buttons = [deny, allow]
         // Allow is never a key he might press while typing elsewhere: the card doesn't take focus when it shows,
         // and Allow has no key at all. Once he clicks into the card, Tab moves between the buttons, Space presses
         // the focused one, and Esc denies (nothing runs).
@@ -107,6 +116,8 @@ final class ApprovalCard: NSObject {
     func close(id: String? = nil) {
         if let id, id != showing { return }
         closeTimer?.invalidate(); closeTimer = nil
+        waitTimer?.invalidate(); waitTimer = nil
+        buttons = []
         panel?.orderOut(nil)
         panel = nil
         showing = ""
@@ -117,11 +128,19 @@ final class ApprovalCard: NSObject {
     @objc private func denied() { decide("reject") }
 
     private func decide(_ choice: String) {
-        guard !showing.isEmpty else { return }
+        guard !showing.isEmpty, buttons.allSatisfy({ $0.isEnabled }) else { return }
         decisions.append(Decision(id: showing, choice: choice, at: Date()))
         log("approval card: \(choice) \(showing.prefix(8))")
-        let what = showingText
-        close()
+        let what = showingText, id = showing
+        // the card stays, its buttons waiting, until your agent confirms the click (it closed here at once, so a
+        // click no agent ever collected looked answered)
+        for b in buttons { b.isEnabled = false }
+        waitTimer?.invalidate()
+        waitTimer = Timer.scheduledTimer(withTimeInterval: ApprovalCard.WAIT_S, repeats: false) { [weak self] _ in
+            guard let self, self.showing == id else { return }
+            for b in self.buttons { b.isEnabled = true }
+            log("approval card: no word from \(Config.agentName) on \(id.prefix(8)); its buttons are back")
+        }
         onDecided?(choice, what)
     }
 

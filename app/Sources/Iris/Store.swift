@@ -27,6 +27,8 @@ enum Store {
         } catch {
             try? data.write(to: url(name), options: .atomic)
         }
+        // a plain write gives 0644, and replaceItemAt keeps whatever the old file had: her files are yours alone
+        try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url(name).path)
     }
 
     /// One JSON object per line, rotated at `cap` bytes (the old file kept as .1).

@@ -67,3 +67,29 @@ enum AudioUse {
         }
     }
 }
+
+/// Whether her ears hear, from the engine itself and the last audio that reached the tap —
+/// never from a flag set once when the engine started.
+enum MicHealth {
+    /// No audio this long, with the engine said running: the mic isn't reaching her.
+    static let silentAfter: Double = 5
+
+    static func of(running: Bool, engineRunning: Bool, off: Bool, lastAudioAgo: Double?,
+                   problem: String?) -> (listening: Bool, problem: String?) {
+        if off { return (false, problem) }
+        guard running else { return (false, problem ?? "not_started") }
+        guard engineRunning else { return (false, "audio_engine_stopped") }
+        guard let ago = lastAudioAgo, ago <= silentAfter else { return (false, "no_audio_from_microphone") }
+        return (true, problem)
+    }
+
+    /// Calls `changed` on the main queue when the Mac's default input device changes (a mic plugged in or out, a
+    /// new default chosen); keep the returned token to stop it.
+    static func watchDefaultInput(_ changed: @escaping () -> Void) -> AudioObjectPropertyListenerBlock? {
+        var addr = AudioObjectPropertyAddress(mSelector: kAudioHardwarePropertyDefaultInputDevice,
+                                              mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
+        let block: AudioObjectPropertyListenerBlock = { _, _ in changed() }
+        let st = AudioObjectAddPropertyListenerBlock(AudioObjectID(kAudioObjectSystemObject), &addr, DispatchQueue.main, block)
+        return st == noErr ? block : nil
+    }
+}

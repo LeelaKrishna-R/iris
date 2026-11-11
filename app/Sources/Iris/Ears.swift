@@ -1,5 +1,6 @@
 import Accelerate
 import AVFoundation
+import CoreAudio
 import Speech
 
 /// Her ears: the default microphone (his Blue Yeti), heard on this Mac by
@@ -54,6 +55,14 @@ final class Ears {
     private(set) var running = false
     private(set) var onDevice = false
     private(set) var problem: String?
+    // What /health says is what the engine and the tap say (MicHealth). The last buffer the
+    // tap got (under `gate`); the engine's configuration and the default input are watched, and a 5-second check
+    // restarts an engine found stopped or silent.
+    private var lastAudioAt = Date.distantPast
+    private var configWatch: NSObjectProtocol?
+    private var inputWatch: AudioObjectPropertyListenerBlock?
+    private var healthTimer: Timer?
+    private var restartedAt = Date.distantPast
 
     private let lock = NSLock()
     private var queue: [Heard] = []
@@ -118,6 +127,7 @@ final class Ears {
             // stayed shut for every line she spoke; now they keep hearing, and only her name
             // (not in her own line) counts while she talks — see partial().
             self.gate.lock()
+            self.lastAudioAt = Date()
             let req = self.request
             if req == nil {
                 // Quiet room, no recognizer running: keep the last half second, so the
@@ -146,8 +156,49 @@ final class Ears {
         running = true
         problem = nil
         onDevice = rec.supportsOnDeviceRecognition
+        silenceTimer?.invalidate()
         silenceTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in self?.checkSilence() }
+        watchMic()
         log("ears: listening (on-device: \(onDevice))")
+    }
+
+    /// the engine stops when its configuration changes (a mic plugged in or out, another app taking the
+    /// device), and the default input can change under it; either restarts it on the device now chosen. Set once.
+    private func watchMic() {
+        if configWatch == nil {
+            configWatch = NotificationCenter.default.addObserver(forName: .AVAudioEngineConfigurationChange,
+                                                                 object: engine, queue: .main) { [weak self] _ in
+                self?.restartEngine("the audio configuration changed")
+            }
+        }
+        if inputWatch == nil {
+            inputWatch = MicHealth.watchDefaultInput { [weak self] in self?.restartEngine("the default input changed") }
+        }
+        if healthTimer == nil {
+            healthTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in self?.checkMic() }
+        }
+    }
+
+    /// Every 5 s: an engine that stopped, or no audio for twice MicHealth.silentAfter, is restarted (at most every 30 s).
+    private func checkMic() {
+        guard running, offUntil <= Date(), Date().timeIntervalSince(restartedAt) >= 30 else { return }
+        gate.lock(); let ago = Date().timeIntervalSince(lastAudioAt); gate.unlock()
+        if !engine.isRunning { restartEngine("the audio engine had stopped") }
+        else if ago > 2 * MicHealth.silentAfter { restartEngine("no audio from the microphone for \(Int(ago)) s") }
+    }
+
+    /// The engine stopped and started again on the current default input (begin() reads its format again). Never
+    /// while he has her ears off.
+    private func restartEngine(_ why: String) {
+        guard offUntil <= Date() else { return }
+        log("ears: restarting the microphone: \(why)")
+        restartedAt = Date()
+        sleepEars()
+        silenceTimer?.invalidate(); silenceTimer = nil
+        engine.inputNode.removeTap(onBus: 0)
+        engine.stop()
+        running = false
+        begin()
     }
 
     private func retry() {
@@ -623,11 +674,18 @@ final class Ears {
     func status() -> [String: Any] {
         gate.lock()
         let speech = speechNow
+        let heardAt = lastAudioAt
         gate.unlock()
-        var s: [String: Any] = ["listening": running && offUntil <= Date(), "on_device": onDevice, "failures": failures,
+        // Listening only when the engine runs and audio reaches the tap, not because it started once
+        let ago: Double? = heardAt == .distantPast ? nil : Date().timeIntervalSince(heardAt)
+        let health = MicHealth.of(running: running, engineRunning: engine.isRunning, off: offUntil > Date(),
+                                  lastAudioAgo: ago, problem: problem)
+        var s: [String: Any] = ["listening": health.listening, "on_device": onDevice, "failures": failures,
                                 "hearing": task != nil, "speech": speech, "floor_db": Double(floorDB.rounded()),
-                                "level_db": Double(levelDB.rounded()), "peak_db_10s": Double(peakDB.rounded())]
-        if let p = problem { s["problem"] = p }
+                                "level_db": Double(levelDB.rounded()), "peak_db_10s": Double(peakDB.rounded()),
+                                "engine_running": engine.isRunning]
+        if let ago { s["last_audio_s"] = (ago * 10).rounded() / 10 }
+        if let p = health.problem { s["problem"] = p }
         if offUntil > Date() { s["off_until"] = offUntil.timeIntervalSince1970 }
         return s
     }

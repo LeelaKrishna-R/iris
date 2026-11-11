@@ -30,7 +30,13 @@ python3 agents/iris_cli.py animations                    # lists them
 python3 agents/iris_cli.py come other_screen             # cursor (default) or other_screen
 python3 agents/iris_cli.py listen 10                     # prints what's said to her by name next, up to 25 s
 python3 agents/iris_cli.py busy                          # exit 0 if you're on a call, 1 if not
+python3 agents/iris_cli.py ask "Deploy to production?"   # Allow / Deny card; exit 0 only on Allow (--wait 120 s)
 ```
+
+`ask` puts the same card beside her that MCP agents get from `iris_ask`, titled "A script asks", and waits for your
+click (`--wait`, 5 to 300 seconds, 120 by default). Allow exits `0`; Deny, no answer in time (the card is closed) or
+a card she couldn't show exits `1`. So `python3 agents/iris_cli.py ask "Push to main?" && git push` only pushes on
+your Allow.
 
 `busy` reads her eyes (`GET /eyes/now`): a meeting's own window anywhere on screen, or FaceTime, Zoom, Teams, Webex,
 Discord, Slack, WhatsApp, Signal, Telegram or Skype while another app has the mic. Discord open for text isn't a call.

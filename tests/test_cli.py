@@ -97,3 +97,32 @@ def test_say_uses_her_bubble_while_you_are_on_a_call(iris, monkeypatch):
                         dict(eyes) if path == "/eyes/now" else real(path, payload, method, timeout))
     assert iris_cli.run(["say", "Build", "finished"]) == (0, "Iris showed it in her bubble (you're on a call).")
     assert iris[-1] == ("POST", "/mouth/show", {"text": "Build finished", "seconds": 6.0})
+
+
+def test_ask_exits_0_only_when_allowed(iris, monkeypatch):
+    from test_mcp import DECISIONS
+    monkeypatch.setattr(iris_mcp, "POLL_S", 0)
+    monkeypatch.setattr(iris_mcp.os, "urandom", lambda n: b"\x02" * n)
+    DECISIONS[:] = [[{"id": "mcp-020202020202", "choice": "approve"}]]
+    assert iris_cli.run(["ask", "Deploy", "to", "production?"]) == (0, "Allowed: go ahead.")
+    body = next(x[2] for x in iris if x[1] == "/iris/ask")
+    assert body["text"] == "Deploy to production?" and body["title"] == "A script asks"
+    DECISIONS[:] = [[{"id": "mcp-020202020202", "choice": "reject"}]]
+    assert iris_cli.run(["ask", "Drop the table"]) == (1, "Denied: don't do it.")
+
+
+def test_ask_with_no_answer_is_a_no(iris, monkeypatch):
+    from test_mcp import DECISIONS
+    monkeypatch.setattr(iris_mcp, "POLL_S", 0)
+    clock = iter(range(0, 10_000, 4))
+    monkeypatch.setattr(iris_mcp.time, "time", lambda: float(next(clock)))
+    DECISIONS[:] = []
+    code, out = iris_cli.run(["ask", "--wait", "8", "Send", "the", "invoices"])
+    assert code == 1 and out.startswith("No answer in 8 s")
+    assert next(x[2] for x in iris if x[1] == "/iris/ask")["text"] == "Send the invoices"
+
+
+@pytest.mark.parametrize("argv", [["ask"], ["ask", "--wait"], ["ask", "--wait", "soon", "x"], ["ask", "--wait", "10"]])
+def test_ask_usage(iris, argv):
+    assert iris_cli.run(argv)[0] == 64
+    assert iris == []

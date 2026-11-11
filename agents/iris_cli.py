@@ -7,6 +7,7 @@
     iris come [cursor|other_screen]    she comes over
     iris listen [seconds]              prints what's said to her by name next (up to 25 s), or nothing
     iris busy                          exit 0 if you're on a call (Zoom, Meet, Discord with the mic in use, …), else 1
+    iris ask [--wait 120] "Deploy?"    an Allow / Deny card beside her; exit 0 only if you click Allow in time
 
 Exit status: 0 done, 1 Iris said no (the reason is printed), 2 Iris isn't reachable, 64 usage.
 """
@@ -45,12 +46,21 @@ def run(argv: list[str]) -> tuple[int, str]:
         if cmd == "busy":
             out = m.t_busy({})
             return (0 if out.startswith("On a call") else 1), out
+        if cmd == "ask":
+            # iris ask "Deploy to production?" && ./deploy.sh — Deny, no answer, or a card she couldn't show is 1
+            wait = 120.0
+            if rest[:1] == ["--wait"]:
+                wait, rest = float(rest[1]), rest[2:]          # a missing or non-number value is usage (64)
+            if not rest:
+                return 64, USAGE
+            out = m.t_ask({"action": " ".join(rest), "title": "A script asks", "seconds": wait})
+            return (0 if out.startswith("Allowed") else 1), out
         if cmd == "listen":
             out = m.t_listen({"seconds": float(rest[0]) if rest else 20})
             return 0, out
     except m.IrisUnreachable as e:
         return 2, str(e)
-    except ValueError:
+    except (ValueError, IndexError):
         return 64, USAGE
     return 64, USAGE
 

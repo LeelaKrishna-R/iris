@@ -137,6 +137,8 @@ final class App: NSObject, NSApplicationDelegate {
             }
             let text = body["text"] as? String ?? ""
             if mouth.isCut { return reply(409, ["ok": false, "reason": "interrupted"]) }
+            // the queue is capped (Mouth.cap); a full one is said, never grown
+            if mouth.isFull { return reply(429, ["ok": false, "reason": "busy"]) }
             // "listen": false from Core for a line she says on her own (core/iris._Speaker: no ask it answers)
             let listen = body["listen"] as? Bool ?? true
             guard let secs = mouth.play(data, text: text, listen: listen) else { return reply(422, ["ok": false, "reason": "unplayable"]) }

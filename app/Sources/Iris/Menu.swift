@@ -16,6 +16,18 @@ final class Menu: NSObject {
     @objc func day() { body?.onDayCard?() }
     @objc func quit() { body?.soul.save(); NSApp.terminate(nil) }
 
+    /// Whether her body and her bubble can be captured in a screen share or recording. Off at every launch and never
+    /// remembered: she and what she says stay out of shares unless you switch this on for the share at hand (a demo,
+    /// a stream). The day card stays out whatever this says (DayCard).
+    private(set) var inScreenShares = false
+    var sharing: NSWindow.SharingType { inScreenShares ? .readOnly : .none }
+    @objc func screenShares() {
+        inScreenShares.toggle()
+        body?.window?.sharingType = sharing
+        body?.bubble?.share(sharing)
+        log("menu: she \(inScreenShares ? "can" : "can't") be seen in screen shares and recordings now")
+    }
+
     /// A setting from "How Iris is" (HowIris.toggles): "ears_off" / "ears_on" (an hour, or back on), "eyes_off" /
     /// "eyes_on", "quiet" / "talk" (Core's: asked of it, CoreWord).
     @objc func setting(_ sender: NSMenuItem) {

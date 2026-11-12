@@ -91,8 +91,9 @@ click answers it. Iris records the click and does nothing else; your agent acts 
 
 Iris only records a button click and shows it as pending; your agent does the work, says what happened
 (`/mouth/show`) and sends the card again. Act on a token once: one delivered again after a lost confirm is
-the same click. The card stays out of screen shares and recordings. Her menu offers Show / Hide My Day only
-once an agent has sent a card.
+the same click. The card stays out of screen shares and recordings, always. Iris and her speech bubble stay out
+too, unless the person picks Show Me in Screen Shares in her menu; that lasts until she quits and is never saved.
+Her menu offers Show / Hide My Day only once an agent has sent a card.
 
 ### A note for the person
 

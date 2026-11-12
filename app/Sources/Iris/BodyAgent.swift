@@ -227,6 +227,10 @@ extension Body {
             m.addItem(withTitle: DayCard.shared.hidden ? "Show My Day" : "Hide My Day", action: #selector(Menu.day),
                       keyEquivalent: "").target = Menu.shared
         }
+        // out of screen shares unless you say so, for this launch only (Menu.screenShares)
+        let shares = m.addItem(withTitle: "Show Me in Screen Shares", action: #selector(Menu.screenShares), keyEquivalent: "")
+        shares.target = Menu.shared
+        shares.state = Menu.shared.inScreenShares ? .on : .off
         m.addItem(.separator())
         m.addItem(withTitle: "Welcome…", action: #selector(Menu.welcome), keyEquivalent: "").target = Menu.shared
         m.addItem(withTitle: "Quit Iris", action: #selector(Menu.quit), keyEquivalent: "").target = Menu.shared

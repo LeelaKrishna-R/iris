@@ -28,9 +28,12 @@ final class Bubble {
         window.level = .floating
         window.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary, .ignoresCycle]
         window.ignoresMouseEvents = true
-        window.sharingType = .none
+        window.sharingType = .none                       // out of screen shares until her body says otherwise (share)
         window.contentView = view
     }
+
+    /// Her menu's "Show Me in Screen Shares" (Menu.screenShares): her bubble follows her body.
+    func share(_ type: NSWindow.SharingType) { window.sharingType = type }
 
     func say(_ text: String, for seconds: Double) {
         full = text

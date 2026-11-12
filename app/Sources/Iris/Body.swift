@@ -128,8 +128,9 @@ final class Body {
             w.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary, .ignoresCycle]
             w.hidesOnDeactivate = false
             w.contentView = v
-            w.sharingType = .none
+            w.sharingType = Menu.shared.sharing          // .none unless you switched her into shares (Menu)
             view = v; window = w; bubble = Bubble()
+            bubble?.share(Menu.shared.sharing)
         }
         view?.onPet = { [weak self] in self?.petted(); self?.onPetted?() }
         view?.onDoublePet = { [weak self] in self?.doublePetted() }

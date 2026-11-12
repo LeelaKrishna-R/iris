@@ -83,3 +83,33 @@ def test_the_name_in_a_comment_or_through_config_is_fine():
     assert not upstream_name_shown('        wakeWhy = "\\(Config.agentName) had something to tell him"')
     assert not upstream_name_shown('    /// Friday\'s answer to him taking a while')
     assert not upstream_name_shown('        let day = "Fridays"')
+
+
+# ── upstream's Body.swift is split by job; a rule finds its text in whichever file holds it ──────────────────────
+def test_an_edit_applies_in_whichever_split_file_has_it(tmp_path):
+    from sync_from_friday import _edit_any
+    a, b = tmp_path / "BodyGaze.swift", tmp_path / "Menu.swift"
+    a.write_text('let s = "Friday speaking through her"\n')
+    b.write_text('m.addItem(withTitle: "Quit Iris")\n')
+    _edit_any([a, b], ('"Friday speaking through her"', '"\\(Config.agentName) speaking through her"'),
+              ('m.addItem(withTitle: "Quit Iris")', 'm.addItem(withTitle: "Welcome…")\nm.addItem(withTitle: "Quit Iris")'))
+    assert a.read_text() == 'let s = "\\(Config.agentName) speaking through her"\n'
+    assert b.read_text().startswith('m.addItem(withTitle: "Welcome…")')
+
+
+def test_an_edit_no_file_has_stops_the_sync(tmp_path):
+    import pytest
+    from sync_from_friday import SyncError, _edit_any
+    a = tmp_path / "BodyGaze.swift"
+    a.write_text("let x = 1\n")
+    with pytest.raises(SyncError):
+        _edit_any([a], ("not there", "anything"))
+
+
+def test_the_agent_name_in_her_words_is_the_configured_one():
+    from sync_from_friday import agent_in_strings
+    assert agent_in_strings('log("menu: asked Friday for \\(what)")') == 'log("menu: asked \\(Config.agentName) for \\(what)")'
+    # Core's data keys and code names stay as they are
+    assert agent_in_strings('let x = ["friday": "Friday\'s voice"]') == 'let x = ["friday": "\\(Config.agentName)\'s voice"]'
+    assert agent_in_strings("guard let t = lastFridayContact else { return nil }") == \
+        "guard let t = lastFridayContact else { return nil }"

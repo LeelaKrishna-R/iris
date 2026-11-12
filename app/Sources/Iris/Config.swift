@@ -5,6 +5,7 @@ import Foundation
 ///   defaults write app.iris.companion agentName "Claude"             (the agent she speaks for; default "your agent")
 ///   defaults write app.iris.companion port -int 7791                 (her local link's port)
 ///   defaults write app.iris.companion dataDir "~/iris-test"          (where she keeps her files)
+///   defaults write app.iris.companion agentApp "com.example.agent"   (your agent's Mac app, for her day card's Open)
 enum Config {
     private static let d = UserDefaults(suiteName: "app.iris.companion") ?? .standard
 
@@ -25,6 +26,10 @@ enum Config {
         guard let p = d.string(forKey: "dataDir"), !p.isEmpty else { return nil }
         return URL(fileURLWithPath: (p as NSString).expandingTildeInPath, isDirectory: true)
     }
+
+    /// Your agent's Mac app (its bundle id), which her day card's Open brings up; none until set, and then Open only
+    /// says so in her log.
+    static var agentApp: String { (d.string(forKey: "agentApp") ?? "").trimmingCharacters(in: .whitespaces) }
 
     /// The agent her words come from, as she names it in her menu and her reasons ("your agent" until set).
     static var agentName: String {

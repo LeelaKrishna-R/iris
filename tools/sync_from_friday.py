@@ -20,6 +20,8 @@ import sys
 from pathlib import Path
 
 PUBLIC_ONLY = {"Config.swift", "Welcome.swift"}
+# Upstream files whose names say the upstream agent's: kept here under a neutral one (Swift doesn't care which).
+RENAMED = {"BodyFriday.swift": "BodyAgent.swift"}
 # Words that must never reach this repo (names, places, accounts), one per line. The list itself is private, so it
 # lives beside this file, untracked; without it only Friday's own domain is checked.
 PRIVATE_WORDS = Path(__file__).with_name("private_words.txt")
@@ -52,6 +54,24 @@ def _edit(path: Path, *edits) -> None:
     for e in edits:
         s = _sub(s, *e, where=path.name) if len(e) == 2 else _sub(s, e[0], e[1], path.name, regex=e[2])
     path.write_text(s, encoding="utf-8")
+
+
+def _edit_any(paths: list, *edits) -> None:
+    """Like _edit, across several files (Body.swift upstream is split by job: Body*.swift and Menu.swift): each edit
+    applies in every file where its text is found, and stops the sync if none has it."""
+    texts = {p: p.read_text(encoding="utf-8") for p in paths if p.exists()}
+    for e in edits:
+        old, new, regex = (e[0], e[1], e[2] if len(e) == 3 else False)
+        hit = False
+        for p, t in texts.items():
+            found = re.search(old, t, flags=re.S) if regex else old in t
+            if found or new in t:
+                texts[p] = _sub(t, old, new, p.name, regex=regex) if found else t
+                hit = True
+        if not hit:
+            raise SyncError(f"{'/'.join(sorted(p.name for p in texts))}: expected text not found: {old[:80]!r}")
+    for p, t in texts.items():
+        p.write_text(t, encoding="utf-8")
 
 
 # A diary date in a comment: "10-26", "9-30" (month-day), alone or as a span ("10-13..10-17", "10-10 to 10-19"),
@@ -152,6 +172,16 @@ def neutral_person(text: str) -> str:
     return text
 
 
+# A Swift string literal on one line (escapes and \( ... ) interpolations without quotes inside them).
+_STRING = re.compile(r'"(?:[^"\\\n]|\\\([^"()]*(?:\([^"()]*\)[^"()]*)*\)|\\.)*"')
+
+
+def agent_in_strings(text: str) -> str:
+    """The upstream agent's name, where she shows or logs it (inside a string literal, capitalised), as whatever agent
+    this Iris runs with (Config.agentName). Lowercase keys of Core's data ("friday") and code names stay as they are."""
+    return _STRING.sub(lambda m: re.sub(r"\bFriday\b", r"\\(Config.agentName)", m.group(0)), text)
+
+
 def sync(src: Path, dst: Path) -> None:
     """src: Friday's iris/ folder. dst: this repo's app/ folder."""
     s_src, s_dst = src / "Sources/Iris", dst / "Sources/Iris"
@@ -161,7 +191,7 @@ def sync(src: Path, dst: Path) -> None:
         if f.name not in PUBLIC_ONLY:
             f.unlink()
     for f in s_src.glob("*.swift"):
-        shutil.copy2(f, s_dst / f.name)
+        shutil.copy2(f, s_dst / RENAMED.get(f.name, f.name))
     shutil.copy2(src / "Package.swift", dst / "Package.swift")
     (dst / "Resources").mkdir(exist_ok=True)
     shutil.copy2(src / "Resources/Info.plist", dst / "Resources/Info.plist")
@@ -221,8 +251,8 @@ def sync(src: Path, dst: Path) -> None:
           (r"            //[^\n]*a Friday approval with Allow / Deny beside her[^\n]*\n[^\n]*\n",
            "            // an approval your agent asks for, with Allow / Deny beside her; the click waits in\n"
            "            // /iris/decisions for the agent, which acts on it once (agents/iris_mcp.py iris_ask)\n", True))
-    body = s_dst / "Body.swift"
-    _edit(body,
+    body = sorted(s_dst.glob("Body*.swift")) + [s_dst / "Menu.swift"]
+    _edit_any(body,
           ('String(format: "Friday\'s answer to him is taking over %.0f s", Stages.impatientAfter)',
            '"\\(Config.agentName)\'s answer is taking over \\(Int(Stages.impatientAfter)) s"'),
           ('"Friday speaking through her"', '"\\(Config.agentName) speaking through her"'),
@@ -255,7 +285,7 @@ def sync(src: Path, dst: Path) -> None:
            "@objc func ask() { body?.onAsk?() }\n    @objc func welcome() { Welcome.show() }"))
     # The day card upstream is filled by its own agent; here any agent can fill it (/iris/day, docs/API.md), and
     # her menu offers it only once one has, so an Iris with nothing behind it has no item that does nothing.
-    _edit(body,
+    _edit_any(body,
           ('        m.addItem(withTitle: DayCard.shared.hidden ? "Show My Day" : "Hide My Day", action: #selector(Menu.day),\n'
            '                  keyEquivalent: "").target = Menu.shared\n',
            '        if !DayCard.shared.rows.isEmpty {\n'
@@ -263,6 +293,7 @@ def sync(src: Path, dst: Path) -> None:
            '                      keyEquivalent: "").target = Menu.shared\n'
            '        }\n'))
     _edit(s_dst / "DayCard.swift",
+          (r'static let fridayApp = "[^"]*"', "static var fridayApp: String { Config.agentApp }", True),
           (r"/// His day at a glance.*?(?=final class DayCard)",
            "/// A day card beside Iris, filled by your agent: rows it sends to /iris/day (a heading and a line each, a\n"
            "/// row it couldn't read marked \"off\" and drawn greyed), with an optional button beside a line (\"Done\",\n"
@@ -277,7 +308,7 @@ def sync(src: Path, dst: Path) -> None:
         p = Path(f)
         if p.name in PUBLIC_ONLY:
             continue
-        p.write_text(scrub_comments(public_text(p.read_text(encoding="utf-8"))), encoding="utf-8")
+        p.write_text(scrub_comments(public_text(agent_in_strings(p.read_text(encoding="utf-8")))), encoding="utf-8")
     named = [f"{Path(f).name}:{i + 1}" for f in glob.glob(str(s_dst / "*.swift")) if Path(f).name not in PUBLIC_ONLY
              for i, ln in enumerate(Path(f).read_text(encoding="utf-8").split("\n")) if upstream_name_shown(ln)]
     if named:

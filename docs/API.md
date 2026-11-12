@@ -94,6 +94,26 @@ Iris only records a button click and shows it as pending; your agent does the wo
 the same click. The card stays out of screen shares and recordings. Her menu offers Show / Hide My Day only
 once an agent has sent a card.
 
+### A note for the person
+
+`POST /iris/day` (and `POST /iris/status`, below) may carry `"waiting": {"key": str, "why": str}` for something
+that interrupted the person and is still unread, or `"waiting": null` when nothing is. While a note waits and
+they're at the Mac, she sits holding a sticky note: no sound, no bubble, no walking over. A new `key` is a new
+note; `null` puts it away, and so does the person clicking her to peek at the card. A request without
+`"waiting"` says nothing about it, and she lets go on her own 2 minutes after your agent last mentioned it.
+
+## How she is (her menu)
+
+| Request | Body | What it does |
+|---|---|---|
+| `POST /iris/status` | `{"status": {"voice": {...}, "quiet": {...}}, "waiting": {...} \| null, "done": [str]}` | Your agent's word for the top of her menu, sent every 30 s or so. Returns `{"ok", "asks": [{"token", "do"}]}`: what the person clicked in her menu since your last look (`"quiet"` for an hour of quiet, `"talk"` to end it). Act on each once and list its token in `done` next time. An ask you don't take within 2 minutes is dropped, and her log says so |
+
+`status.voice` (all optional): `next` (`"friday"` for your agent's own cloud voice, `"kokoro"`, `"mac"`),
+`why_free` (why not the cloud voice), `spent_cents` and `cap_cents` (today's voice spend and its cap), `last`
+(`{"voice": ...}`, the voice her last line used). `status.quiet`: `hush_until` and `dnd_until` (unix seconds),
+or `unread` (why you couldn't tell). Anything missing, or a status older than 2 minutes, shows as unknown, with
+why: never as fine.
+
 ## Senses
 
 | Request | Body | What it gives |

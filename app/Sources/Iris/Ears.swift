@@ -123,7 +123,12 @@ final class Ears: @unchecked Sendable {
         guard let rec = recognizer, rec.isAvailable else { problem = "recognizer_unavailable"; retry(); return }
         let input = engine.inputNode
         let fmt = input.outputFormat(forBus: 0)
-        guard fmt.sampleRate > 0 else { problem = "no_microphone"; retry(); return }
+        // With no mic attached the node can report a rate and no channels; installTap on that raises an
+        // Objective-C exception Swift can't catch, so she'd crash at launch instead of running without ears.
+        let hw = input.inputFormat(forBus: 0)
+        guard fmt.sampleRate > 0, fmt.channelCount > 0, hw.channelCount > 0, hw.sampleRate == fmt.sampleRate else {
+            problem = "no_microphone"; retry(); return
+        }
         input.removeTap(onBus: 0)
         voice = VoiceGate(rate: fmt.sampleRate)          // only the tap touches it from here on
         input.installTap(onBus: 0, bufferSize: 2048, format: fmt) { [weak self] buf, _ in

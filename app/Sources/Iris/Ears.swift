@@ -1,15 +1,21 @@
 import Accelerate
 import AVFoundation
 import CoreAudio
-import Speech
+import os
+@preconcurrency import Speech        // its results are immutable once handed over
 
 /// Her ears: the default microphone (his Blue Yeti), heard on this Mac by
-/// Apple's on-device recognizer, always on and free. "Friday …" or "Iris …"
+/// Apple's on-device recognizer, always on and free. "\(Config.agentName) …" or "Iris …"
 /// — or anything said within a few seconds of Friday answering — is meant
 /// for her and queued for Friday Core. Muted while Friday speaks, so she
 /// never hears herself.
-final class Ears {
-    struct Heard: Codable {
+// (strict concurrency): Ears is reached from several threads, each part of its state kept as it always was:
+// everything below is her main thread's (begin/off/on, the recognizer's tasks, the timers: callbacks hop to main),
+// except what the audio tap touches — request, preroll, starting, taskAudio, sharpReq, speechNow, lastVoiceAt,
+// lastAudioAt and the levels — which is only read or written under `gate`, and Friday's queue (queue, waiters,
+// waiterIDs, waiterSeq), only under `lock`. That discipline, not the compiler, is what makes it safe to share.
+final class Ears: @unchecked Sendable {
+    struct Heard: Codable, Sendable {
         var text: String; var at: Date; var addressed: Bool; var typed: Bool? = nil
         /// When each stage of hearing it happened (epoch seconds): its task began, the first word, the
         /// wake word, his last word. Core logs the latency of each (core/iris._ears_budget),.
@@ -55,7 +61,7 @@ final class Ears {
     private(set) var running = false
     private(set) var onDevice = false
     private(set) var problem: String?
-    // What /health says is what the engine and the tap say (MicHealth). The last buffer the
+    // (CLAUDE.md §5): what /health says is what the engine and the tap say (MicHealth). The last buffer the
     // tap got (under `gate`); the engine's configuration and the default input are watched, and a 5-second check
     // restarts an engine found stopped or silent.
     private var lastAudioAt = Date.distantPast
@@ -66,7 +72,7 @@ final class Ears {
 
     private let lock = NSLock()
     private var queue: [Heard] = []
-    private var waiters: [(Heard?) -> Void] = []
+    private var waiters: [@Sendable (Heard?) -> Void] = []
 
     // the on-device recognizer heard "Hey
     // Friday" as "Hey friend", "Iris" as "I was", "while I was away" as "while I wait". It still listens
@@ -131,7 +137,7 @@ final class Ears {
             let req = self.request
             if req == nil {
                 // Quiet room, no recognizer running: keep the last half second, so the
-                // first syllable of "Friday" is in the request when sound starts one.
+                // first syllable of "\(Config.agentName)" is in the request when sound starts one.
                 if let copy = Ears.copy(buf) {
                     self.preroll.append(copy)
                     if self.preroll.count > Ears.prerollBuffers { self.preroll.removeFirst() }
@@ -224,7 +230,7 @@ final class Ears {
     private var voice: VoiceGate?                // the audio tap's own (created in begin)
     private var speechNow = false                // (under gate) for status()
     // 0.7 s, was 0.45. The gate opens on sound, then wake() waits for the main thread; a
-    // busy frame there cost the first buffers, and with them the "Fri" of "Friday".
+    // busy frame there cost the first buffers, and with them the "Fri" of "\(Config.agentName)".
     // ~1 s. VoiceGate says speech 0.16 s after it starts (median; 0.25-0.28 s at the 90th
     // percentile, 1.3 s at worst, over 450 voiced clips in rooms in the offline bench), later than
     // raw sound did.
@@ -238,8 +244,8 @@ final class Ears {
         let running = request != nil
         gate.unlock()
         // not while another app has the microphone (a call): what's said there is to other people
-        // (a in his Discord talk woke her and was answered aloud), she doesn't speak over a
-        // call anyway, and the recognizer ran at ~80% CPU on it. Her menu's "Talk to Friday" still opens.
+        // ( a "\(Config.agentName)" in his Discord talk woke her and was answered aloud), she doesn't speak over a
+        // call anyway, and the recognizer ran at ~80% CPU on it. Her menu's "Talk to \(Config.agentName)" still opens.
         if !running && Date() >= conversationUntil && onCall() { return }
         if !running { newTask() }
     }
@@ -309,21 +315,23 @@ final class Ears {
         firstWordAt = nil
         task = recognizer?.recognitionTask(with: r) { [weak self] result, error in
             guard let self else { return }
+            // what main needs of it, read here: the result itself isn't Sendable
+            let got = result.map { (text: $0.bestTranscription.formattedString, isFinal: $0.isFinal) }
+            let failed = error as NSError?
             DispatchQueue.main.async {
                 guard mine == self.generation else { return }          // a task already replaced: its end is no news
-                if let result {
+                if let result = got {
                     if self.failures >= 5 { self.problem = nil }
                     self.failures = 0
-                    let text = result.bestTranscription.formattedString
+                    let text = result.text
                     if text != self.lastText {
                         if self.firstWordAt == nil { self.firstWordAt = Date() }
                         self.lastText = text; self.lastPartialAt = Date(); self.partial(text)
                         if Date().timeIntervalSince(self.voiceToldAt) >= 1 { self.voiceToldAt = Date(); self.onVoice?() }
                     }
                     if result.isFinal { self.finish(); self.nextOrSleep() }
-                } else if let error {
+                } else if let ns = failed {
                     self.finish()
-                    let ns = error as NSError
                     let what = "\(ns.domain) \(ns.code): \(ns.localizedDescription)"
                     // "no speech" ends a quiet minute: start again at once; anything else backs off
                     let quiet = ns.code == 1110 || ns.code == 203 || ns.code == 301
@@ -368,7 +376,7 @@ final class Ears {
         }
         for w in HerName.wakeWords {
             if talking && ownLine.range(of: "\\b\(w)\\b", options: .regularExpression) != nil { continue }   // her own word
-            // not when it's the day ("on Friday") or said about her (HerName.about); his finished
+            // not when it's the day ("on \(Config.agentName)") or said about her (HerName.about); his finished
             // words are judged again by HerName.choose before anything reaches Friday
             if low.range(of: "\\b\(w)\\b", options: .regularExpression) != nil, HerName.end(in: low) != nil {
                 addressed = true; followUpWake = false
@@ -394,8 +402,8 @@ final class Ears {
     // what he said used to end 1.2 s after the
     // last new word, checked every 0.25 s (1.2-1.45 s). Now: 0.8 s after the last word once the
     // mic is quiet too (the recognizer's words lag the sound, so a quiet mic says he's done), and
-    // 1.4 s at most if the room never goes quiet. "Friday" and a pause to think waits 2 s for the
-    // rest: it used to go to Friday as "Friday" alone.
+    // 1.4 s at most if the room never goes quiet. "\(Config.agentName)" and a pause to think waits 2 s for the
+    // rest: it used to go to Friday as "\(Config.agentName)" alone.
     // 0.8 s cut
     // him off mid-sentence ("How", "s sick", "I was", "Can you check" reached Friday). Now 1.3 s
     // after the last word with the mic quiet, 2.2 s at most, and 1.2 s more when his last word
@@ -403,7 +411,7 @@ final class Ears {
     // The rules themselves: EndOfSpeech (an ask that closes itself, ends at 0.8 s).
     static let endQuietMic = EndOfSpeech.quietMic
 
-    /// Only her name so far ("Friday", "hey Iris"): nothing said after it yet.
+    /// Only her name so far ("\(Config.agentName)", "hey Iris"): nothing said after it yet.
     private var bareWake: Bool {
         guard addressed, !followUpWake, HerName.end(in: lastText) != nil else { return false }
         return HerName.after(lastText, followUp: false) == nil
@@ -505,16 +513,18 @@ final class Ears {
         sharpReq = r
         gate.unlock()
         sharpTask = rec.recognitionTask(with: r) { [weak self] result, error in
-            DispatchQueue.main.async {
+            // what main needs of it, read here: the result itself isn't Sendable
+            let got = result.map { (text: $0.bestTranscription.formattedString, isFinal: $0.isFinal) }
+            let failed = error as NSError?
+            DispatchQueue.main.async { [weak self] in
                 guard let self, mine == self.sharpGen else { return }
-                if let result {
-                    self.sharpText = result.bestTranscription.formattedString
+                if let result = got {
+                    self.sharpText = result.text
                     if result.isFinal { self.sharpTask = nil; self.sharpDone?() }
-                } else if let error {
+                } else if let error = failed {
                     // "server words missing after 179ms", then the on-device guess "One"; the
                     // server's failure was dropped here, so nothing said why. Its domain and code, never words.
-                    let e = error as NSError
-                    log("ears: server recognizer failed (\(e.domain) \(e.code))")
+                    log("ears: server recognizer failed (\(error.domain) \(error.code))")
                     self.sharpTask = nil
                     self.sharpDone?()
                 }
@@ -530,10 +540,9 @@ final class Ears {
         gate.unlock()
         let mine = sharpGen
         let t0 = Date()
-        var sent = false
-        let send: () -> Void = { [weak self] in
-            guard let self, !sent else { return }
-            sent = true
+        let sent = OSAllocatedUnfairLock(initialState: false)        // once, whichever comes first (Sendable)
+        let send: @Sendable () -> Void = { [weak self] in
+            guard let self, sent.withLock({ was in defer { was = true }; return !was }) else { return }
             self.sharpDone = nil
             if mine == self.sharpGen { self.sharpTask?.cancel(); self.sharpTask = nil }
             self.handOver(heard, followUp: followUp, onDevice: onDevice, server: self.sharpText,
@@ -544,7 +553,7 @@ final class Ears {
         DispatchQueue.main.asyncAfter(deadline: .now() + Ears.sharpWait) { send() }
     }
 
-    /// Typed to her (her menu's): meant for Friday, as if
+    /// Typed to her (her menu's "Ask \(Config.agentName)…"): meant for Friday, as if
     /// said with her name; Core answers it in her bubble, not out loud.
     func typed(_ text: String) {
         let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -580,7 +589,7 @@ final class Ears {
         if wasOff { log("ears: on again") }
     }
 
-    /// Talk to her without the wake word (her menu's "Talk to Friday").
+    /// Talk to her without the wake word (her menu's "Talk to \(Config.agentName)").
     func listenNow() {
         if !running && offUntil > Date() { on() }     // her menu turns her ears back on early
         conversationUntil = Date().addingTimeInterval(8)
@@ -615,20 +624,16 @@ final class Ears {
     // he said next to nobody. A timed-out poll now removes itself, not whichever was first.
     private var waiterSeq = 0
 
-    func next(timeout: Double, _ done: @escaping (Heard?) -> Void) {
+    func next(timeout: Double, _ done: @escaping @Sendable (Heard?) -> Void) {
         lock.lock()
         if !queue.isEmpty { let h = queue.removeFirst(); lock.unlock(); done(h); return }
         let stale = waiters
         waiters.removeAll()
         waiterSeq += 1
         let mine = waiterSeq
-        let fired = NSLock()
-        var answered = false
-        let once: (Heard?) -> Void = { h in
-            fired.lock()
-            let first = !answered
-            answered = true
-            fired.unlock()
+        let answered = OSAllocatedUnfairLock(initialState: false)
+        let once: @Sendable (Heard?) -> Void = { h in
+            let first = answered.withLock { was in defer { was = true }; return !was }
             if first { done(h) }
         }
         waiters.append(once)
@@ -660,11 +665,12 @@ final class Ears {
         var mean: Float = 0
         vDSP_measqv(ch, 1, &mean, vDSP_Length(n))
         let db = 10 * log10(max(mean, 1e-16))
+        let voiced = voice?.feed(ch, count: n) ?? false
+        gate.lock()
+        // the levels under `gate` too — status() reads them on main while the tap writes them
         levelDB = db
         if db > peakDB || Date().timeIntervalSince(peakAt) > 10 { peakDB = db; peakAt = Date() }
         floorDB = db < floorDB ? db : min(floorDB + 0.045, db)
-        let voiced = voice?.feed(ch, count: n) ?? false
-        gate.lock()
         if voiced { lastVoiceAt = Date() }
         speechNow = voiced
         gate.unlock()
@@ -675,14 +681,15 @@ final class Ears {
         gate.lock()
         let speech = speechNow
         let heardAt = lastAudioAt
+        let (level, peak, floor) = (levelDB, peakDB, floorDB)
         gate.unlock()
-        // Listening only when the engine runs and audio reaches the tap, not because it started once
+        // (CLAUDE.md §5): listening only when the engine runs and audio reaches the tap, not because it started once
         let ago: Double? = heardAt == .distantPast ? nil : Date().timeIntervalSince(heardAt)
         let health = MicHealth.of(running: running, engineRunning: engine.isRunning, off: offUntil > Date(),
                                   lastAudioAgo: ago, problem: problem)
         var s: [String: Any] = ["listening": health.listening, "on_device": onDevice, "failures": failures,
-                                "hearing": task != nil, "speech": speech, "floor_db": Double(floorDB.rounded()),
-                                "level_db": Double(levelDB.rounded()), "peak_db_10s": Double(peakDB.rounded()),
+                                "hearing": task != nil, "speech": speech, "floor_db": Double(floor.rounded()),
+                                "level_db": Double(level.rounded()), "peak_db_10s": Double(peak.rounded()),
                                 "engine_running": engine.isRunning]
         if let ago { s["last_audio_s"] = (ago * 10).rounded() / 10 }
         if let p = health.problem { s["problem"] = p }

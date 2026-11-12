@@ -20,7 +20,10 @@ struct SeenWindow: Equatable {
     var app: String
 }
 
-protocol World: AnyObject {
+// (strict concurrency): her world is read on her main thread — her body, and the simulator, which runs her
+// body headless on the main thread before her app starts (main.swift's top level).
+@MainActor
+protocol World: AnyObject, Sendable {          // main-actor, so every world is Sendable: Body.readInto hands it off
     var now: Date { get }
     var screens: [Display] { get }
     var mouse: CGPoint { get }
@@ -29,7 +32,8 @@ protocol World: AnyObject {
     /// The field he's typing in and its caret, Cocoa coordinates.
     func focus() -> (field: CGRect?, caret: CGRect?)
     /// Where his keys are going (Focus.into): terminal, editor, chat, other or unknown, and why.
-    func keysInto() -> (kind: String, why: String)
+    // read off her main thread (Body.readInto): RealWorld's is Focus.into, which any thread may call
+    nonisolated func keysInto() -> (kind: String, why: String)
     var frontApp: String? { get }
     /// The front window's title (a browser tab's page title): "Lo-fi beats - YouTube".
     var frontTitle: String? { get }
@@ -109,7 +113,7 @@ final class RealWorld: World {
         if screensWatch == nil {
             screensWatch = NotificationCenter.default.addObserver(
                 forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in
-                self?.screensKept = nil
+                MainActor.assumeIsolated { self?.screensKept = nil }          // the .main queue
             }
         }
         let built = NSScreen.screens.map { s in
@@ -123,13 +127,14 @@ final class RealWorld: World {
     func frontWindow() -> CGRect? {
         guard AXIsProcessTrusted(), let app = NSWorkspace.shared.frontmostApplication,
               app.bundleIdentifier != Bundle.main.bundleIdentifier else { return nil }
-        let ax = AXUIElementCreateApplication(app.processIdentifier)
+        let ax = AXQuick.app(app.processIdentifier)          // 0.25 s, not 6 s, for an app that doesn't answer
         var win: CFTypeRef?
         guard AXUIElementCopyAttributeValue(ax, kAXFocusedWindowAttribute as CFString, &win) == .success,
               let w = win else { return nil }
+        let window = AXQuick.element(w as! AXUIElement)
         var pv: CFTypeRef?, sv: CFTypeRef?
-        AXUIElementCopyAttributeValue(w as! AXUIElement, kAXPositionAttribute as CFString, &pv)
-        AXUIElementCopyAttributeValue(w as! AXUIElement, kAXSizeAttribute as CFString, &sv)
+        AXUIElementCopyAttributeValue(window, kAXPositionAttribute as CFString, &pv)
+        AXUIElementCopyAttributeValue(window, kAXSizeAttribute as CFString, &sv)
         var p = CGPoint.zero, sz = CGSize.zero
         guard let pv, let sv, AXValueGetValue(pv as! AXValue, .cgPoint, &p),
               AXValueGetValue(sv as! AXValue, .cgSize, &sz) else { return nil }
@@ -140,17 +145,18 @@ final class RealWorld: World {
         let f = Focus.now()
         return (f?.field, f?.caret)
     }
-    func keysInto() -> (kind: String, why: String) { Focus.into() }
+    nonisolated func keysInto() -> (kind: String, why: String) { Focus.into() }
     var frontApp: String? { NSWorkspace.shared.frontmostApplication?.localizedName }
     var screenChanging: Bool { true }
     var screenChange: (at: Date, point: CGPoint)? { nil }
     var frontTitle: String? {
         guard AXIsProcessTrusted(), let app = NSWorkspace.shared.frontmostApplication,
               app.bundleIdentifier != Bundle.main.bundleIdentifier else { return nil }
-        let ax = AXUIElementCreateApplication(app.processIdentifier)
+        let ax = AXQuick.app(app.processIdentifier)          // 0.25 s, not 6 s, for an app that doesn't answer
         var win: CFTypeRef?, title: CFTypeRef?
         guard AXUIElementCopyAttributeValue(ax, kAXFocusedWindowAttribute as CFString, &win) == .success, let w = win,
-              AXUIElementCopyAttributeValue(w as! AXUIElement, kAXTitleAttribute as CFString, &title) == .success else { return nil }
+              AXUIElementCopyAttributeValue(AXQuick.element(w as! AXUIElement), kAXTitleAttribute as CFString, &title) == .success
+        else { return nil }
         return title as? String
     }
     // hardware keys only. The session's counter also counted keys other apps post, and one at 07:14
@@ -187,7 +193,8 @@ final class RealWorld: World {
 }
 
 /// Everything reads the world through here; the simulator swaps it.
-var world: World = RealWorld()
+/// Main-actor: swapped by the simulator and read by her body, both on her main thread.
+@MainActor var world: World = RealWorld()
 
 /// Chance, seedable: live it is seeded from the system, a simulation from its
 /// scenario, so a run can be repeated exactly (SplitMix64).
@@ -203,18 +210,20 @@ struct Dice: RandomNumberGenerator {
     }
 }
 
-var dice = Dice(seed: UInt64.random(in: 0...UInt64.max))
+/// Drawn only on her main thread — her body, its picture and its soul, and the simulator's runs (now said by
+/// the compiler, not a comment).
+@MainActor var dice = Dice(seed: UInt64.random(in: 0...UInt64.max))
 
 extension Double {
-    static func rnd(_ r: ClosedRange<Double>) -> Double { Double.random(in: r, using: &dice) }
-    static func rnd(_ r: Range<Double>) -> Double { Double.random(in: r, using: &dice) }
+    @MainActor static func rnd(_ r: ClosedRange<Double>) -> Double { Double.random(in: r, using: &dice) }
+    @MainActor static func rnd(_ r: Range<Double>) -> Double { Double.random(in: r, using: &dice) }
 }
 extension CGFloat {
-    static func rnd(_ r: ClosedRange<CGFloat>) -> CGFloat { CGFloat.random(in: r, using: &dice) }
+    @MainActor static func rnd(_ r: ClosedRange<CGFloat>) -> CGFloat { CGFloat.random(in: r, using: &dice) }
 }
 extension Bool {
-    static func rnd() -> Bool { Bool.random(using: &dice) }
+    @MainActor static func rnd() -> Bool { Bool.random(using: &dice) }
 }
 extension Array {
-    func rndElement() -> Element? { randomElement(using: &dice) }
+    @MainActor func rndElement() -> Element? { randomElement(using: &dice) }
 }

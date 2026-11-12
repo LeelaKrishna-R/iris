@@ -46,11 +46,16 @@ final class DayCard: NSObject {
                 })
         }
         self.at = at
-        if !hidden { show(near: near) }
+        if !hidden { show(near: near) } else if peeking { show(near: peekNear) }     // a peek shows the new rows
     }
 
     @objc private func clicked(_ sender: NSButton) {
         guard let id = buttons[sender], !id.isEmpty else { return }
+        if id.hasPrefix("open:") {
+            // "Kept for you" (core/iris_day_card.kept): Open is hers to do here, at once, not Core's
+            DayCard.open(String(id.dropFirst(5)))
+            return
+        }
         acts.append((token: UUID().uuidString, id: id))
         sender.isEnabled = false
         sender.title = "…"
@@ -93,27 +98,99 @@ final class DayCard: NSObject {
         return out
     }
 
-    /// He clicked her: the card moves beside her and Core is asked for fresh rows.
-    func petted(near: CGRect) {
-        guard !hidden else { return }
-        refresh = true
-        if let p = panel { p.setFrameOrigin(place(size: p.frame.size, near: near)) }
+    /// Friday's app on this Mac (FridayMac), on `screen` ("notifications"): its friday:// link, which the app takes to
+    /// that screen (NotificationRouting.macScreen). A Friday installed before it took the link opens where he left it,
+    /// and that is said in her log.
+    static var fridayApp: String { Config.agentApp }
+
+    static func open(_ screen: String) {
+        let ws = NSWorkspace.shared
+        if let link = URL(string: "friday://\(screen)"), let app = ws.urlForApplication(toOpen: link),
+           Bundle(url: app)?.bundleIdentifier == fridayApp {
+            ws.open(link)
+            log("day card: opened \(Config.agentName)'s \(screen)")
+        } else if let app = ws.urlForApplication(withBundleIdentifier: fridayApp) {
+            ws.openApplication(at: app, configuration: NSWorkspace.OpenConfiguration())
+            log("day card: opened \(Config.agentName), not its \(screen): this \(Config.agentName) doesn't take friday:// links yet")
+        } else {
+            log("day card: \(Config.agentName)'s \(screen) not opened: \(Config.agentName) isn't installed on this Mac")
+        }
     }
+
+    // MARK: a peek
+    // The card had been hidden since (× hid it for good), so a click on her only giggled. A click on her
+    // now always peeks: the card beside her until he types, moves his pointer well away, clicks her again, or a
+    // minute passes (Stages.peekEnds); it never stays on its own. Pinned (Show My Day), a click moves it beside her.
+    private(set) var peeking = false
+    private var peekAt = Date.distantPast
+    private var peekNear = CGRect.zero
+    private var peekWatch: Timer?
+
+    /// He clicked her: a peek at the card (a second click puts it away); pinned, it moves beside her. Core is asked
+    /// for fresh rows either way.
+    func peek(near: CGRect) {
+        refresh = true
+        if !hidden {
+            if let p = panel { p.setFrameOrigin(place(size: p.frame.size, near: near)) }
+            return
+        }
+        if peeking { unpeek("he clicked her again"); return }
+        guard !rows.isEmpty else { log("day card: no rows yet to peek at"); return }
+        peeking = true
+        peekAt = Date()
+        peekNear = near
+        show(near: near)
+        log("day card: peek")
+        peekWatch?.invalidate()
+        peekWatch = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.watchPeek() }           // scheduled on the main run loop
+        }
+    }
+
+    /// The peek put away, with why in her log; nothing when there is none.
+    func unpeek(_ why: String) {
+        guard peeking else { return }
+        peeking = false
+        peekWatch?.invalidate(); peekWatch = nil
+        close()
+        log("day card: peek over (\(why))")
+    }
+
+    /// Four times a second while it's up: his keys since it opened (his hands only: the HID count, as Eyes reads idle; no keys read), and how
+    /// far his pointer is outside her and the card.
+    private func watchPeek() {
+        // his keys inside the card (a keyboard user moving through it) don't put it away; his typing elsewhere does
+        let typed = !(panel?.isKeyWindow ?? false)
+            && CGEventSource.secondsSinceLastEventType(.hidSystemState, eventType: .keyDown) < Date().timeIntervalSince(peekAt)
+        let p = NSEvent.mouseLocation
+        let near = (panel?.frame ?? peekNear).union(peekNear)
+        let dx = max(near.minX - p.x, 0, p.x - near.maxX), dy = max(near.minY - p.y, 0, p.y - near.maxY)
+        if let why = Stages.peekEnds(shownFor: Date().timeIntervalSince(peekAt), typedSince: typed,
+                                     away: Double(hypot(dx, dy))) {
+            unpeek(why)
+        }
+    }
+
+    /// Her one line for his pointer resting on her (Stages.hoverHint), from these rows; nil before there are any.
+    func hint() -> String? { Stages.hoverHint(rows: rows.map { (key: $0.key, head: $0.head, text: $0.text, off: $0.off) }) }
 
     /// Show My Day / Hide My Day, from her menu.
     func toggle(near: CGRect) {
+        if peeking { unpeek("pinned from her menu") }
         UserDefaults.standard.set(!hidden, forKey: DayCard.hiddenKey)
         if hidden { close() } else { refresh = true; if !rows.isEmpty { show(near: near) } }
         log("day card: \(hidden ? "hidden" : "shown") from her menu")
     }
 
+    /// ×: a peek closes (a click still peeks again); the pinned card unpins, and a click on her still peeks.
     @objc private func dismissed() {
+        if peeking { unpeek("he closed it"); return }
         UserDefaults.standard.set(true, forKey: DayCard.hiddenKey)
         close()
-        log("day card: hidden")
+        log("day card: unpinned (a click on her still peeks)")
     }
 
-    private func close() { panel?.orderOut(nil); panel = nil }
+    private func close() { (panel as? CardPanel)?.giveKeysBack(); panel?.orderOut(nil); panel = nil }
 
     /// a row's text as Core read it (core/iris_day_card's key: "todos", "next" …); nil when the card has
     /// no such row or Core couldn't read it ("off"). Iris reads the to-dos for one come due (Body.dayCard).
@@ -129,14 +206,14 @@ final class DayCard: NSObject {
         let when = NSTextField(labelWithString: at.map { "Updated " + DayCard.clock.string(from: $0) } ?? "")
         when.font = .preferredFont(forTextStyle: .subheadline)
         when.textColor = .secondaryLabelColor                       // tertiary read too faint on the popover
-        let x = NSButton(image: NSImage(systemSymbolName: "xmark", accessibilityDescription: "Hide my day") ?? NSImage(),
+        let x = NSButton(image: NSImage(systemSymbolName: "xmark", accessibilityDescription: "Close your day") ?? NSImage(),
                          target: self, action: #selector(dismissed))
         x.isBordered = false
         x.contentTintColor = .secondaryLabelColor
         x.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([x.widthAnchor.constraint(equalToConstant: 24),
                                      x.heightAnchor.constraint(equalToConstant: 24)])   // a 24-pt target, not the glyph
-        x.toolTip = "Hide (Show My Day in Iris's menu brings it back)"
+        x.toolTip = peeking ? "Close (a click on Iris shows it again)" : "Unpin (Show My Day in Iris's menu pins it again)"
         let top = NSStackView(views: [title, when, NSView(), x])
         top.orientation = .horizontal
         top.spacing = 6
@@ -175,8 +252,10 @@ final class DayCard: NSObject {
         fx.layoutSubtreeIfNeeded()
         let size = NSSize(width: width, height: max(80, fx.fittingSize.height))
         let p = panel ?? {
-            let p = NSPanel(contentRect: NSRect(origin: .zero, size: size),
-                            styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+            // a panel that can take keys once he clicks into it (Tab between its buttons, Space presses one);
+            // shown, it never takes his typing (orderFrontRegardless, non-activating)
+            let p = CardPanel(contentRect: NSRect(origin: .zero, size: size),
+                              styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
             p.isOpaque = false
             p.backgroundColor = .clear
             p.hasShadow = true
@@ -187,6 +266,13 @@ final class DayCard: NSObject {
             return p
         }()
         p.contentView = fx
+        // VoiceOver: the card is "Your day", its rows read in order; the keyboard reaches each button
+        fx.setAccessibilityElement(true)
+        fx.setAccessibilityRole(.group)
+        fx.setAccessibilityLabel("Your day")
+        p.setAccessibilityTitle("Your day")
+        p.autorecalculatesKeyViewLoop = true
+        p.initialFirstResponder = buttons.keys.sorted { $0.frame.minY > $1.frame.minY }.first ?? x
         p.setContentSize(size)
         p.setFrameOrigin(place(size: size, near: near))
         p.orderFrontRegardless()
@@ -213,4 +299,40 @@ final class DayCard: NSObject {
         f.dateStyle = .none
         return f
     }()
+}
+
+
+/// the day card's panel. Key (taking keys, so Tab moves between its buttons and Space presses one) only for a
+/// keyboard user who moves into it, VoiceOver or Full Keyboard Access on, never from a mouse click: 5e124c06 let any
+/// click make it key, and his next keystrokes went to the card instead of his app (review). When it closes
+/// while key, the app he was in gets its keys back.
+final class CardPanel: NSPanel {
+    static var keyboardUser: Bool { NSApp.isFullKeyboardAccessEnabled || NSWorkspace.shared.isVoiceOverEnabled }
+    private var byMouse = false
+    private var hisApp: NSRunningApplication?
+
+    override var canBecomeKey: Bool { !byMouse && CardPanel.keyboardUser }
+
+    override func sendEvent(_ e: NSEvent) {
+        let mouse: Set<NSEvent.EventType> = [.leftMouseDown, .rightMouseDown, .otherMouseDown]
+        guard mouse.contains(e.type) else { return super.sendEvent(e) }
+        byMouse = true                        // a click presses its button; it doesn't make the card take his keys
+        defer { byMouse = false }
+        super.sendEvent(e)
+    }
+
+    override func becomeKey() {
+        let front = NSWorkspace.shared.frontmostApplication
+        if front?.processIdentifier != ProcessInfo.processInfo.processIdentifier { hisApp = front }
+        super.becomeKey()
+        log("day card: keys taken (keyboard user)")
+    }
+
+    /// Closing: if the card held the keys, they go back to the app he was in.
+    func giveKeysBack() {
+        guard isKeyWindow else { return }
+        resignKey()
+        hisApp?.activate()
+        hisApp = nil
+    }
 }

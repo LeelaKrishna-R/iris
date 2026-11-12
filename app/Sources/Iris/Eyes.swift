@@ -1,3 +1,4 @@
+import os
 import AppKit
 import CoreMedia
 import ApplicationServices
@@ -9,7 +10,10 @@ import Vision
 /// and window he's in, and every window on screen are kept for Friday to ask
 /// about. Without Screen Recording she sees nothing and says so — never an
 /// old frame passed off as now.
-final class Eyes {
+// (strict concurrency): her eyes' state is `q`'s — read and written only inside q.sync — except the timer
+// (main's) and windowsAt (tick's own: one tick runs at a time, `busy`, now kept in q too). That, not the compiler, is
+// what makes it safe to share with her capture streams, her reads and the routes.
+final class Eyes: @unchecked Sendable {
     struct Display: Codable {
         var id: UInt32
         var frame: [Double]          // x, y, w, h — global points
@@ -106,11 +110,11 @@ final class Eyes {
     }
 
     private func look() {
-        guard !busy else { return }
-        busy = true
+        // busy was set here on main and cleared in the detached task: both under q now
+        guard q.sync(execute: { () -> Bool in if busy { return false }; busy = true; return true }) else { return }
         Task.detached(priority: .utility) { [weak self] in
             await self?.tick()
-            self?.busy = false
+            self?.q.sync { self?.busy = false }
         }
     }
 
@@ -214,16 +218,46 @@ final class Eyes {
     static func windowList(on displays: [SCDisplay]) -> [Win] {
         let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
             as? [[String: Any]] ?? []
-        let mine = ProcessInfo.processInfo.processIdentifier
-        return list.compactMap { w -> Win? in
+        return windows(from: list, mine: ProcessInfo.processInfo.processIdentifier,
+                       displays: displays.map { ($0.displayID, $0.frame) })
+    }
+
+    /// His windows from the window server's list: on the normal layer, not hers, named, wider than 40 pt, each with
+    /// the display its middle is on (pure, tested).
+    static func windows(from list: [[String: Any]], mine: Int32, displays: [(id: UInt32, frame: CGRect)]) -> [Win] {
+        list.compactMap { w -> Win? in
             guard (w[kCGWindowLayer as String] as? Int) == 0, (w[kCGWindowOwnerPID as String] as? Int32) != mine,
                   let app = w[kCGWindowOwnerName as String] as? String, !app.isEmpty,
                   let b = w[kCGWindowBounds as String] as? NSDictionary,
                   let f = CGRect(dictionaryRepresentation: b), f.width > 40 else { return nil }
             let disp = displays.first { $0.frame.contains(CGPoint(x: f.midX, y: f.midY)) }
-            return Win(app: app, title: w[kCGWindowName as String] as? String ?? "", display: disp?.displayID,
+            return Win(app: app, title: w[kCGWindowName as String] as? String ?? "", display: disp?.id,
                        frame: [f.minX, f.minY, f.width, f.height])
         }
+    }
+
+    /// A glance changed from the one before: its 32×18 grey thumbnails differ by more than 1.5 a cell on average
+    /// (pure, tested).
+    static func changed(_ old: [UInt8], _ new: [UInt8]) -> Bool {
+        let diff = zip(old, new).reduce(0) { $0 + abs(Int($1.0) - Int($1.1)) }
+        return Double(diff) / Double(new.count) > 1.5
+    }
+
+    /// Whether to read a screen now (see(_:frame:_:)): never while a read runs, within 10 s of the last, while he
+    /// asked her not to watch, or with him away; the screen he isn't on at most every Eyes.otherScreenEveryS; his hands
+    /// resting, at most every Eyes.restingEveryS; then once it has settled (0.9 s still), or every 30 s while it keeps
+    /// changing (pure, tested).
+    static func readNow(now: Date, changed: Bool, pendingSince: Date?, readAt: Date?, lastRead: Date, reading: Bool,
+                        offUntil: Date, idle: Double, front: Bool) -> Bool {
+        guard !reading, now.timeIntervalSince(lastRead) >= 10, now >= offUntil else { return false }
+        guard idle < Eyes.readAwayS else { return false }        // he's away: his screens' words feed nothing
+        guard front || now.timeIntervalSince(readAt ?? .distantPast) >= Eyes.otherScreenEveryS else { return false }
+        let sinceRead = now.timeIntervalSince(readAt ?? .distantPast)
+        guard idle < Eyes.handsBusyS || sinceRead >= Eyes.restingEveryS else { return false }
+        guard let p = pendingSince else { return false }
+        let settled = !changed && now.timeIntervalSince(p) >= 0.9
+        let stale = sinceRead >= 30 && now.timeIntervalSince(p) >= 2
+        return settled || stale
     }
 
     /// Records the glance; true when the screen should be read now — it
@@ -235,12 +269,8 @@ final class Eyes {
             var d = displays[id] ?? Display(id: id, frame: [], text: "", changedAt: nil, readAt: nil, seenAt: nil)
             d.frame = [frame.minX, frame.minY, frame.width, frame.height]
             d.seenAt = glanceAt[id]                  // when her stream last reported this screen
-            var changed = true
             let before = thumbs[id]
-            if let old = before {
-                let diff = zip(old, thumb).reduce(0) { $0 + abs(Int($1.0) - Int($1.1)) }
-                changed = Double(diff) / Double(thumb.count) > 1.5
-            }
+            let changed = before.map { Eyes.changed($0, thumb) } ?? true
             thumbs[id] = thumb
             if changed {
                 d.changedAt = now
@@ -253,18 +283,12 @@ final class Eyes {
             guard reading.isEmpty, now.timeIntervalSince(lastRead) >= 10, now >= offUntil else { return false }
             // hardware input only (keys another app posts aren't him: the phantom wave)
             let idle = CGEventSource.secondsSinceLastEventType(.hidSystemState, eventType: CGEventType(rawValue: ~0)!)
-            guard idle < Eyes.readAwayS else { return false }        // he's away: his screens' words feed nothing
             let front = focusedCache.map { frame.contains(CGPoint(x: $0.midX, y: $0.midY)) } ?? true
-            guard front || now.timeIntervalSince(d.readAt ?? .distantPast) >= Eyes.otherScreenEveryS else { return false }
-            let sinceRead = now.timeIntervalSince(d.readAt ?? .distantPast)
             // his hands resting a minute or more (reading, watching), at most every 30 s: a chat or a video
-            // moving had her read every ~9 s, each read a 45-60% CPU spike, for words that only count while he works
-            guard idle < Eyes.handsBusyS || sinceRead >= Eyes.restingEveryS else { return false }
-            guard let p = pendingRead[id] else { return false }
+            // moving had her read every ~9 s, each read a 45-60% CPU spike, for words that only count while he works;
             // once it settles; while it keeps changing, one every 30 s
-            let settled = !changed && now.timeIntervalSince(p) >= 0.9
-            let stale = sinceRead >= 30 && now.timeIntervalSince(p) >= 2
-            return settled || stale
+            return Eyes.readNow(now: now, changed: changed, pendingSince: pendingRead[id], readAt: d.readAt,
+                                lastRead: lastRead, reading: false, offUntil: offUntil, idle: idle, front: front)
         }
     }
 
@@ -326,14 +350,14 @@ final class Eyes {
     /// Every display as he sees it (Iris left out), saved as PNGs in
     /// ~/Pictures/Iris Screenshots (not a folder macOS guards, so nothing is
     /// asked of him). The saved files' paths, or [] when it couldn't be taken.
-    func shot(_ done: @escaping ([String]) -> Void) {
+    func shot(_ done: @escaping @Sendable ([String]) -> Void) {
         Task.detached(priority: .userInitiated) {
             var saved: [String] = []
             do {
                 let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
                 let me = content.applications.filter { $0.bundleIdentifier == Bundle.main.bundleIdentifier }
                 let dir = FileManager.default.homeDirectoryForCurrentUser
-                    .appendingPathComponent("Pictures/Iris Screenshots", isDirectory: true)
+                    .appendingPathComponent("Pictures/\(Config.agentName) Screenshots", isDirectory: true)
                 try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
                 let f = DateFormatter()
                 f.dateFormat = "yyyy-MM-dd 'at' HH.mm.ss"
@@ -370,6 +394,12 @@ final class Eyes {
     /// query would be a new permission prompt on his screen). "what's playing" could only say whether.
     static func nowPlaying(soundOn: Bool) -> [String: String]? {
         guard let list = CGWindowListCopyWindowInfo([.optionAll], kCGNullWindowID) as? [[String: Any]] else { return nil }
+        return nowPlaying(from: list, soundOn: soundOn)
+    }
+
+    /// What's playing, from the window server's list: Spotify's song (its window's title once it isn't "Spotify"), or
+    /// a YouTube page's title while a sound plays (pure, tested).
+    static func nowPlaying(from list: [[String: Any]], soundOn: Bool) -> [String: String]? {
         let browsers: Set<String> = ["Safari", "Google Chrome", "Arc", "Firefox", "Brave Browser", "Microsoft Edge"]
         var video: [String: String]?
         for d in list where (d[kCGWindowLayer as String] as? Int) == 0 {
@@ -400,6 +430,12 @@ final class Eyes {
             "mic_others": AudioUse.micByOthers,
             "sound": AudioUse.soundPlaying,
         ]
+        // (structure audit): whether he's watching a film and whether music is playing are her body's
+        // answers (Body.isVideo with his screen moving; World.musicPlaying, her own voice left out), so Core's
+        // reflexes read these instead of keeping lists of their own
+        let sensed = Senses.now()
+        out["video"] = sensed.video
+        out["music"] = sensed.music
         let focused = Eyes.focusedFrame()
         q.sync {
             focusedCache = focused
@@ -495,19 +531,20 @@ final class Eyes {
         }
         return front
     }
-    private static var lastRegular: NSRunningApplication?
+    /// only ever read or written under workingLock (workingApp), which is what makes this static safe.
+    nonisolated(unsafe) private static var lastRegular: NSRunningApplication?
     private static let workingLock = NSLock()
 
     /// His focused window's frame in the window server's coordinates (y down from the primary's top).
     static func focusedFrame() -> CGRect? {
         guard AXIsProcessTrusted(), let app = Eyes.workingApp else { return nil }
-        let ax = AXUIElementCreateApplication(app.processIdentifier)
+        let ax = AXQuick.app(app.processIdentifier)        // review Link's queue waits on this
         var win: CFTypeRef?
         guard AXUIElementCopyAttributeValue(ax, kAXFocusedWindowAttribute as CFString, &win) == .success,
               let w = win else { return nil }
         var pos: CFTypeRef?, size: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(w as! AXUIElement, kAXPositionAttribute as CFString, &pos) == .success,
-              AXUIElementCopyAttributeValue(w as! AXUIElement, kAXSizeAttribute as CFString, &size) == .success,
+        guard AXUIElementCopyAttributeValue(AXQuick.element(w as! AXUIElement), kAXPositionAttribute as CFString, &pos) == .success,
+              AXUIElementCopyAttributeValue(AXQuick.element(w as! AXUIElement), kAXSizeAttribute as CFString, &size) == .success,
               let pv = pos, let sv = size else { return nil }
         var p = CGPoint.zero, z = CGSize.zero
         guard AXValueGetValue(pv as! AXValue, .cgPoint, &p), AXValueGetValue(sv as! AXValue, .cgSize, &z) else { return nil }
@@ -516,12 +553,12 @@ final class Eyes {
 
     static func focusedTitle() -> String? {
         guard AXIsProcessTrusted(), let app = Eyes.workingApp else { return nil }
-        let ax = AXUIElementCreateApplication(app.processIdentifier)
+        let ax = AXQuick.app(app.processIdentifier)        // review Link's queue waits on this
         var win: CFTypeRef?
         guard AXUIElementCopyAttributeValue(ax, kAXFocusedWindowAttribute as CFString, &win) == .success,
               let w = win else { return nil }
         var t: CFTypeRef?
-        AXUIElementCopyAttributeValue(w as! AXUIElement, kAXTitleAttribute as CFString, &t)
+        AXUIElementCopyAttributeValue(AXQuick.element(w as! AXUIElement), kAXTitleAttribute as CFString, &t)
         return t as? String
     }
 }
@@ -535,4 +572,16 @@ private final class Output: NSObject, SCStreamOutput, SCStreamDelegate {
         eyes?.frame(buffer, from: stream)
     }
     func stream(_ stream: SCStream, didStopWithError error: Error) { eyes?.stopped(stream, error) }
+}
+
+
+/// what her body senses of his music and his film (Body sets it on her main thread), read by /eyes/now off it.
+enum Senses {
+    private static let sensed = OSAllocatedUnfairLock(initialState: (music: false, video: false))   // Sendable
+
+    static func set(music m: Bool, video v: Bool) {
+        sensed.withLock { $0 = (m, v) }
+    }
+
+    static func now() -> (music: Bool, video: Bool) { sensed.withLock { $0 } }
 }

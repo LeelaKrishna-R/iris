@@ -68,7 +68,7 @@ enum AudioUse {
     }
 }
 
-/// Whether her ears hear, from the engine itself and the last audio that reached the tap —
+/// (CLAUDE.md §5): whether her ears hear, from the engine itself and the last audio that reached the tap —
 /// never from a flag set once when the engine started.
 enum MicHealth {
     /// No audio this long, with the engine said running: the mic isn't reaching her.

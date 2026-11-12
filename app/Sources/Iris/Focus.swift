@@ -1,5 +1,20 @@
 import AppKit
 import ApplicationServices
+import os
+
+/// an Accessibility element that gives up after `timeout` instead of macOS's 6-second default, so an app
+/// that doesn't answer (busy, hung, a slow Electron window) can't stall her main thread, where these reads run.
+enum AXQuick {
+    static let timeout: Float = 0.25
+
+    static func app(_ pid: pid_t) -> AXUIElement { element(AXUIElementCreateApplication(pid)) }
+
+    @discardableResult
+    static func element(_ e: AXUIElement) -> AXUIElement {
+        AXUIElementSetMessagingTimeout(e, timeout)
+        return e
+    }
+}
 
 /// Where his attention is on screen right now: the text field he's typing in
 /// and, when the app tells us, the caret itself. Cocoa global coordinates
@@ -8,21 +23,21 @@ import ApplicationServices
 enum Focus {
     struct Seen { var field: CGRect?; var caret: CGRect?; var app: String; var role: String }
 
-    private static var asked = Set<pid_t>()
+    /// The apps already asked to expose their fields, once each (kept in a lock, so Focus can be read from any thread).
+    private static let asked = OSAllocatedUnfairLock(initialState: Set<pid_t>())
 
     static func now() -> Seen? {
         guard AXIsProcessTrusted(), let app = NSWorkspace.shared.frontmostApplication,
               app.bundleIdentifier != Bundle.main.bundleIdentifier else { return nil }
-        let axApp = AXUIElementCreateApplication(app.processIdentifier)
-        if !asked.contains(app.processIdentifier) {
-            asked.insert(app.processIdentifier)
+        let axApp = AXQuick.app(app.processIdentifier)
+        if asked.withLock({ $0.insert(app.processIdentifier).inserted }) {
             AXUIElementSetAttributeValue(axApp, "AXManualAccessibility" as CFString, kCFBooleanTrue)
             AXUIElementSetAttributeValue(axApp, "AXEnhancedUserInterface" as CFString, kCFBooleanTrue)
         }
         var el: CFTypeRef?
         guard AXUIElementCopyAttributeValue(axApp, kAXFocusedUIElementAttribute as CFString, &el) == .success,
               let e = el else { return Seen(field: nil, caret: nil, app: app.localizedName ?? "", role: "") }
-        let ax = e as! AXUIElement
+        let ax = AXQuick.element(e as! AXUIElement)
         var roleV: CFTypeRef?
         AXUIElementCopyAttributeValue(ax, kAXRoleAttribute as CFString, &roleV)
         let field = frame(of: ax)
@@ -33,7 +48,7 @@ enum Focus {
             if AXUIElementCopyParameterizedAttributeValue(ax, kAXBoundsForRangeParameterizedAttribute as CFString, rng, &b) == .success,
                let b {
                 var r = CGRect.zero
-                if AXValueGetValue(b as! AXValue, .cgRect, &r), r.width >= 0, r.height > 0, r.height < 200 {
+                if AXValueGetValue(b as! AXValue, .cgRect, &r), caretLooksReal(r) {
                     caret = flip(r)
                 }
             }
@@ -53,7 +68,7 @@ enum Focus {
         guard let app, app.bundleIdentifier != Bundle.main.bundleIdentifier else { return ("unknown", "no app") }
         let bundle = app.bundleIdentifier ?? ""
         if terminals.contains(bundle) { return ("terminal", "terminal app \(bundle)") }
-        let axApp = AXUIElementCreateApplication(app.processIdentifier)
+        let axApp = AXQuick.app(app.processIdentifier)
         var el: CFTypeRef?
         var chain: [AXUIElement] = []
         if AXUIElementCopyAttributeValue(axApp, kAXFocusedUIElementAttribute as CFString, &el) == .success, let e = el {
@@ -69,29 +84,46 @@ enum Focus {
             chain = focusedInWindow(axApp)
         }
         guard let field = chain.first else { return ("unknown", "no focused element") }
-        let classes = strings(field, "AXDOMClassList")
+        let nodes = chain.map { Node(classes: strings($0, "AXDOMClassList"), identifier: string($0, "AXIdentifier") ?? "") }
+        return kind(bundle: bundle, appName: app.localizedName ?? bundle, chain: nodes,
+                    description: string(field, "AXDescription") ?? "", roleDescription: string(field, "AXRoleDescription") ?? "",
+                    role: string(field, "AXRole") ?? "")
+    }
+
+    /// One element of the focused field's chain, as kind(...) reads it: its DOM classes and its identifier.
+    struct Node { var classes: Set<String>; var identifier: String }
+
+    /// Where his keys go, from what Accessibility said of the focused field and its ancestors (the field first)
+    /// (pure, tested; into(appName) reads them).
+    static func kind(bundle: String, appName: String, chain: [Node], description: String, roleDescription: String,
+                     role: String) -> (kind: String, why: String) {
+        guard let field = chain.first else { return ("unknown", "no focused element") }
+        if terminals.contains(bundle) { return ("terminal", "terminal app \(bundle)") }
+        let classes = field.classes
         if classes.contains("xterm-helper-textarea") { return ("terminal", "xterm.js terminal") }
         // a message box: its own name says so (Discord 'Message #channel', Claude Code 'Message input',
         // Messages 'Message'), or it sits in a chat (Discord chat_…, Claude Code chatContainer_…,
         // Messages MessageEntryView); Monaco editors inside a chat are its diffs, not his code
-        let desc = (string(field, "AXDescription") ?? "").lowercased()
+        let desc = description.lowercased()
         if desc.hasPrefix("message") { return ("chat", "a field named '\(desc.prefix(40))'") }
         for (i, c) in chain.enumerated() {
-            for n in strings(c, "AXDOMClassList") + [string(c, "AXIdentifier") ?? ""] {
+            for n in c.classes + [c.identifier] {
                 let l = n.lowercased()
                 if l.contains("chat") || l.contains("message") { return ("chat", "inside \(n) (\(i) up)") }
             }
         }
         if !classes.isDisjoint(with: ["inputarea", "native-edit-context", "cm-content", "ace_text-input"])
-            || string(field, "AXRoleDescription") == "editor" {
+            || roleDescription == "editor" {
             return ("editor", "code editor field \(classes.sorted().joined(separator: " "))")
         }
-        let role = string(field, "AXRole") ?? ""
         if role == "AXTextArea" && (codeEditors.contains(bundle) || bundle.hasPrefix("com.jetbrains.")) {
             return ("editor", "code editor app \(bundle)")
         }
-        return ("other", "\(role) in \(app.localizedName ?? bundle)")
+        return ("other", "\(role) in \(appName)")
     }
+
+    /// A caret's bounds Accessibility gave that are a caret, not a whole line or nothing (pure, tested).
+    static func caretLooksReal(_ r: CGRect) -> Bool { r.width >= 0 && r.height > 0 && r.height < 200 }
 
     private static let terminals: Set<String> = ["com.apple.Terminal", "com.googlecode.iterm2", "dev.warp.Warp-Stable",
                                                  "com.mitchellh.ghostty", "net.kovidgoyal.kitty", "org.alacritty",
@@ -145,8 +177,10 @@ enum Focus {
     }
 
     /// Accessibility's top-left coordinates to Cocoa's bottom-left.
-    private static func flip(_ r: CGRect) -> CGRect {
-        let primaryH = NSScreen.screens.first?.frame.height ?? 0
-        return CGRect(x: r.minX, y: primaryH - r.minY - r.height, width: r.width, height: r.height)
+    private static func flip(_ r: CGRect) -> CGRect { flip(r, primaryHeight: NSScreen.screens.first?.frame.height ?? 0) }
+
+    /// The same, for a primary screen `primaryHeight` tall (pure, tested).
+    static func flip(_ r: CGRect, primaryHeight: CGFloat) -> CGRect {
+        CGRect(x: r.minX, y: primaryHeight - r.minY - r.height, width: r.width, height: r.height)
     }
 }

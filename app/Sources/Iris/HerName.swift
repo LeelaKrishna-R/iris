@@ -13,13 +13,13 @@ import Foundation
 /// Apart from Ears (AVFoundation, Speech) so it compiles on its own: tests/test_iris_her_name_1019.py.
 enum HerName {
     static var wakeWords: [String] { Config.wakeWords }
-    /// "Hey Friday" misheard by the on-device recognizer.
+    /// "Hey \(Config.agentName)" misheard by the on-device recognizer.
     static let misheardFriday = #"^\s*(?:hey|hi|okay|ok)\s+(?:friend|friends|fried|frida|fri day)\b"#
     /// "Iris" misheard, only at the start and only before one of her commands.
     static let misheardName = #"^\s*(?:hey\s+)?(?:i was|i will|i'll|irish|ires|iras)(?=\s+(?:come|dance|sit|sleep|wake|stop|go|wave|look|move|be quiet|hush|shh|nap|giggle|say hi))"#
     static let trim = CharacterSet(charactersIn: " ,.!?").union(.whitespaces)
 
-    /// (production "…Friday is the moderator so we can know who is active", said to his
+    /// (production "…\(Config.agentName) is the moderator so we can know who is active", said to his
     /// Discord, answered aloud): her name said about her, or the weekday, is not said to her.
     static let greetingOnly = #"^\s*(?:(?:hey|hi|hello|okay|ok|yo|oh)[\s,]*)*$"#
     static let weekdayBefore = #"\b(?:on|this|next|last|every|by|until|till|since|before|after|from)\s+$"#
@@ -27,7 +27,7 @@ enum HerName {
     static let aboutAfter = #"^(?:'s|’s|\s+(?:is|was|has|had|does|did|will|would|can|could|should|isn't|wasn't|doesn't|didn't|won't|can't|just|always|never|said|says|told|keeps)\b)"#
 
     /// Whether the name at `r` in `low` is talked about (mid-sentence, then "is", "was", "'s"...) or is the
-    /// day ("on Friday", "Friday night"); at the start, or after a greeting, it is always his call.
+    /// day ("on \(Config.agentName)", "\(Config.agentName) night"); at the start, or after a greeting, it is always his call.
     static func about(_ low: String, _ r: Range<String.Index>) -> Bool {
         let before = String(low[..<r.lowerBound]), after = String(low[r.upperBound...])
         if before.range(of: greetingOnly, options: .regularExpression) != nil { return false }

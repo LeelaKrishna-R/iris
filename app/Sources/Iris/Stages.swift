@@ -58,8 +58,15 @@ enum Stages {
     static func seat(seated: Bool, onWindow: Bool, typingAlong: Bool, watchingVideo: Bool, asleep: Bool,
                      listening: Bool, talking: Bool, seatedFor: Double, hisIdle: Double, sinceKeys: Double,
                      sleepiness: Double, screenMoving: Bool, callOn: Bool, music: Bool,
-                     fishing: Bool = false) -> Seat? {
+                     fishing: Bool = false, noteFor: String? = nil) -> Seat? {
         guard seated, !typingAlong, !asleep, !listening, !talking else { return nil }
+        // (UX audit #5): something waits for him (core/iris_note: a note that interrupted him, unopened; one
+        // kept for him alone is not a cue, review): she holds her sticky note at her chest, still (stillSeats),
+        // while he's at the Mac, not typing and not on a call; no sound, no bubble, no walk over. `noteFor` is its
+        // cause, said in her pose journal.
+        if let note = noteFor, !callOn, sinceKeys >= 4, hisIdle < noteAtMacS {
+            return Seat(clip: "sticky_note", why: "a note for you: " + note)
+        }
         if onWindow { return Seat(clip: "sit_legs", why: "sitting on top of his window") }
         guard !watchingVideo, !callOn, !music else { return nil }
         // pose log 13:00-15:42: fishing held 0-90 s, 23 times in 3 h — a Discord line moving on his other
@@ -85,6 +92,11 @@ enum Stages {
     // the Mac. No input is all she has of him (no camera), and three still minutes is a page he's reading, not him gone:
     // ten minutes is away; under it, seated, she reads her book beside him. (was 300, then 180.)
     static let awayFor: Double = 600
+    /// he's at the Mac for her note cue: some input this recently.
+    static let noteAtMacS: Double = 120
+    /// seats drawn as one still frame of their clip, its last (SpriteView): the sticky note held at her chest,
+    /// not her slapping it forward again and again.
+    static let stillSeats: Set<String> = ["sticky_note"]
     static let quietSitFor: Double = 60      // was 300; a long sit is her book, not a stare
 
     /// A hop down from one of his windows is a jump she lands from ("fall_land", "jumping down from a
@@ -168,5 +180,37 @@ enum Stages {
             return t.title
         }
         return nil
+    }
+
+    // MARK: her day card on demand
+
+    /// His pointer this far outside her and the card is "well away": the peek goes.
+    static let peekAwayAt: Double = 240
+    /// A peek is up at most this long: it never stays on its own.
+    static let peekMostS: Double = 60
+
+    /// Why a peek at his day card ends now ("he typed", "his pointer moved away", "a minute up"), or nil to keep it.
+    /// `away`: how far his pointer is outside her frame and the card's (0 on either).
+    static func peekEnds(shownFor: Double, typedSince: Bool, away: Double) -> String? {
+        if typedSince { return "he typed" }
+        if away >= peekAwayAt { return "his pointer moved away" }
+        if shownFor >= peekMostS { return "a minute up" }
+        return nil
+    }
+
+    /// The one line her bubble says when his pointer rests on her: from the card's own rows (core/iris_day_card),
+    /// never a read of its own. The next thing today ("Next: Dentist at 2:00 PM"); with nothing next, what was kept
+    /// for him ("3 kept for you"), else the top line as it is ("Nothing else today", or what couldn't be read). Nil
+    /// before the card has rows.
+    static func hoverHint(rows: [(key: String, head: String, text: String, off: Bool)]) -> String? {
+        guard let top = rows.first(where: { $0.key == "glance" }) else { return nil }
+        let first = String(top.text.split(separator: "\n").first ?? "").trimmingCharacters(in: .whitespaces)
+        let plain = first.hasSuffix(".") ? String(first.dropLast()) : first
+        if !top.off && !plain.isEmpty && plain != "Nothing else today" { return "Next: " + plain }
+        if let kept = rows.first(where: { $0.key == "kept" && !$0.off }),
+           let n = kept.head.split(separator: "·").last.map({ $0.trimmingCharacters(in: .whitespaces) }), Int(n) != nil {
+            return "\(n) kept for you"
+        }
+        return plain.isEmpty ? nil : plain
     }
 }

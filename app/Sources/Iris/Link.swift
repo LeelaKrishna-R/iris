@@ -7,10 +7,13 @@ import Network
 /// HMAC-SHA256 over "<unix ts>.<nonce>.<body>" with a key only this macOS user can
 /// read (~/Library/Application Support/Iris/link.key, 0600). No public
 /// route, no sign-in, no key leaves the machine.
-final class Link {
+// (strict concurrency): every bit of its state (listener, seen) is touched only on `q`, where the listener and
+// each connection run; that serial queue is what makes it safe to share.
+final class Link: @unchecked Sendable {
     static var port: UInt16 { Config.port }
-    typealias Reply = (Int, [String: Any]) -> Void
-    typealias Handler = (_ path: String, _ query: [String: String], _ body: [String: Any], _ reply: @escaping Reply) -> Void
+    // called on `q` (Handler) and from whichever thread answers (Reply): Sendable
+    typealias Reply = @Sendable (Int, [String: Any]) -> Void
+    typealias Handler = @Sendable (_ path: String, _ query: [String: String], _ body: [String: Any], _ reply: @escaping Reply) -> Void
 
     private var listener: NWListener?
     private let key: SymmetricKey
@@ -68,8 +71,18 @@ final class Link {
         }
     }
 
+    /// ("How Iris is"): when Friday last reached her, by its last signed request (an unsigned one is no one's).
+    /// Written on `q`, read from her menu on main: under its own lock.
+    private static let contactGate = NSLock()
+    nonisolated(unsafe) private static var _lastVerifiedAt: Date?
+    static var lastVerifiedAt: Date? {
+        contactGate.lock(); defer { contactGate.unlock() }
+        return _lastVerifiedAt
+    }
+
     private func handle(_ c: NWConnection, _ r: Request) {
         guard verify(r) else { send(c, 401, ["ok": false, "reason": "bad_signature"]); return }
+        Link.contactGate.lock(); Link._lastVerifiedAt = Date(); Link.contactGate.unlock()   // lastVerifiedAt
         let body = (try? JSONSerialization.jsonObject(with: r.body)) as? [String: Any] ?? [:]
         handler(r.path, r.query, body) { [weak self] status, obj in self?.send(c, status, obj) }
     }

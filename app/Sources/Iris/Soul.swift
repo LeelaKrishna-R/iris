@@ -11,17 +11,23 @@ enum Stimulus: String, Codable, CaseIterable {
 /// he does, and tire of repetition (habituation) — so the same thing never
 /// gets the same reaction twice in a row, and nothing is a fixed script.
 /// What he likes and dislikes is learned and kept (soul.json).
+@MainActor          // her body's (Body.soul), on her main thread
 final class Soul {
+    /// Her clock, for her memory's new fields. A memory is made or read only in Soul's init, on her main thread
+    /// (Codable's init is nonisolated, so this says where it runs rather than leave world unchecked).
+    nonisolated static func mainNow() -> Date { MainActor.assumeIsolated { world.now } }
+
     struct Memory: Codable {
         var focusRespect = 0.5     // learned: stay calm and out of the way while he works
         var playfulness = 0.6      // learned: how much horseplay he enjoys
         var cling = 0.5            // learned: how close to his cursor she stays
         var hourly = Array(repeating: 0.0, count: 168)
         var places: [String: Double] = [:]   // learned: how good each spot on his screens feels, -1…1
+        var placesAt = Soul.mainNow()        // when the places last eased toward neutral (decayPlaces)
         var aversion = 0.5                   // learned: how much being in his way bothers her
         var pets = 0
         var shooed = 0
-        var met = world.now
+        var met = Soul.mainNow()
 
         init() {}
         // a memory written by an older Iris keeps what it has; new things start fresh
@@ -32,10 +38,11 @@ final class Soul {
             cling = (try? c.decode(Double.self, forKey: .cling)) ?? 0.5
             hourly = (try? c.decode([Double].self, forKey: .hourly)) ?? Array(repeating: 0.0, count: 168)
             places = (try? c.decode([String: Double].self, forKey: .places)) ?? [:]
+            placesAt = (try? c.decode(Date.self, forKey: .placesAt)) ?? Soul.mainNow()      // older memories: from now
             aversion = (try? c.decode(Double.self, forKey: .aversion)) ?? 0.5
             pets = (try? c.decode(Int.self, forKey: .pets)) ?? 0
             shooed = (try? c.decode(Int.self, forKey: .shooed)) ?? 0
-            met = (try? c.decode(Date.self, forKey: .met)) ?? world.now
+            met = (try? c.decode(Date.self, forKey: .met)) ?? Soul.mainNow()
         }
     }
 
@@ -52,7 +59,10 @@ final class Soul {
     private var lastSave = world.now
     private(set) var lastDeed: (what: String, at: Date)?
 
-    init() { memory = Store.load(Memory.self, "soul.json") ?? Memory() }
+    init() {
+        memory = Store.load(Memory.self, "soul.json") ?? Memory()
+        decayPlaces()                                   // the days she was off ease them too
+    }
 
     func save() { Store.save(memory, "soul.json"); lastSave = world.now }
 
@@ -107,7 +117,7 @@ final class Soul {
         let c = Calendar.current.dateComponents([.weekday, .hour], from: world.now)
         let slot = ((c.weekday ?? 1) - 1) * 24 + (c.hour ?? 0)
         memory.hourly[slot] += ((active ? 1 : 0) - memory.hourly[slot]) * min(1, dt / 3600)
-        if world.now.timeIntervalSince(lastSave) > 120 { save() }
+        if world.now.timeIntervalSince(lastSave) > 120 { decayPlaces(); save() }
     }
 
     static var lateNight: Bool { let h = Calendar.current.component(.hour, from: world.now); return h >= 1 && h < 6 }
@@ -137,6 +147,19 @@ final class Soul {
         if memory.places.count > 4000 { memory.places = memory.places.filter { abs($0.value) > 0.05 } }
     }
 
+    /// (UX audit #9): a spot learned from one shoo was avoided for good (soul.json held 91 spots, most at -1).
+    /// What she learned of a place eases back toward neutral, half of it each Soul.placeHalfLifeS, so where he keeps
+    /// moving her from is kept off for days and comes back once he stops.
+    static let placeHalfLifeS: Double = 7 * 86400
+
+    func decayPlaces() {
+        let dt = world.now.timeIntervalSince(memory.placesAt)
+        guard dt > 0 else { memory.placesAt = world.now; return }       // a clock that stepped back: nothing to ease
+        let k = pow(0.5, dt / Soul.placeHalfLifeS)
+        memory.places = memory.places.mapValues { $0 * k }.filter { abs($0.value) > 0.01 }
+        memory.placesAt = world.now
+    }
+
     /// He typed while she was on top of his work: it bothers her more next time.
     func inTheWay() { memory.aversion = min(2, memory.aversion + 0.03) }
 
@@ -145,6 +168,13 @@ final class Soul {
     /// She did something ("play", "approach", "perform") — remembered so his
     /// reaction in the next minute teaches her.
     func did(_ what: String) { lastDeed = (what, world.now) }
+
+    /// (UX audit #9): he shooed her, or carried her away, while he was working: she was in the way of his work.
+    /// Her respect for his focus rises (Body.focusRespectPull keeps her pull toward him lower while he types). `how`:
+    /// 1 for a shoo, 0.5 for a drag away, as reward weighs them.
+    func interrupted(_ how: Double) {
+        memory.focusRespect = bounded(memory.focusRespect + 0.08 * how)
+    }
 
     func reward(_ r: Double) {
         if r > 0 { memory.pets += 1 } else { memory.shooed += 1 }

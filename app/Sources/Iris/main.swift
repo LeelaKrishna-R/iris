@@ -1,30 +1,34 @@
 import AppKit
-import Speech
 import AVFoundation
-import CoreImage
-import ImageIO
-import Vision
 
 /// Iris: Friday's body on his Mac — a chibi girl on his screens with eyes
 /// (both displays), ears (the Yeti), a mouth (the speakers) and hands
 /// (keyboard and mouse). Her brain is Friday Core, reached over the local
 /// link; her own self (moods, habits, what she's learned about him) is
 /// her own and lives here.
+// (strict concurrency): her app delegate and everything it owns run on the main thread; only route(), which
+// Link calls on its own queue, is nonisolated, and it sends main-thread work there through main {}.
+@MainActor
 final class App: NSObject, NSApplicationDelegate {
     let body = Body()
     let eyes = Eyes()
     let ears = Ears()
     let mouth = Mouth()
     var link: Link?
+    /// Her hands' own queue: typing and pressing, one after another, off her main thread.
+    nonisolated static let handsQueue = DispatchQueue(label: "iris.hands")
 
     func applicationDidFinishLaunching(_ n: Notification) {
         // one Iris: an older copy (macOS reopens apps after a permission change) gives way to this one
         let me = ProcessInfo.processInfo.processIdentifier
-        for other in NSRunningApplication.runningApplications(withBundleIdentifier: Bundle.main.bundleIdentifier ?? "")
-            where other.processIdentifier != me {
-            other.forceTerminate()
-        }
-        Thread.sleep(forTimeInterval: 0.3)
+        let others = NSRunningApplication.runningApplications(withBundleIdentifier: Bundle.main.bundleIdentifier ?? "")
+            .filter { $0.processIdentifier != me }
+        others.forEach { $0.forceTerminate() }
+        // the wait lets an older copy let go of her port before this one takes it; with none, nothing to wait for
+        if !others.isEmpty { Thread.sleep(forTimeInterval: 0.3) }
+        // review every Accessibility element gives up after AXQuick.timeout unless it says otherwise — the
+        // children /hands/see and her eyes walk didn't carry their parent's 0.25 s, and waited macOS's 6 s
+        AXUIElementSetMessagingTimeout(AXUIElementCreateSystemWide(), AXQuick.timeout)
         body.eyes = eyes
         body.start()
         eyes.start()
@@ -39,8 +43,36 @@ final class App: NSObject, NSApplicationDelegate {
         ears.onVoice = { [weak self] in self?.body.heardVoice() }
         ears.start()
         body.onTalk = { [weak self] in self?.ears.listenNow() }
-        body.onPetted = { [weak self] in if let f = self?.body.frameOnScreen { DayCard.shared.petted(near: f) } }
+        // a click on her peeks at his day card; a double-click (a bow) leaves none up; his pointer resting on
+        // her, one line of it in her bubble
+        body.onPetted = { [weak self] in
+            self?.body.notePeeked()                 // a click on her is a look at what waited: her note cue ends
+            if let f = self?.body.frameOnScreen { DayCard.shared.peek(near: f) }
+        }
+        body.onDoublePetted = { DayCard.shared.unpeek("he double-clicked her") }
+        body.onHoverHint = { DayCard.shared.hint() }
         body.onDayCard = { [weak self] in if let f = self?.body.frameOnScreen { DayCard.shared.toggle(near: f) } }
+        // "How Iris is" reads her ears and eyes when her menu opens; her settings act on them (an hour off, as
+        // "stop listening" / "stop watching my screen" said to her do; both kept through her restarts)
+        Menu.shared.readState = { [weak self] in
+            (earsStatus: self?.ears.status(), eyesOffUntil: self?.eyes.pausedUntil, screenPermitted: Eyes.permitted)
+        }
+        Menu.shared.onSetting = { [weak self] what in
+            guard let self else { return }
+            switch what {
+            case "ears_off": self.ears.off(for: 3600)
+            case "ears_on": self.ears.on()
+            case "eyes_off": self.eyes.pause(for: 3600)
+            case "eyes_on": self.eyes.pause(for: 0)
+            default: return
+            }
+            log("menu: \(what)")
+        }
+        // VoiceOver: her window says who she is and what a click does (her body is drawn, so it had no words)
+        body.view?.setAccessibilityElement(true)
+        body.view?.setAccessibilityRole(.image)
+        body.view?.setAccessibilityLabel("Iris, \(Config.agentName)'s companion")
+        body.view?.setAccessibilityHelp("Click to see your day. Right-click for her menu: how she is, and her settings.")
         ApprovalCard.shared.onDecided = { [weak self] choice, what in self?.body.approvalAnswered(choice, what: what) }
         body.onAsk = { [weak self] in
             AskBox.shared.show { text in
@@ -67,9 +99,16 @@ final class App: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ n: Notification) { body.soul.save() }
 
-    private func route(_ path: String, _ query: [String: String], _ body: [String: Any], _ reply: @escaping Link.Reply) {
-        func main(_ work: @escaping () -> (Int, [String: Any])) {
-            DispatchQueue.main.async { let (s, o) = work(); reply(s, o) }
+    nonisolated private func route(_ path: String, _ query: [String: String], _ body: [String: Any],
+                                   _ reply: @escaping Link.Reply) {
+        // a route's main-thread work, made here on Link's queue and run on main
+        @Sendable func main(_ work: @escaping @Sendable @MainActor () -> (Int, [String: Any])) {
+            DispatchQueue.main.async { MainActor.assumeIsolated { let (s, o) = work(); reply(s, o) } }
+        }
+        // typing and pressing sleep and poll (12 ms per 16 characters; up to 1 s for an app to come forward),
+        // which froze her body when they ran on main; her hands' own serial queue keeps what he asked in order.
+        func hands(_ work: @escaping @Sendable () -> (Int, [String: Any])) {
+            App.handsQueue.async { let (s, o) = work(); reply(s, o) }
         }
         switch path {
         case "/health":
@@ -86,7 +125,7 @@ final class App: NSObject, NSApplicationDelegate {
             }
         case "/eyes/focus":
             // ?app=<name>: only where that app's keys would go (Focus.into), for checking it
-            let into = { Focus.into(appName: query["app"]) }
+            let into: @Sendable () -> (kind: String, why: String) = { Focus.into(appName: query["app"]) }
             if query["app"] != nil {
                 return DispatchQueue.global(qos: .utility).async { let i = into(); reply(200, ["ok": true, "into": i.kind, "why": i.why]) }
             }
@@ -120,8 +159,10 @@ final class App: NSObject, NSApplicationDelegate {
             // the names in his life (Core's core/stt_names, the same list his phone's voice is
             // primed with), so both of her recognizers expect them
             let w = (body["words"] as? [String] ?? []).map { String($0.prefix(40)) }.filter { !$0.isEmpty }
-            ears.extraWords = Array(w.prefix(80))
-            reply(200, ["ok": true, "words": ears.extraWords.count])
+            main {                                     // review set where her ears read them, on main
+                self.ears.extraWords = Array(w.prefix(80))
+                return (200, ["ok": true, "words": self.ears.extraWords.count])
+            }
         case "/ears/next":
             let t = min(25, max(0, (body["timeout"] as? Double) ?? 20))
             ears.next(timeout: t) { h in
@@ -149,7 +190,7 @@ final class App: NSObject, NSApplicationDelegate {
             main { self.body.showing(text, seconds: secs); return (200, ["ok": true]) }
         case "/hands/type":
             let text = body["text"] as? String ?? ""
-            main { Hands.type(text) ? (200, ["ok": true]) : (403, ["ok": false, "reason": "accessibility_not_allowed"]) }
+            hands { Hands.type(text) ? (200, ["ok": true]) : (403, ["ok": false, "reason": "accessibility_not_allowed"]) }
         case "/hands/keys":
             let k = body["keys"] as? String ?? ""
             main {
@@ -168,7 +209,7 @@ final class App: NSObject, NSApplicationDelegate {
             }
         case "/hands/see":
             let app = body["app"] as? String ?? "", menus = body["menus"] as? Bool ?? false
-            main {
+            hands {                                    // review up to 600 elements walked, off her main thread
                 guard Hands.permitted else { return (403, ["ok": false, "reason": "accessibility_not_allowed"]) }
                 guard let (name, things) = Hands.see(app: app, menus: menus) else { return (404, ["ok": false, "reason": "no_such_app"]) }
                 return (200, ["ok": true, "app": name, "things": things.map {
@@ -179,11 +220,11 @@ final class App: NSObject, NSApplicationDelegate {
             let want = body["name"] as? String ?? "", role = body["role"] as? String ?? ""
             let app = body["app"] as? String ?? "", nth = body["nth"] as? Int ?? 1
             guard !want.isEmpty else { return reply(400, ["ok": false, "reason": "no_name"]) }
-            main {
+            hands {
                 let r = Hands.press(want, role: role, app: app, nth: nth)
                 let ok = r["ok"] as? Bool ?? false
                 if ok, let at = r["at"] as? [Double], at.count == 2, at != [0, 0] {
-                    self.body.usedHands(at: CGPoint(x: at[0], y: at[1]))
+                    DispatchQueue.main.async { self.body.usedHands(at: CGPoint(x: at[0], y: at[1])) }
                 }
                 return (ok ? 200 : (r["reason"] as? String == "accessibility_not_allowed" ? 403 : 404), r)
             }
@@ -282,15 +323,31 @@ final class App: NSObject, NSApplicationDelegate {
             main { ApprovalCard.shared.ack(ids); return (200, ["ok": true]) }
         case "/iris/day":
             // his day at a glance beside her (core/iris_day_card), rows Core read, unreadable ones "off"
-            let rows = (body["rows"] as? [Any] ?? []).compactMap { $0 as? [String: Any] }
+            // Core's JSON rows, parsed here and used once on main — handed over, never touched here again
+            let rows = Handoff((body["rows"] as? [Any] ?? []).compactMap { $0 as? [String: Any] })
             let at = (body["at"] as? Double).map { Date(timeIntervalSince1970: $0) }
+            let waiting = body["waiting"] as? [String: Any]           // core/iris_note, for her still note
+            let dayKey = waiting?["key"] as? String, dayWhy = waiting?["why"] as? String
             main {
+                self.body.noteWaiting(key: dayKey, why: dayWhy)
                 let todos = DayCard.shared.text("todos")       // a to-do come due since the last card (Body.dayCard)
-                DayCard.shared.update(rows: rows, at: at, near: self.body.frameOnScreen)
+                DayCard.shared.update(rows: rows.value, at: at, near: self.body.frameOnScreen)
                 if !DayCard.shared.hidden {
                     self.body.dayCard(todosBefore: todos, todosAfter: DayCard.shared.text("todos"), card: DayCard.shared.frame)
                 }
                 return (200, ["ok": true, "hidden": DayCard.shared.hidden])
+            }
+        case "/iris/status":
+            // Core's word for "How Iris is" (core/iris_status) in; her menu's quiet asks out
+            // review (a162): what waits for him comes with each status too (30 s), for her note cue; a look
+            // without "waiting" (her 2 s asks) says nothing of it, and null is nothing waits
+            let said = body.keys.contains("waiting")
+            let waiting = body["waiting"] as? [String: Any]
+            let waitKey = waiting?["key"] as? String, waitWhy = waiting?["why"] as? String
+            let word = Handoff(body)                       // Core's JSON, used once on main
+            main {
+                if said { self.body.noteWaiting(key: waitKey, why: waitWhy) }
+                return (200, CoreWord.shared.received(word.value))
             }
         case "/iris/day_state":
             main { (200, DayCard.shared.state()) }
@@ -309,7 +366,11 @@ final class App: NSObject, NSApplicationDelegate {
             let mood = (body["mood"] as? [String: Any] ?? [:]).compactMapValues { ($0 as? NSNumber)?.doubleValue }
             let say = body["say"] as? String ?? ""
             let face = body["face"] as? String ?? ""
-            main { self.body.mind(want: w, strength: k, mood: mood, say: say, face: face); return (200, ["ok": true]) }
+            let ambientAt = body["ambient_at"] as? Double         // Core's last moment of its own, for one gap
+            main {
+                if let a = ambientAt { self.body.coreAmbient(at: Date(timeIntervalSince1970: a)) }
+                self.body.mind(want: w, strength: k, mood: mood, say: say, face: face); return (200, ["ok": true])
+            }
         case "/iris/come":
             // he called her over (core/iris_talk): "cursor" (beside his pointer) or "other_screen"
             let to = body["to"] as? String ?? ""
@@ -333,139 +394,23 @@ final class App: NSObject, NSApplicationDelegate {
     }
 }
 
-/// `Iris --hear a.wav`: a recording heard by both of her recognizers, on this Mac and Apple's server
-/// (to compare them). Never asks for permission: if speech recognition isn't allowed, says so.
-if CommandLine.arguments.count == 3 && CommandLine.arguments[1] == "--hear" {
-    guard SFSpeechRecognizer.authorizationStatus() == .authorized, let rec = SFSpeechRecognizer(locale: Locale(identifier: "en-US")) else {
-        print("speech recognition not allowed for this binary"); exit(2)
-    }
-    let url = URL(fileURLWithPath: CommandLine.arguments[2])
-    for onDevice in [true, false] {
-        let r = SFSpeechURLRecognitionRequest(url: url)
-        r.requiresOnDeviceRecognition = onDevice
-        r.contextualStrings = Ears.words
-        if #available(macOS 13, *) { r.addsPunctuation = !onDevice }
-        let done = DispatchSemaphore(value: 0)
-        let t0 = Date()
-        var said = ""
-        rec.recognitionTask(with: r) { result, error in
-            if let result, result.isFinal { said = result.bestTranscription.formattedString; done.signal() }
-            else if let error { said = "error: \(error.localizedDescription)"; done.signal() }
-        }
-        while done.wait(timeout: .now() + 0.05) == .timedOut { RunLoop.main.run(until: Date().addingTimeInterval(0.05)) }
-        print("\(onDevice ? "on-device" : "server   ") \(Int(Date().timeIntervalSince(t0) * 1000))ms: \(said)")
-    }
-    exit(0)
-}
-
-/// `Iris --bubble out.png "words"`: her speech bubble drawn to a file, to look at.
-if CommandLine.arguments.count == 4 && CommandLine.arguments[1] == "--bubble" {
-    let v = BubbleView()
-    let size = v.fit(CommandLine.arguments[3])
-    v.frame = NSRect(origin: .zero, size: size)
-    v.text = CommandLine.arguments[3]
-    v.tail = 0.4
-    let rep = v.bitmapImageRepForCachingDisplay(in: v.bounds)!
-    v.cacheDisplay(in: v.bounds, to: rep)
-    try! rep.representation(using: .png, properties: [:])!.write(to: URL(fileURLWithPath: CommandLine.arguments[2]))
-    exit(0)
-}
-
-/// `Iris --instances in.png outdir`: each figure on a sheet as its own PNG
-/// (Vision separates touching figures), named by reading order, with a
-/// boxes.json of where each was on the sheet.
-if CommandLine.arguments.count == 4 && CommandLine.arguments[1] == "--instances" {
-    let src = CGImageSourceCreateWithURL(URL(fileURLWithPath: CommandLine.arguments[2]) as CFURL, nil)!
-    let img = CGImageSourceCreateImageAtIndex(src, 0, nil)!
-    let req = VNGenerateForegroundInstanceMaskRequest()
-    let h = VNImageRequestHandler(cgImage: img, options: [:])
-    try! h.perform([req])
-    guard let obs = req.results?.first else { print("no foreground"); exit(1) }
-    let dir = URL(fileURLWithPath: CommandLine.arguments[3])
-    try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-    let ctx = CIContext()
-    var boxes: [[String: Any]] = []
-    for inst in obs.allInstances {
-        let buf = try! obs.generateMaskedImage(ofInstances: IndexSet(integer: inst), from: h, croppedToInstancesExtent: true)
-        let ci = CIImage(cvPixelBuffer: buf)
-        let mask = try! obs.generateScaledMaskForImage(forInstances: IndexSet(integer: inst), from: h)
-        let mci = CIImage(cvPixelBuffer: mask)
-        // where it sat on the sheet: the mask's extent of non-zero pixels
-        let w = CVPixelBufferGetWidth(mask), hh = CVPixelBufferGetHeight(mask)
-        CVPixelBufferLockBaseAddress(mask, .readOnly)
-        let base = CVPixelBufferGetBaseAddress(mask)!.assumingMemoryBound(to: Float32.self)
-        let row = CVPixelBufferGetBytesPerRow(mask) / 4
-        var minX = w, minY = hh, maxX = 0, maxY = 0
-        var y = 0
-        while y < hh { var x = 0; while x < w { if base[y * row + x] > 0.5 { minX = min(minX, x); maxX = max(maxX, x); minY = min(minY, y); maxY = max(maxY, y) }; x += 4 }; y += 4 }
-        CVPixelBufferUnlockBaseAddress(mask, .readOnly)
-        _ = mci
-        let out = ctx.createCGImage(ci, from: ci.extent)!
-        let name = "inst\(inst).png"
-        let dest = CGImageDestinationCreateWithURL(dir.appendingPathComponent(name) as CFURL, "public.png" as CFString, 1, nil)!
-        CGImageDestinationAddImage(dest, out, nil)
-        CGImageDestinationFinalize(dest)
-        boxes.append(["file": name, "x0": minX, "y0": minY, "x1": maxX, "y1": maxY])
-    }
-    let data = try! JSONSerialization.data(withJSONObject: boxes)
-    try! data.write(to: dir.appendingPathComponent("boxes.json"))
-    print("instances:", boxes.count)
-    exit(0)
-}
-
-/// `Iris --cutout in.png out.png`: the character lifted off her plain
-/// background (Vision's foreground mask, on this Mac), saved with alpha.
-if CommandLine.arguments.count == 4 && CommandLine.arguments[1] == "--cutout" {
-    let src = CGImageSourceCreateWithURL(URL(fileURLWithPath: CommandLine.arguments[2]) as CFURL, nil)!
-    let img = CGImageSourceCreateImageAtIndex(src, 0, nil)!
-    let req = VNGenerateForegroundInstanceMaskRequest()
-    let h = VNImageRequestHandler(cgImage: img, options: [:])
-    try! h.perform([req])
-    guard let obs = req.results?.first else { print("no foreground"); exit(1) }
-    let buf = try! obs.generateMaskedImage(ofInstances: obs.allInstances, from: h, croppedToInstancesExtent: false)
-    let ci = CIImage(cvPixelBuffer: buf)
-    let ctx = CIContext()
-    let out = ctx.createCGImage(ci, from: ci.extent)!
-    let dest = CGImageDestinationCreateWithURL(URL(fileURLWithPath: CommandLine.arguments[3]) as CFURL,
-                                               "public.png" as CFString, 1, nil)!
-    CGImageDestinationAddImage(dest, out, nil)
-    CGImageDestinationFinalize(dest)
-    exit(0)
-}
-
-/// `Iris --clips out.png name …`: each named drawn clip (Resources/anim) as a row of its frames, to look at.
-if CommandLine.arguments.count >= 4 && CommandLine.arguments[1] == "--clips" {
-    let names = Array(CommandLine.arguments.dropFirst(3))
-    let cw = 145, ch = 220, label = 16
-    let ctx = CGContext(data: nil, width: cw * 16, height: (ch + label) * names.count, bitsPerComponent: 8, bytesPerRow: 0,
-                        space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
-    ctx.setFillColor(NSColor(white: 0.95, alpha: 1).cgColor); ctx.fill(CGRect(x: 0, y: 0, width: ctx.width, height: ctx.height))
-    NSGraphicsContext.current = NSGraphicsContext(cgContext: ctx, flipped: false)
-    let base = Bundle.main.resourceURL!.appendingPathComponent("anim")
-    for (r, n) in names.enumerated() {
-        let y = ctx.height - (r + 1) * (ch + label)
-        (n as NSString).draw(at: CGPoint(x: 4, y: y + 2), withAttributes: [.font: NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)])
-        for i in 0..<16 {
-            let u = ["webp", "png"].map { base.appendingPathComponent("\(n)/\(i).\($0)") }.first { FileManager.default.fileExists(atPath: $0.path) }
-            guard let u, let s = CGImageSourceCreateWithURL(u as CFURL, nil), let img = CGImageSourceCreateImageAtIndex(s, 0, nil) else { break }
-            ctx.draw(img, in: CGRect(x: i * cw, y: y + label, width: cw, height: ch))
-        }
-    }
-    let dest = CGImageDestinationCreateWithURL(URL(fileURLWithPath: CommandLine.arguments[2]) as CFURL, "public.png" as CFString, 1, nil)!
-    CGImageDestinationAddImage(dest, ctx.makeImage()!, nil)
-    CGImageDestinationFinalize(dest)
-    exit(0)
-}
-
 /// `Iris --simulate scenario.json [out.json] [--seeds ]`: her body and mind
 /// headless against made-up screens, on a fast clock (Sim.swift).
+// This top level runs on the main thread (said, for her main-actor body and the simulator).
 if CommandLine.arguments.count >= 3 && CommandLine.arguments[1] == "--simulate" {
-    Sim.run(CommandLine.arguments)
+    MainActor.assumeIsolated { Sim.run(CommandLine.arguments) }
     exit(0)
 }
 
 let app = NSApplication.shared
-let delegate = App()
+let delegate = MainActor.assumeIsolated { App() }
 app.delegate = delegate
 app.setActivationPolicy(.accessory)
 app.run()
+
+/// A value parsed on one thread and used, once, on another (a route's JSON, from Link's queue to main).
+/// Unchecked because the value isn't Sendable: whoever makes it hands it over and never touches it again.
+final class Handoff<T>: @unchecked Sendable {
+    let value: T
+    init(_ value: T) { self.value = value }
+}

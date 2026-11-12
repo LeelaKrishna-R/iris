@@ -1,5 +1,5 @@
 import AppKit
-import SpriteKit
+@preconcurrency import SpriteKit     // textures are made on her loader queue and handed to main once
 
 /// How she looks this instant. The body sets it every frame; the view turns
 /// it into her picture, bent and moving.
@@ -86,7 +86,6 @@ final class SpriteView: SKView {
     private var unloadable = Set<String>()
     private var drawnSize = CGSize.zero
     // nothing preloaded: every everyday pose is her rig; drawn clips are rare moments, loaded when wanted
-    static let everyday: [String] = []
     static let keepClips = 8
     static let loader = DispatchQueue(label: "iris.clips", qos: .userInitiated)
     /// The simulator's real view (SimView, "real_view") steps her on its own clock and loads clips at once;
@@ -97,11 +96,12 @@ final class SpriteView: SKView {
     /// points it at the package's Resources (SimView).
     static var art: Bundle = .main
 
-    static func loadFrames(_ clip: String, drawnAt size: CGSize) -> [SKTexture]? {
+    /// `art` read on main by the caller (SimView sets SpriteView.art there), so her loader queue reads no shared state
+    nonisolated static func loadFrames(_ clip: String, drawnAt size: CGSize, from art: Bundle) -> [SKTexture]? {
         var frames: [SKTexture] = []
         for i in 0..<16 {
-            guard let url = SpriteView.art.url(forResource: "\(i)", withExtension: "webp", subdirectory: "anim/\(clip)")
-                    ?? SpriteView.art.url(forResource: "\(i)", withExtension: "png", subdirectory: "anim/\(clip)"),
+            guard let url = art.url(forResource: "\(i)", withExtension: "webp", subdirectory: "anim/\(clip)")
+                    ?? art.url(forResource: "\(i)", withExtension: "png", subdirectory: "anim/\(clip)"),
                   let t = Textures.load(url, drawnAt: size) else { break }
             frames.append(t)
         }
@@ -113,19 +113,19 @@ final class SpriteView: SKView {
         if let f = clips[clip] { clipUse[clip] = Date(); return f }
         guard clipNames.contains(clip), !loading.contains(clip), !unloadable.contains(clip) else { return nil }
         if SpriteView.loadNow {
-            if let f = SpriteView.loadFrames(clip, drawnAt: drawnSize) { clips[clip] = f; return f }
+            if let f = SpriteView.loadFrames(clip, drawnAt: drawnSize, from: SpriteView.art) { clips[clip] = f; return f }
             unloadable.insert(clip); return nil
         }
         loading.insert(clip)
-        let size = drawnSize
+        let size = drawnSize, art = SpriteView.art
         SpriteView.loader.async { [weak self] in
-            let f = SpriteView.loadFrames(clip, drawnAt: size)
-            DispatchQueue.main.async {
+            let f = SpriteView.loadFrames(clip, drawnAt: size, from: art)
+            DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
                 self.loading.remove(clip)
                 if let f { self.clips[clip] = f; self.clipUse[clip] = Date() } else { self.unloadable.insert(clip) }   // asked again every frame otherwise
-                // keep about 30 of her library loaded; the least recently used go first
-                let extra = self.clips.keys.filter { !SpriteView.everyday.contains($0) }
+                // keep keepClips of her library loaded; the least recently used go first
+                let extra = Array(self.clips.keys)
                 if extra.count > SpriteView.keepClips {
                     for k in extra.sorted(by: { (self.clipUse[$0] ?? .distantPast) < (self.clipUse[$1] ?? .distantPast) })
                         .prefix(extra.count - SpriteView.keepClips) { self.clips[k] = nil }
@@ -180,13 +180,10 @@ final class SpriteView: SKView {
             t.filteringMode = .linear
             textures[n] = t
         }
-        // her everyday loops load now; the rest of her library loads the first time she wants it
+        // her library loads the first time she wants each clip
         let animDir = SpriteView.art.resourceURL?.appendingPathComponent("anim")
         clipNames = Set((try? FileManager.default.contentsOfDirectory(atPath: animDir?.path ?? "")) ?? [])
         drawnSize = CGSize(width: (frame.height - 12) * 289 / 440, height: frame.height - 12)
-        for clip in SpriteView.everyday where clipNames.contains(clip) {
-            if let f = SpriteView.loadFrames(clip, drawnAt: drawnSize) { clips[clip] = f }
-        }
         let h = frame.height - 12
         spriteSize = CGSize(width: h * 289 / 440, height: h)
 
@@ -377,7 +374,8 @@ final class SpriteView: SKView {
                           "in": ["walk": r2(f.walk), "vy": r2(f.vy), "hop": r2(f.hop), "sit": r2(f.sit), "act": f.act,
                                  "hint": f.hint, "seat": f.seat, "gait": f.gait, "seated": seatedNow],
                           // a drawn clip left: the frame it was on, of how many (was it cut off mid-way)
-                          "left_at": journalPose.hasPrefix("@") && showing == journalPose ? [frameIndex, clips[String(journalPose.dropFirst())]?.count ?? 0] : []],
+                          "left_at": journalPose.hasPrefix("@") && showing == journalPose ? [frameIndex, clips[String(journalPose.dropFirst())]?.count ?? 0] : [],
+                          "where": Body.lastPlace],                // where she is (Body.placeNow)
                          to: "poses.jsonl",
                          cap: 5_000_000)
             journalPose = want
@@ -424,6 +422,8 @@ final class SpriteView: SKView {
         } else if want.hasPrefix("@"), let frames = frames(String(want.dropFirst())) {
             if want != showing { frameIndex = 0; frameAt = 0 }
             let n = frames.count
+            // a still seat is one frame, its clip's last (Stages.stillSeats: her note held at her chest)
+            if want == "@" + f.seat && Stages.stillSeats.contains(f.seat) { frameIndex = n - 1 } else {
             switch want {
             case "@walk", "@sad_walk", "@tiptoe":          // feet keep pace with how far she has walked
                 frameIndex = Int((f.walkPhase / (2 * .pi) * CGFloat(n)).rounded(.down)) % n
@@ -441,8 +441,9 @@ final class SpriteView: SKView {
                     blendFor = nextFrameIn * 0.75             // the last frame melts into this one
                     // a clip that plays once stays on its last frame (getting up, waking up), a loop goes round
                     frameIndex = SpriteView.once.contains(String(want.dropFirst())) ? min(n - 1, frameIndex + 1) : (frameIndex + 1) % n
-                    nextFrameIn = SpriteView.pace(want) * CGFloat.random(in: 0.8...1.35)
+                    nextFrameIn = SpriteView.pace(want) * CGFloat.rnd(0.8...1.35)
                 }
+            }
             }
             lastKeys = f.keys
             setTexture(frames[frameIndex], name: want)
@@ -504,9 +505,9 @@ final class SpriteView: SKView {
         if f.talking {
             // speech changes shape on its own rhythm while Friday talks
             visemeAt += dt
-            if visemeAt > CGFloat.random(in: 0.07...0.15) {
+            if visemeAt > CGFloat.rnd(0.07...0.15) {
                 visemeAt = 0
-                viseme = f.mouthOpen > 0.5 ? ["a", "o", "e", "a", "i", "smile_open"].randomElement()! : ["", "i"].randomElement()!
+                viseme = f.mouthOpen > 0.5 ? ["a", "o", "e", "a", "i", "smile_open"].rndElement()! : ["", "i"].rndElement()!
             }
             p.mouth = viseme
             p.nod += sin(c * 5) * 0.35
@@ -672,13 +673,6 @@ final class SpriteView: SKView {
         }
         return SKWarpGeometryGrid(columns: cols, rows: rows, sourcePositions: src, destinationPositions: dst)
     }
-
-    private func smooth(_ e0: Float, _ e1: Float, _ x: Float) -> Float {
-        let t = max(0, min(1, (x - e0) / (e1 - e0)))
-        return t * t * (3 - 2 * t)
-    }
-
-    private func bell(_ c: Float, _ w: Float, _ x: Float) -> Float { exp(-((x - c) * (x - c)) / (2 * w * w)) }
 
     /// What she looks like right now, as PNG (her window is kept out of screen
     /// captures, so this is how anyone can check).

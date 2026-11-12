@@ -3,7 +3,8 @@ import Foundation
 /// Where Iris keeps what she learns and sees: ~/Library/Application Support/Iris (or Config.dataDir).
 /// Agents run as the same macOS user, so they read the link key from here; nobody else can (0600).
 enum Store {
-    static var dir: URL = {
+    /// set once, by --simulate before anything reads it (Sim.run), and otherwise only read: safe to share.
+    nonisolated(unsafe) static var dir: URL = {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         let d = Config.dataDir ?? base.appendingPathComponent("Iris", isDirectory: true)
         try? FileManager.default.createDirectory(at: d, withIntermediateDirectories: true,
@@ -21,14 +22,18 @@ enum Store {
     static func save<T: Encodable>(_ value: T, _ name: String) {
         guard let data = try? JSONEncoder().encode(value) else { return }
         let tmp = url(name + ".tmp")
+        // hers alone (0600), as her folder (0700) and her journals are; data.write made them 0644
+        let mine: [FileAttributeKey: Any] = [.posixPermissions: 0o600]
         do {
             try data.write(to: tmp, options: .atomic)
-            _ = try FileManager.default.replaceItemAt(url(name), withItemAt: tmp)
+            try FileManager.default.setAttributes(mine, ofItemAtPath: tmp.path)
+            let saved = try FileManager.default.replaceItemAt(url(name), withItemAt: tmp) ?? url(name)
+            // review replacing keeps the old file's 0644 (soul.json, link.json, ears-words.json from before)
+            try FileManager.default.setAttributes(mine, ofItemAtPath: saved.path)
         } catch {
             try? data.write(to: url(name), options: .atomic)
+            try? FileManager.default.setAttributes(mine, ofItemAtPath: url(name).path)
         }
-        // a plain write gives 0644, and replaceItemAt keeps whatever the old file had: her files are yours alone
-        try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url(name).path)
     }
 
     /// One JSON object per line, rotated at `cap` bytes (the old file kept as .1).

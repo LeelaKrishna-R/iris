@@ -3,9 +3,7 @@ import AppKit
 /// An approval your agent asks for, answered on the Mac: what it wants to do, beside Iris, with Allow and
 /// Deny. A click is only recorded here (`decisions`); your agent collects it from /iris/decisions and acts
 /// on it once. The card never takes your typing (a non-activating panel); it goes when the ask runs out,
-/// when your agent says it was answered elsewhere (/iris/ask_done), or when your agent confirms your click
-/// (/iris/decisions_ack). Until then it stays, its buttons waiting, so a click your agent never picked up
-/// doesn't look like an answer.
+/// when your agent says it was answered elsewhere (/iris/ask_done), or when you click.
 final class ApprovalCard: NSObject {
     static let shared = ApprovalCard()
     struct Decision { let id: String; let choice: String; let at: Date }
@@ -17,8 +15,9 @@ final class ApprovalCard: NSObject {
     private var showingText = ""
     private var buttons: [NSButton] = []
     private var waitTimer: Timer?
-    /// after your click the card waits for your agent to confirm it (/iris/decisions_ack closes it). No word in
-    /// this long (the agent stopped polling, or never does): your buttons come back, so the card is never stuck.
+    /// after his click the card waits for Core to say what became of it (core/iris_approvals.tick: closed when
+    /// done, offered again when it still waits, with her reason in her bubble). Core not answering in this long (her
+    /// loop down, Friday's store unreadable): his buttons come back, so the card is never stuck.
     static let WAIT_S: TimeInterval = 20
     /// his click, as it's made (choice, what the card asked): Iris answers his Allow (Body.approvalAnswered).
     var onDecided: ((String, String) -> Void)?
@@ -33,7 +32,6 @@ final class ApprovalCard: NSObject {
 
     func ack(_ ids: [String]) {
         decisions.removeAll { ids.contains($0.id) }
-        if ids.contains(showing) { close() }      // your agent took the click: the card's question is answered
     }
 
     /// Shows the approval `id` next to `near` (her frame) until `until` (or 10 minutes, at most an hour).
@@ -98,6 +96,11 @@ final class ApprovalCard: NSObject {
         p.hidesOnDeactivate = false
         p.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         p.contentView = fx
+        fx.setAccessibilityElement(true)                     // VoiceOver hears the card as what it asks
+        fx.setAccessibilityRole(.group)
+        fx.setAccessibilityLabel("\(title): \(text)")
+        p.setAccessibilityTitle(title)
+        p.autorecalculatesKeyViewLoop = true
         p.setFrameOrigin(ApprovalCard.place(size: size, near: near))
         p.initialFirstResponder = deny
         p.orderFrontRegardless()                     // shown, never made key: his typing stays where it is
@@ -106,8 +109,9 @@ final class ApprovalCard: NSObject {
                              userInfo: [.announcement: "\(Config.agentName) asks for your approval: \(text)",
                                         .priority: NSAccessibilityPriorityLevel.high.rawValue])
         let left = until.map { $0.timeIntervalSinceNow } ?? 600
+        // scheduled on the main run loop, so it fires on main
         closeTimer = Timer.scheduledTimer(withTimeInterval: max(5, min(3600, left)), repeats: false) { [weak self] _ in
-            self?.close()
+            MainActor.assumeIsolated { self?.close() }
         }
         log("approval card: shown \(id.prefix(8))")
     }
@@ -132,14 +136,16 @@ final class ApprovalCard: NSObject {
         decisions.append(Decision(id: showing, choice: choice, at: Date()))
         log("approval card: \(choice) \(showing.prefix(8))")
         let what = showingText, id = showing
-        // the card stays, its buttons waiting, until your agent confirms the click (it closed here at once, so a
-        // click no agent ever collected looked answered)
+        // the card stays, its buttons waiting, until Core decides (it closed here, before anything was decided,
+        // so a decision that failed left no card to answer again)
         for b in buttons { b.isEnabled = false }
         waitTimer?.invalidate()
         waitTimer = Timer.scheduledTimer(withTimeInterval: ApprovalCard.WAIT_S, repeats: false) { [weak self] _ in
-            guard let self, self.showing == id else { return }
-            for b in self.buttons { b.isEnabled = true }
-            log("approval card: no word from \(Config.agentName) on \(id.prefix(8)); its buttons are back")
+            MainActor.assumeIsolated {                       // scheduled on the main run loop
+                guard let self, self.showing == id else { return }
+                for b in self.buttons { b.isEnabled = true }
+                log("approval card: no word from \(Config.agentName) on \(id.prefix(8)); its buttons are back")
+            }
         }
         onDecided?(choice, what)
     }

@@ -7,6 +7,7 @@ import AppKit
 ///
 /// drawing it off screen as well (SKRenderer) wedged two processes in the GPU driver on this Mac's
 /// Intel graphics (SpriteKit's add_subdivs on her sleep pose), so there is no picture here, only her choices.
+@MainActor          // drawn on the main thread, from Sim
 final class SimView {
     let view: SpriteView
 

@@ -1,8 +1,11 @@
 import AppKit
 
-/// "Ask Friday…" from her menu: a small box near the pointer to type a
+/// "Ask \(Config.agentName)…" from her menu: a small box near the pointer to type a
 /// question to Friday, for when speaking isn't right. Return sends it, Escape
 /// or clicking away closes it. What's typed goes the way her ears' words go.
+// (strict concurrency): AppKit, on her main thread. @preconcurrency until her body and main.swift, which use it,
+// are main-actor too: their calls compile as before.
+@preconcurrency @MainActor
 final class AskBox: NSObject, NSTextFieldDelegate {
     static let shared = AskBox()
     private var panel: AskPanel?
@@ -15,11 +18,7 @@ final class AskBox: NSObject, NSTextFieldDelegate {
         let size = NSSize(width: 360, height: 44)
         let at = NSEvent.mouseLocation
         let screen = NSScreen.screens.first { $0.frame.contains(at) } ?? NSScreen.main
-        var origin = NSPoint(x: at.x - size.width / 2, y: at.y + 24)
-        if let vf = screen?.visibleFrame {
-            origin.x = min(max(origin.x, vf.minX + 8), vf.maxX - size.width - 8)
-            origin.y = min(max(origin.y, vf.minY + 8), vf.maxY - size.height - 8)
-        }
+        let origin = AskBox.origin(mouse: at, size: size, visible: screen?.visibleFrame)
         let p = panel ?? AskPanel(contentRect: NSRect(origin: origin, size: size),
                                   styleMask: [.titled, .fullSizeContentView, .nonactivatingPanel],
                                   backing: .buffered, defer: false)
@@ -49,20 +48,45 @@ final class AskBox: NSObject, NSTextFieldDelegate {
         p.makeFirstResponder(field)
     }
 
-    func control(_ control: NSControl, textView: NSTextView, doCommandBy sel: Selector) -> Bool {
-        if sel == #selector(NSResponder.insertNewline(_:)) {
-            let text = field?.stringValue ?? ""
-            close()
-            if !text.trimmingCharacters(in: .whitespaces).isEmpty { last = text; send?(text) }
-            return true
+    /// Where the box opens: just above his pointer, centred on it, kept 8 pt inside his screen (pure, tested).
+    nonisolated static func origin(mouse at: NSPoint, size: NSSize, visible vf: NSRect?) -> NSPoint {
+        var origin = NSPoint(x: at.x - size.width / 2, y: at.y + 24)
+        if let vf {
+            origin.x = min(max(origin.x, vf.minX + 8), vf.maxX - size.width - 8)
+            origin.y = min(max(origin.y, vf.minY + 8), vf.maxY - size.height - 8)
         }
-        if sel == #selector(NSResponder.moveUp(_:)), !last.isEmpty {
-            field?.stringValue = last
+        return origin
+    }
+
+    /// What a key does in the box: Return sends what's typed (nothing when it is blank) and closes it, ↑ brings back
+    /// the last question asked, Escape closes it; any other key is the field's (pure, tested).
+    enum Key: Equatable { case send(String?), recall(String), close, field }
+
+    nonisolated static func key(_ sel: Selector, text: String, last: String) -> Key {
+        if sel == #selector(NSResponder.insertNewline(_:)) {
+            return .send(text.trimmingCharacters(in: .whitespaces).isEmpty ? nil : text)
+        }
+        if sel == #selector(NSResponder.moveUp(_:)), !last.isEmpty { return .recall(last) }
+        if sel == #selector(NSResponder.cancelOperation(_:)) { return .close }
+        return .field
+    }
+
+    func control(_ control: NSControl, textView: NSTextView, doCommandBy sel: Selector) -> Bool {
+        switch AskBox.key(sel, text: field?.stringValue ?? "", last: last) {
+        case .send(let text):
+            close()
+            if let text { last = text; send?(text) }
+            return true
+        case .recall(let text):
+            field?.stringValue = text
             textView.moveToEndOfDocument(nil)
             return true
+        case .close:
+            close()
+            return true
+        case .field:
+            return false
         }
-        if sel == #selector(NSResponder.cancelOperation(_:)) { close(); return true }
-        return false
     }
 
     func close() { panel?.orderOut(nil) }
@@ -77,9 +101,12 @@ final class AskPanel: NSPanel {
 
 import Carbon.HIToolbox
 
-/// ⌃⌥Space anywhere opens "Ask Friday…"; ⌃⌥⇧Space starts listening, as her
-/// menu's "Talk to Friday" does. Carbon hot keys: no permission is
+/// ⌃⌥Space anywhere opens "Ask \(Config.agentName)…"; ⌃⌥⇧Space starts listening, as her
+/// menu's "Talk to \(Config.agentName)" does. Carbon hot keys: no permission is
 /// asked for, and only these two combinations are taken.
+// (strict concurrency): AppKit, on her main thread. @preconcurrency until her body and main.swift, which use it,
+// are main-actor too: their calls compile as before.
+@preconcurrency @MainActor
 enum AskHotKey {
     private static var refs: [EventHotKeyRef?] = []
     private static var handler: EventHandlerRef?

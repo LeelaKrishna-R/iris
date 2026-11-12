@@ -129,6 +129,25 @@ final class Live: SKNode {
 
     /// Where each mesh point of her picture goes this frame (0…1 canvas, y up).
     private func warp(_ p: Params) -> SKWarpGeometryGrid {
+        let rig = Rig(size: size, pose: pose, neck: neck, face: face, eyes: eyes, shoulders: shoulders, hem: hem, feet: feet,
+                      legGap: legGap, elbow: elbow, hand: hand, blanket: blanket, src: src)
+        return SKWarpGeometryGrid(columns: cols, rows: rows, sourcePositions: src,
+                                  destinationPositions: Live.bent(p, rig: rig, hair: hair, clock: clock))
+    }
+
+    /// Her picture's rig, as live.json gives it: where her neck, face and eyes are, her shoulders, hem, feet and the
+    /// gap between her legs, her arm (elbow, hand) and her blanket, and the mesh's points (0…1 canvas, y up).
+    struct Rig {
+        var size: CGSize, pose: String, neck: CGPoint, face: CGPoint, eyes: [CGPoint], shoulders: CGFloat, hem: CGFloat
+        var feet: CGFloat, legGap: CGFloat, elbow: CGPoint?, hand: CGPoint?, blanket: CGPoint?, src: [SIMD2<Float>]
+    }
+
+    /// Where each of the rig's mesh points goes for `p`, her hair's springs and her clock (pure, tested; warp
+    /// hands it to SpriteKit).
+    static func bent(_ p: Params, rig: Rig, hair: [CGFloat], clock: CGFloat) -> [SIMD2<Float>] {
+        let size = rig.size, pose = rig.pose, neck = rig.neck, face = rig.face, eyes = rig.eyes, shoulders = rig.shoulders
+        let hem = rig.hem, feet = rig.feet, legGap = rig.legGap, elbow = rig.elbow, hand = rig.hand, blanket = rig.blanket
+        let src = rig.src
         let aspect = Float(size.height / size.width)
         let a = Float(-p.tilt), ca = cos(a), sa = sin(a)
         let nx = Float(neck.x), ny = Float(neck.y), fx = Float(face.x), fy = Float(face.y)
@@ -219,13 +238,14 @@ final class Live: SKNode {
             }
             dst.append(SIMD2(x, y))
         }
-        return SKWarpGeometryGrid(columns: cols, rows: rows, sourcePositions: src, destinationPositions: dst)
+        return dst
     }
-
-    private func smooth(_ e0: Float, _ e1: Float, _ x: Float) -> Float {
-        let t = max(0, min(1, (x - e0) / (e1 - e0)))
-        return t * t * (3 - 2 * t)
-    }
-
-    private func bell(_ c: Float, _ w: Float, _ x: Float) -> Float { exp(-((x - c) * (x - c)) / (2 * w * w)) }
 }
+
+// Shared with SpriteView's warp (one copy).
+func smooth(_ e0: Float, _ e1: Float, _ x: Float) -> Float {
+    let t = max(0, min(1, (x - e0) / (e1 - e0)))
+    return t * t * (3 - 2 * t)
+}
+
+func bell(_ c: Float, _ w: Float, _ x: Float) -> Float { exp(-((x - c) * (x - c)) / (2 * w * w)) }

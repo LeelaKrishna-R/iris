@@ -7,6 +7,13 @@ import ApplicationServices
 enum Hands {
     static var permitted: Bool { AXIsProcessTrusted() }
 
+    /// The primary screen's height, read on main (AppKit's screens are main-thread state) wherever her hands run:
+    /// typing and pressing run on her hands' own queue (main.swift).
+    private static func primaryHeight() -> CGFloat {
+        if Thread.isMainThread { return NSScreen.screens.first?.frame.height ?? 0 }
+        return DispatchQueue.main.sync { primaryHeight() }
+    }
+
     /// Type text as if from the keyboard (any characters, not just ASCII).
     static func type(_ text: String) -> Bool {
         guard permitted else { return false }
@@ -38,8 +45,8 @@ enum Hands {
     static func media(_ name: String) -> Bool {
         guard permitted, let key = mediaKeys[name] else { return false }
         for down in [true, false] {
-            let flags = NSEvent.ModifierFlags(rawValue: down ? 0xa00 : 0xb00)
-            let data1 = Int((key << 16) | ((down ? 0xa : 0xb) << 8))
+            let (raw, data1) = mediaEvent(key: key, down: down)
+            let flags = NSEvent.ModifierFlags(rawValue: raw)
             guard let ev = NSEvent.otherEvent(with: .systemDefined, location: .zero, modifierFlags: flags,
                                               timestamp: 0, windowNumber: 0, context: nil, subtype: 8,
                                               data1: data1, data2: -1)?.cgEvent else { return false }
@@ -48,8 +55,14 @@ enum Hands {
         return true
     }
 
-    static func keys(_ combo: String) -> Bool {
-        guard permitted else { return false }
+    /// A media key's system-defined event, as the keyboard sends it: its modifier flags and data1 (pure, tested).
+    static func mediaEvent(key: Int32, down: Bool) -> (flags: UInt, data1: Int) {
+        (down ? 0xa00 : 0xb00, Int((key << 16) | ((down ? 0xa : 0xb) << 8)))
+    }
+
+    /// "cmd+shift+4" as its modifier flags and key code; no key code for a combo with no key she knows
+    /// (pure, tested).
+    static func combo(_ combo: String) -> (flags: CGEventFlags, code: CGKeyCode?) {
         var flags = CGEventFlags()
         var code: CGKeyCode?
         for part in combo.lowercased().split(separator: "+").map(String.init) {
@@ -62,6 +75,12 @@ enum Hands {
             default: code = keyCodes[part]
             }
         }
+        return (flags, code)
+    }
+
+    static func keys(_ combo: String) -> Bool {
+        guard permitted else { return false }
+        let (flags, code) = Hands.combo(combo)
         guard let k = code else { return false }
         let src = CGEventSource(stateID: .privateState)
         guard let down = CGEvent(keyboardEventSource: src, virtualKey: k, keyDown: true),
@@ -83,8 +102,7 @@ enum Hands {
     /// Click at a point in Cocoa global coordinates (bottom-left origin).
     static func click(x: Double, y: Double, right: Bool = false, double: Bool = false) -> Bool {
         guard permitted else { return false }
-        let primaryH = NSScreen.screens.first?.frame.height ?? 0
-        let p = CGPoint(x: x, y: primaryH - y)
+        let p = cgPoint(x: x, y: y, primaryHeight: primaryHeight())
         let (dn, upT, btn): (CGEventType, CGEventType, CGMouseButton) =
             right ? (.rightMouseDown, .rightMouseUp, .right) : (.leftMouseDown, .leftMouseUp, .left)
         CGEvent(mouseEventSource: nil, mouseType: .mouseMoved, mouseCursorPosition: p, mouseButton: btn)?.post(tap: .cghidEventTap)
@@ -99,7 +117,34 @@ enum Hands {
         return true
     }
 
+    /// A point in Cocoa's coordinates (bottom-left origin) as Quartz's events take it (top-left) (pure, tested).
+    static func cgPoint(x: Double, y: Double, primaryHeight: CGFloat) -> CGPoint { CGPoint(x: x, y: primaryHeight - y) }
+
     // MARK: seeing what can be clicked (the Accessibility tree, no pictures, no model)
+
+    /// What press(_:role:nth:) picks among what can be clicked: an exact name over its start over a part of it,
+    /// ties by order, the nth of the best; or why none (pure, tested).
+    enum Choice: Equatable { case found(index: Int, matches: Int), notFound(nearby: [String]), noNth(matches: Int) }
+
+    static func choose(_ things: [(name: String, role: String)], want: String, role: String, nth: Int) -> Choice {
+        let w = want.lowercased().trimmingCharacters(in: .whitespaces)
+        let r = role.isEmpty ? "" : (role.hasPrefix("AX") ? role : "AX" + role.prefix(1).uppercased() + role.dropFirst())
+        let pool = things.indices.filter { r.isEmpty || things[$0].role.lowercased() == r.lowercased() }
+        func score(_ i: Int) -> Int {
+            let n = things[i].name.lowercased()
+            if n == w { return 3 }
+            if n.hasPrefix(w) { return 2 }
+            if n.contains(w) { return 1 }
+            return 0
+        }
+        let best = pool.map { ($0, score($0)) }.filter { $0.1 > 0 }
+        guard let top = best.map(\.1).max() else {
+            return .notFound(nearby: Array(Set(pool.map { things[$0].name }.filter { !$0.isEmpty })).sorted().prefix(25).map { $0 })
+        }
+        let hits = best.filter { $0.1 == top }.map(\.0)
+        guard nth >= 1, nth <= hits.count else { return .noNth(matches: hits.count) }
+        return .found(index: hits[nth - 1], matches: hits.count)
+    }
 
     struct Thing { let el: AXUIElement; let role: String; let name: String; let frame: CGRect; var dialog = false }
 
@@ -119,7 +164,7 @@ enum Hands {
         AXValueGetValue(pv as! AXValue, .cgPoint, &p)
         AXValueGetValue(sv as! AXValue, .cgSize, &s)
         // AX is top-left origin on the primary screen; hand back Cocoa (bottom-left)
-        let primaryH = NSScreen.screens.first?.frame.height ?? 0
+        let primaryH = primaryHeight()
         return CGRect(x: p.x, y: primaryH - p.y - s.height, width: s.width, height: s.height)
     }
 
@@ -150,7 +195,7 @@ enum Hands {
     /// What can be clicked in an app's windows (and its menu bar when asked), on screen and named.
     static func see(app named: String = "", menus: Bool = false, limit: Int = 600) -> (String, [Thing])? {
         guard permitted, let app = targetApp(named) else { return nil }
-        let root = AXUIElementCreateApplication(app.processIdentifier)
+        let root = AXQuick.app(app.processIdentifier)
         AXUIElementSetMessagingTimeout(root, 1.0)
         var out: [Thing] = [], text: [Thing] = []
         var seen = 0
@@ -192,26 +237,12 @@ enum Hands {
         guard let (appName, things) = see(app: app, menus: menusToo, limit: 2000) else {
             return ["ok": false, "reason": "no_such_app"]
         }
-        let w = want.lowercased().trimmingCharacters(in: .whitespaces)
-        let r = role.isEmpty ? "" : (role.hasPrefix("AX") ? role : "AX" + role.prefix(1).uppercased() + role.dropFirst())
-        let pool = things.filter { r.isEmpty || $0.role.lowercased() == r.lowercased() }
-        func score(_ t: Thing) -> Int {
-            let n = t.name.lowercased()
-            if n == w { return 3 }
-            if n.hasPrefix(w) { return 2 }
-            if n.contains(w) { return 1 }
-            return 0
+        let t: Thing, matches: Int
+        switch choose(things.map { ($0.name, $0.role) }, want: want, role: role, nth: nth) {
+        case .notFound(let nearby): return ["ok": false, "reason": "not_found", "app": appName, "nearby": nearby]
+        case .noNth(let n): return ["ok": false, "reason": "no_nth", "app": appName, "matches": n]
+        case .found(let i, let n): t = things[i]; matches = n
         }
-        let best = pool.map { ($0, score($0)) }.filter { $0.1 > 0 }
-        guard let top = best.map(\.1).max() else {
-            return ["ok": false, "reason": "not_found", "app": appName,
-                    "nearby": Array(Set(pool.map(\.name).filter { !$0.isEmpty })).sorted().prefix(25).map { $0 }]
-        }
-        let hits = best.filter { $0.1 == top }.map(\.0)
-        guard nth >= 1, nth <= hits.count else {
-            return ["ok": false, "reason": "no_nth", "app": appName, "matches": hits.count]
-        }
-        let t = hits[nth - 1]
         var actions: CFArray?
         AXUIElementCopyActionNames(t.el, &actions)
         let names = (actions as? [String]) ?? []
@@ -225,7 +256,7 @@ enum Hands {
             _ = click(x: Double(t.frame.midX), y: Double(t.frame.midY))
         }
         return ["ok": true, "app": appName, "pressed": t.name, "role": t.role, "how": how,
-                "matches": hits.count, "at": [Double(t.frame.midX), Double(t.frame.midY)]]
+                "matches": matches, "at": [Double(t.frame.midX), Double(t.frame.midY)]]
     }
 
     /// "File > Save", "Format > Font > Show Fonts": one menu item by its path,
@@ -241,7 +272,7 @@ enum Hands {
                 usleep(50_000)
             }
         }
-        let root = AXUIElementCreateApplication(target.processIdentifier)
+        let root = AXQuick.app(target.processIdentifier)
         AXUIElementSetMessagingTimeout(root, 1.0)
         guard let bar = attr(root, kAXMenuBarAttribute) else { return ["ok": false, "reason": "no_menu_bar"] }
         func kids(_ e: AXUIElement) -> [AXUIElement] { (attr(e, kAXChildrenAttribute) as? [AXUIElement]) ?? [] }
@@ -276,7 +307,7 @@ enum Hands {
     /// Move the pointer (Cocoa coordinates), scroll (lines; + is up), or drag between two points.
     static func move(x: Double, y: Double) -> Bool {
         guard permitted else { return false }
-        let primaryH = NSScreen.screens.first?.frame.height ?? 0
+        let primaryH = primaryHeight()
         CGEvent(mouseEventSource: nil, mouseType: .mouseMoved, mouseCursorPosition: CGPoint(x: x, y: primaryH - y),
                 mouseButton: .left)?.post(tap: .cghidEventTap)
         return true
@@ -292,7 +323,7 @@ enum Hands {
 
     static func drag(from a: CGPoint, to b: CGPoint) -> Bool {
         guard permitted else { return false }
-        let primaryH = NSScreen.screens.first?.frame.height ?? 0
+        let primaryH = primaryHeight()
         func q(_ p: CGPoint) -> CGPoint { CGPoint(x: p.x, y: primaryH - p.y) }
         CGEvent(mouseEventSource: nil, mouseType: .leftMouseDown, mouseCursorPosition: q(a), mouseButton: .left)?
             .post(tap: .cghidEventTap)

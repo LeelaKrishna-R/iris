@@ -39,9 +39,10 @@ final class SimWorld: World {
     func frontWindow() -> CGRect? { wins.first?.frame }
     func windows(maxAge: Double) -> [SeenWindow] { wins }
     func focus() -> (field: CGRect?, caret: CGRect?) { (field, caret) }
-    func keysInto() -> (kind: String, why: String) { ("unknown", "simulated") }
+    nonisolated func keysInto() -> (kind: String, why: String) { ("unknown", "simulated") }
 }
 
+@MainActor          // runs on the main thread, from main.swift's top level, before her app starts
 enum Sim {
     static let fps = 60.0
 
@@ -352,6 +353,11 @@ enum Sim {
                     body.perform(id, seconds: a["seconds"] as? Double ?? 6, asked: a["why"] as? String ?? "")
                 }
                 if e["shoo"] as? Bool == true { body.shooed() }                 // "Iris, go away" (/iris/mood shoo)
+                if e.keys.contains("note") {                                   // what waits for him (/iris/day)
+                    let n = e["note"] as? [String: Any]
+                    body.noteWaiting(key: n?["key"] as? String, why: n?["why"] as? String)
+                }
+                if e["peek"] as? Bool == true { body.notePeeked() }            // he clicked her (the day card's peek)
                 if let h = e["hold"] as? [String: Any] { body.hold(h["seconds"] as? Double ?? 10, talk: false, pose: h["pose"] as? String ?? "") }
                 if e["screens"] != nil { w.screens = screens(e["screens"]); A.screens = w.screens }
                 if let back = e["clock_back"] as? Double { w.now = w.now.addingTimeInterval(-back) }   // the Mac's clock stepped back
@@ -517,6 +523,7 @@ enum Sim {
         if rend != nil, let text = try? String(contentsOf: Store.url("poses.jsonl"), encoding: .utf8) {
             let t0 = start.timeIntervalSince1970
             let rows = text.split(separator: "\n").compactMap { try? JSONSerialization.jsonObject(with: Data($0.utf8)) as? [String: Any] }
+                .filter { r in r["touch"] == nil }               // his touches' lines aren't poses
             var under1 = 0.0
             for (k, r) in rows.enumerated() {
                 let at = ((r["at"] as? Double ?? t0) - t0) * 100
@@ -598,6 +605,7 @@ enum Sim {
 }
 
 /// Watches every frame for what would look wrong on his screens.
+@MainActor          // the simulator's, on the main thread
 final class Analyzer {
     var screens: [Display]
     var typing = false

@@ -6,6 +6,9 @@ import QuartzCore
 /// shadow, a soft tail toward her, her name with a little sound wave that moves
 /// while she speaks, and rounded type. It springs out of her head, the words
 /// type out at a speaking pace, and it shrinks back into her when done.
+// (strict concurrency): her bubble is AppKit, on her main thread. @preconcurrency until Body, which makes and
+// moves it, is main-actor too: its calls from there compile as before.
+@preconcurrency @MainActor
 final class Bubble {
     private let window: NSPanel
     private let view = BubbleView()
@@ -40,7 +43,7 @@ final class Bubble {
         // accessibility pass: the bubble is drawn, so VoiceOver had nothing to read; it is told her words
         NSAccessibility.post(element: view, notification: .announcementRequested,
                              userInfo: [.announcement: "Iris: \(text)", .priority: NSAccessibilityPriorityLevel.medium.rawValue])
-        hideAt = Date().addingTimeInterval(seconds + Double(text.count) * 0.03)
+        hideAt = Date().addingTimeInterval(Bubble.shownFor(text, seconds: seconds))
         window.alphaValue = 0
         window.orderFrontRegardless()
         window.invalidateShadow()
@@ -49,26 +52,43 @@ final class Bubble {
         // the sound wave by her name, while the words come
         view.speaking = true
         wave?.invalidate()
-        let speakFor = Date().addingTimeInterval(Double(text.count) / 14 + 0.6)
+        let speakFor = Date().addingTimeInterval(Bubble.waveFor(text))
+        // scheduled on the main run loop, so it fires on main
         wave = Timer.scheduledTimer(withTimeInterval: 1 / 24, repeats: true) { [weak self] t in
             guard let self else { return t.invalidate() }
-            self.view.phase += 0.45
-            if Date() > speakFor { self.view.speaking = false; t.invalidate() }
+            MainActor.assumeIsolated {
+                self.view.phase += 0.45
+                if Date() > speakFor { self.view.speaking = false; self.wave?.invalidate() }
+            }
         }
         typer?.invalidate()
         // about 30 characters a second: close to how fast she speaks
         typer = Timer.scheduledTimer(withTimeInterval: 0.033, repeats: true) { [weak self] t in
             guard let self else { return t.invalidate() }
-            self.shown = min(self.full.count, self.shown + 1)
-            self.view.text = String(self.full.prefix(self.shown))
-            if self.shown >= self.full.count { t.invalidate() }
+            MainActor.assumeIsolated {
+                self.shown = min(self.full.count, self.shown + 1)
+                self.view.text = String(self.full.prefix(self.shown))
+                if self.shown >= self.full.count { self.typer?.invalidate() }
+            }
         }
+    }
+
+    /// How long her bubble stays: the seconds asked for, and longer for a longer line (0.03 s a character), so it is
+    /// up while it types out and a moment after (pure, tested).
+    nonisolated static func shownFor(_ text: String, seconds: Double) -> Double { seconds + Double(text.count) * 0.03 }
+
+    /// How long the sound wave by her name moves: her speaking pace, about 14 characters a second, and 0.6 s more.
+    nonisolated static func waveFor(_ text: String) -> Double { Double(text.count) / 14 + 0.6 }
+
+    /// Where her bubble's tail points, as a share of its width: at her, never closer than 18 pt to its edges.
+    nonisolated static func tail(width: CGFloat, petMidX: CGFloat, originX: CGFloat) -> CGFloat {
+        max(18, min(width - 18, petMidX - originX)) / width
     }
 
     /// Where her bubble goes: above her head, unless that covers what he's typing in (his field,
     /// the caret's neighbourhood) — then shifted aside, beside her, or above his field; always on
     /// her screen. A pure function, so the simulator checks it too.
-    static func place(size: NSSize, pet: CGRect, screens: [Display], avoid: [CGRect]) -> CGPoint {
+    nonisolated static func place(size: NSSize, pet: CGRect, screens: [Display], avoid: [CGRect]) -> CGPoint {
         let vis = (screens.first { $0.frame.intersects(pet) } ?? screens.first)?.visibleFrame ?? .infinite
         func onScreen(_ o: CGPoint) -> CGPoint {
             CGPoint(x: min(vis.maxX - size.width, max(vis.minX, o.x)), y: min(vis.maxY - size.height, max(vis.minY, o.y)))
@@ -121,15 +141,17 @@ final class Bubble {
                 pop(from: 1, to: 0.7, spring: false)
                 NSAnimationContext.runAnimationGroup({ $0.duration = 0.22; window.animator().alphaValue = 0 },
                                                      completionHandler: { [weak self] in
-                    self?.window.orderOut(nil)
-                    self?.view.layer?.transform = CATransform3DIdentity
+                    MainActor.assumeIsolated {                    // AppKit calls it on main
+                        self?.window.orderOut(nil)
+                        self?.view.layer?.transform = CATransform3DIdentity
+                    }
                 })
             }
             return
         }
         let f = window.frame
         let o = Bubble.place(size: f.size, pet: pet, screens: world.screens, avoid: avoid)
-        let tail = max(18, min(f.width - 18, pet.midX - o.x)) / f.width
+        let tail = Bubble.tail(width: f.width, petMidX: pet.midX, originX: o.x)
         if abs(tail - view.tail) > 0.01 { view.tail = tail }
         if window.frame.origin != o { window.setFrameOrigin(o) }
     }

@@ -4,7 +4,7 @@ import CoreAudio
 import os
 @preconcurrency import Speech        // its results are immutable once handed over
 
-/// Her ears: the default microphone (his Blue Yeti), heard on this Mac by
+/// Her ears: the default microphone (their Blue Yeti), heard on this Mac by
 /// Apple's on-device recognizer, always on and free. "\(Config.agentName) …" or "Iris …"
 /// — or anything said within a few seconds of Friday answering — is meant
 /// for her and queued for Friday Core. Muted while Friday speaks, so she
@@ -18,7 +18,7 @@ final class Ears: @unchecked Sendable {
     struct Heard: Codable, Sendable {
         var text: String; var at: Date; var addressed: Bool; var typed: Bool? = nil
         /// When each stage of hearing it happened (epoch seconds): its task began, the first word, the
-        /// wake word, his last word. Core logs the latency of each (core/iris._ears_budget),.
+        /// wake word, their last word. Core logs the latency of each (core/iris._ears_budget),.
         var times: [String: Double]? = nil
     }
 
@@ -39,13 +39,13 @@ final class Ears: @unchecked Sendable {
     private var lastPartialAt = Date()
     private var taskAt = Date.distantPast       // this recognition task began (stage times)
     private var firstWordAt: Date?
-    /// What he says now is for her (her name in a guess, or a follow-up): decided again on his finished words.
+    /// What the person says now is for her (her name in a guess, or a follow-up): decided again on their finished words.
     private var addressed = false
     private var followUpWake = false
     private var wokeAt: Date?
     private var conversationUntil = Date.distantPast
     private var mutedUntil = Date.distantPast
-    /// What she is saying right now, lowercased: her own words heard back are not his.
+    /// What she is saying right now, lowercased: her own words heard back are not their.
     private var ownLine = ""
     private var silenceTimer: Timer?
     // (owner: = off for an hour): the mic engine stops, then starts again on its own
@@ -78,19 +78,19 @@ final class Ears: @unchecked Sendable {
     // Friday" as "Hey friend", "Iris" as "I was", "while I was away" as "while I wait". It still listens
     // all day (nothing leaves the Mac until her name); from her name on, the same audio also goes to
     // Apple's server recognizer, which is far better at names and whole sentences, and its words are
-    // used when they come back within sharpWait of his last word. Off: `defaults write app.iris.companion
+    // used when they come back within sharpWait of their last word. Off: `defaults write app.iris.companion
     // sharpEars -bool false`.
     static var sharp: Bool { UserDefaults.standard.object(forKey: "sharpEars") as? Bool ?? true }
     static let sharpWait = 1.0
-    /// Words he says to her that a recognizer should expect (both recognizers take them).
+    /// Words the person says to her that a recognizer should expect (both recognizers take them).
     static var words: [String] {
         let names = HerName.wakeWords.map { $0.prefix(1).uppercased() + $0.dropFirst() }
         return names + names.flatMap { ["hey \($0)", "okay \($0)"] }
             + ["what did I miss", "remind me", "come here", "go away", "be quiet", "go to sleep", "wake up", "dance", "sit"]
     }
-    /// The names in his life, from Core (/ears/words): expected by both recognizers.
+    /// The names in their life, from Core (/ears/words): expected by both recognizers.
     /// kept across her restarts. Core sends them once an hour, so each restart (91 "iris: awake"
-    /// in Iris.log) left her recognizers without his names for up to an hour.
+    /// in Iris.log) left her recognizers without their names for up to an hour.
     var extraWords: [String] = Store.load([String].self, "ears-words.json") ?? [] {
         didSet { Store.save(extraWords, "ears-words.json") }
     }
@@ -200,7 +200,7 @@ final class Ears: @unchecked Sendable {
     }
 
     /// The engine stopped and started again on the current default input (begin() reads its format again). Never
-    /// while he has her ears off.
+    /// while they have her ears off.
     private func restartEngine(_ why: String) {
         guard offUntil <= Date() else { return }
         log("ears: restarting the microphone: \(why)")
@@ -215,7 +215,7 @@ final class Ears: @unchecked Sendable {
 
     private func retry() {
         DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in
-            guard let self, !self.running, self.offUntil <= Date() else { return }   // never back on while he has them off
+            guard let self, !self.running, self.offUntil <= Date() else { return }   // never back on while they have them off
             self.begin()
         }
     }
@@ -226,7 +226,7 @@ final class Ears: @unchecked Sendable {
     // Now a task starts when the mic rises above the room's own level, gets the half
     // second before it, and stops after a few quiet seconds.
     // "sound" was any buffer 9 dB over the room's level, so a fan ramping up kept a task
-    // running 79-92% of the time with him idle and nothing playing (localspeechrecognition 105
+    // running 79-92% of the time with them idle and nothing playing (localspeechrecognition 105
     // CPU-minutes in 15 h). A task now starts on likely speech (VoiceGate: voiced sound over the
     // room's noise, held ~0.1 s), and "quiet" means no speech.
     private let gate = NSLock()
@@ -250,7 +250,7 @@ final class Ears: @unchecked Sendable {
         let running = request != nil
         gate.unlock()
         // not while another app has the microphone (a call): what's said there is to other people
-        // ( a "\(Config.agentName)" in his Discord talk woke her and was answered aloud), she doesn't speak over a
+        // ( a "\(Config.agentName)" in their Discord talk woke her and was answered aloud), she doesn't speak over a
         // call anyway, and the recognizer ran at ~80% CPU on it. Her menu's "Talk to \(Config.agentName)" still opens.
         if !running && Date() >= conversationUntil && onCall() { return }
         if !running { newTask() }
@@ -284,7 +284,7 @@ final class Ears: @unchecked Sendable {
         return Date().timeIntervalSince(lastVoiceAt) < 1.0
     }
 
-    /// After a task ends: another at once only if he's still making sound.
+    /// After a task ends: another at once only if they're still making sound.
     private func nextOrSleep() {
         if heardSoundRecently || Date() < conversationUntil { newTask() } else { sleepEars() }
     }
@@ -300,7 +300,7 @@ final class Ears: @unchecked Sendable {
         return nil
     }
 
-    /// One recognition task lasts until he goes quiet (or about a minute).
+    /// One recognition task lasts until the person goes quiet (or about a minute).
     private func newTask() {
         generation += 1
         let mine = generation
@@ -370,7 +370,7 @@ final class Ears: @unchecked Sendable {
         let talking = Date() < mutedUntil
         // the recognizer hears "Iris" as "I was" / "I will" ("Iris come here" → "I was come here"
         // in every on-device run of the bench; "I was" reached Friday as a fragment). At the start of
-        // what he says and followed by one of her commands, that is her name.
+        // what the person says and followed by one of her commands, that is her name.
         // every mishearing her name knows, for the wake words set (HerName.misheard)
         if HerName.misheard(low) != nil,
            !talking || ownLine.isEmpty {
@@ -383,21 +383,21 @@ final class Ears: @unchecked Sendable {
         }
         for w in HerName.wakeWords {
             if talking && ownLine.range(of: "\\b\(w)\\b", options: .regularExpression) != nil { continue }   // her own word
-            // not when it's the day ("on \(Config.agentName)") or said about her (HerName.about); his finished
+            // not when it's the day ("on \(Config.agentName)") or said about her (HerName.about); their finished
             // words are judged again by HerName.choose before anything reaches Friday
             if low.range(of: "\\b\(w)\\b", options: .regularExpression) != nil, HerName.end(in: low) != nil {
                 addressed = true; followUpWake = false
                 wokeAt = Date()
                 startSharp()
                 if talking {
-                    mutedUntil = Date()               // he cut in: she stops and listens
+                    mutedUntil = Date()               // the person cut in: she stops and listens
                     DispatchQueue.main.async { self.onBargeIn?() }
                 }
                 DispatchQueue.main.async { self.onWake?() }
                 return
             }
         }
-        if talking { return }                    // while she speaks, only her name is his
+        if talking { return }                    // while she speaks, only her name is their
         if Date() < conversationUntil {          // a follow-up right after she answered
             addressed = true; followUpWake = true
             wokeAt = Date()
@@ -406,14 +406,14 @@ final class Ears: @unchecked Sendable {
         }
     }
 
-    // what he said used to end 1.2 s after the
+    // what the person said used to end 1.2 s after the
     // last new word, checked every 0.25 s (1.2-1.45 s). Now: 0.8 s after the last word once the
-    // mic is quiet too (the recognizer's words lag the sound, so a quiet mic says he's done), and
+    // mic is quiet too (the recognizer's words lag the sound, so a quiet mic says they're done), and
     // 1.4 s at most if the room never goes quiet. "\(Config.agentName)" and a pause to think waits 2 s for the
     // rest: it used to go to Friday as "\(Config.agentName)" alone.
     // 0.8 s cut
-    // him off mid-sentence ("How", "s sick", "I was", "Can you check" reached Friday). Now 1.3 s
-    // after the last word with the mic quiet, 2.2 s at most, and 1.2 s more when his last word
+    // them off mid-sentence ("How", "s sick", "I was", "Can you check" reached Friday). Now 1.3 s
+    // after the last word with the mic quiet, 2.2 s at most, and 1.2 s more when their last word
     // plainly goes on ("and", "to", "my", "what" …).
     // The rules themselves: EndOfSpeech (an ask that closes itself, ends at 0.8 s).
     static let endQuietMic = EndOfSpeech.quietMic
@@ -456,7 +456,7 @@ final class Ears: @unchecked Sendable {
             if let f = firstWordAt { times["first_word_at"] = f.timeIntervalSince1970 }
             if let w = wokeAt { times["wake_at"] = w.timeIntervalSince1970 }
             let heard = Heard(text: text, at: now, addressed: true, times: times)
-            // the stages only, never what he said
+            // the stages only, never what the person said
             func ms(_ a: Date?, _ b: Date?) -> String { a.flatMap { a in b.map { "\(Int($0.timeIntervalSince(a) * 1000))ms" } } ?? "-" }
             log("ears: heard (first word \(ms(taskAt, firstWordAt)), wake \(ms(taskAt, wokeAt)), end-of-speech \(ms(lastPartialAt, now)))")
             if sharpTask != nil {
@@ -474,7 +474,7 @@ final class Ears: @unchecked Sendable {
     /// recognizers (HerName.choose); when her name is in neither, it wasn't said to her.
     private func handOver(_ heard: Heard, followUp: Bool, onDevice: String, server: String, serverMs: Int?) {
         if let ms = serverMs {
-            // the stages only, never what he said
+            // the stages only, never what the person said
             if server.isEmpty { log("ears: server words missing after \(ms)ms") }
             else if HerName.toHer(server, followUp: followUp) == nil { log("ears: server words without her name (\(ms)ms)") }
         }
@@ -599,7 +599,7 @@ final class Ears: @unchecked Sendable {
         log("ears: off for \(Int(seconds)) s")
     }
 
-    /// Listening again (his word, her menu, or the hour is up).
+    /// Listening again (their word, her menu, or the hour is up).
     func on() {
         offTimer?.invalidate(); offTimer = nil
         let wasOff = offUntil > .distantPast
@@ -617,10 +617,10 @@ final class Ears: @unchecked Sendable {
         onWake?()
     }
 
-    /// Friday is about to speak for `seconds`: don't hear it; then, when it answers him (`listen`), listen for a
+    /// Friday is about to speak for `seconds`: don't hear it; then, when it answers them (`listen`), listen for a
     /// reply. (journal): a line she says on her own (a thought, a welcome, a notice) opened the
-    /// same seven seconds, and his Discord call's "What is the moderator so we can know who is active" was taken
-    /// as said to her and answered aloud. Only an answer to him waits for his next words without her name.
+    /// same seven seconds, and their Discord call's "What is the moderator so we can know who is active" was taken
+    /// as said to her and answered aloud. Only an answer to them waits for their next words without her name.
     func mute(for seconds: Double, line: String = "", listen: Bool = true) {
         mutedUntil = Date().addingTimeInterval(seconds + 0.6)
         if listen { conversationUntil = mutedUntil.addingTimeInterval(7) }
@@ -629,7 +629,7 @@ final class Ears: @unchecked Sendable {
         addressed = false
     }
 
-    // MARK: Friday's queue — a long poll from Core takes the next thing he said
+    // MARK: Friday's queue — a long poll from Core takes the next thing the person said
 
     private func push(_ h: Heard) {
         lock.lock()
@@ -641,7 +641,7 @@ final class Ears: @unchecked Sendable {
 
     // one reader (Core's loop). A newer poll answers any older one empty: a poll whose
     // Core went away (a restart mid-poll) used to stay first in line for up to 25 s and take what
-    // he said next to nobody. A timed-out poll now removes itself, not whichever was first.
+    // the person said next to nobody. A timed-out poll now removes itself, not whichever was first.
     private var waiterSeq = 0
 
     func next(timeout: Double, _ done: @escaping @Sendable (Heard?) -> Void) {

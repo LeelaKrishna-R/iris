@@ -1,10 +1,10 @@
 import AppKit
 import AVFoundation
 
-/// Iris: Friday's body on his Mac — a chibi girl on his screens with eyes
+/// Iris: Friday's body on their Mac — a chibi girl on their screens with eyes
 /// (both displays), ears (the Yeti), a mouth (the speakers) and hands
 /// (keyboard and mouse). Her brain is Friday Core, reached over the local
-/// link; her own self (moods, habits, what she's learned about him) is
+/// link; her own self (moods, habits, what she's learned about them) is
 /// her own and lives here.
 // (strict concurrency): her app delegate and everything it owns run on the main thread; only route(), which
 // Link calls on its own queue, is nonisolated, and it sends main-thread work there through main {}.
@@ -44,7 +44,7 @@ final class App: NSObject, NSApplicationDelegate {
         ears.onVoice = { [weak self] in self?.body.heardVoice() }
         ears.start()
         body.onTalk = { [weak self] in self?.ears.listenNow() }
-        // a click on her peeks at his day card; a double-click (a bow) leaves none up; his pointer resting on
+        // a click on her peeks at their day card; a double-click (a bow) leaves none up; their pointer resting on
         // her, one line of it in her bubble
         body.onPetted = { [weak self] in
             self?.body.notePeeked()                 // a click on her is a look at what waited: her note cue ends
@@ -88,7 +88,7 @@ final class App: NSObject, NSApplicationDelegate {
             self?.ears.mute(for: secs, line: text, listen: listen)
             self?.body.speaking(text, seconds: secs)
         }
-        ears.onBargeIn = { [weak self] in self?.mouth.cut() }      // the rest of what he cut off waits (Mouth.cut)
+        ears.onBargeIn = { [weak self] in self?.mouth.cut() }      // the rest of what the person cut off waits (Mouth.cut)
 
         link = Link { [weak self] path, query, body, reply in
             guard let self else { return reply(503, ["ok": false]) }
@@ -99,7 +99,7 @@ final class App: NSObject, NSApplicationDelegate {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { Welcome.showIfFirstRun() }
     }
 
-    /// his ask (spoken or typed) queued at `at`, looked at again after Stages.askWaitS: still in her queue,
+    /// their ask (spoken or typed) queued at `at`, looked at again after Stages.askWaitS: still in her queue,
     /// Friday didn't take it (its watcher down or restarting). She says so in her bubble, and it is dropped, so it
     /// isn't answered whenever Friday returns. Taken, as it is within moments while Friday is up: nothing.
     private func untaken(_ at: Date) {
@@ -119,7 +119,7 @@ final class App: NSObject, NSApplicationDelegate {
             DispatchQueue.main.async { MainActor.assumeIsolated { let (s, o) = work(); reply(s, o) } }
         }
         // typing and pressing sleep and poll (12 ms per 16 characters; up to 1 s for an app to come forward),
-        // which froze her body when they ran on main; her hands' own serial queue keeps what he asked in order.
+        // which froze her body when they ran on main; her hands' own serial queue keeps what the person asked in order.
         func hands(_ work: @escaping @Sendable () -> (Int, [String: Any])) {
             App.handsQueue.async { let (s, o) = work(); reply(s, o) }
         }
@@ -169,7 +169,7 @@ final class App: NSObject, NSApplicationDelegate {
                                                                 : ["ok": true, "paths": paths])
             }
         case "/ears/words":
-            // the names in his life (Core's core/stt_names, the same list his phone's voice is
+            // the names in their life (Core's core/stt_names, the same list their phone's voice is
             // primed with), so both of her recognizers expect them
             let w = (body["words"] as? [String] ?? []).map { String($0.prefix(40)) }.filter { !$0.isEmpty }
             main {                                     // review set where her ears read them, on main
@@ -242,7 +242,7 @@ final class App: NSObject, NSApplicationDelegate {
                 return (ok ? 200 : (r["reason"] as? String == "accessibility_not_allowed" ? 403 : 404), r)
             }
         case "/hands/quit":
-            // "quit Safari": the app is asked to quit as ⌘Q would (it asks him about anything
+            // "quit Safari": the app is asked to quit as ⌘Q would (it asks them about anything
             // unsaved); never Iris herself, Finder or the login window
             let name = (body["app"] as? String ?? "").lowercased()
             main {
@@ -299,12 +299,12 @@ final class App: NSObject, NSApplicationDelegate {
             reply(200, ["ok": true, "animations": Body.catalog.values.map {
                 ["id": $0["id"] ?? "", "when": $0["when"] ?? "", "rig": $0["rig"] ?? ""] }])
         case "/iris/notice":
-            // Friday's reminder or push just appeared on his screen (core/notify, best-effort)
+            // Friday's reminder or push just appeared on their screen (core/notify, best-effort)
             let title = body["title"] as? String ?? ""
             log("notice: " + String(title.prefix(40)))      // whether she was told is in her log
             main { self.body.notified(String(title.prefix(80))); return (200, ["ok": true]) }
         case "/iris/usage":
-            // his active minutes per app on a day (default today), from her eyes; local only
+            // their active minutes per app on a day (default today), from her eyes; local only
             let day = body["day"] as? String
             main { (200, ["ok": true, "day": day ?? Body.dayKey(Date()),
                           "seconds": self.body.usage(day: day).mapValues { Int($0) },
@@ -335,7 +335,7 @@ final class App: NSObject, NSApplicationDelegate {
             let ids = (body["ids"] as? [Any] ?? []).compactMap { $0 as? String }
             main { ApprovalCard.shared.ack(ids); return (200, ["ok": true]) }
         case "/iris/day":
-            // his day at a glance beside her (core/iris_day_card), rows Core read, unreadable ones "off"
+            // their day at a glance beside her (core/iris_day_card), rows Core read, unreadable ones "off"
             // Core's JSON rows, parsed here and used once on main — handed over, never touched here again
             let rows = Handoff((body["rows"] as? [Any] ?? []).compactMap { $0 as? [String: Any] })
             let at = (body["at"] as? Double).map { Date(timeIntervalSince1970: $0) }
@@ -352,7 +352,7 @@ final class App: NSObject, NSApplicationDelegate {
             }
         case "/iris/status":
             // Core's word for "How Iris is" (core/iris_status) in; her menu's quiet asks out
-            // review (a162): what waits for him comes with each status too (30 s), for her note cue; a look
+            // review (a162): what waits for them comes with each status too (30 s), for her note cue; a look
             // without "waiting" (her 2 s asks) says nothing of it, and null is nothing waits
             let said = body.keys.contains("waiting")
             let waiting = body["waiting"] as? [String: Any]
@@ -385,7 +385,7 @@ final class App: NSObject, NSApplicationDelegate {
                 self.body.mind(want: w, strength: k, mood: mood, say: say, face: face); return (200, ["ok": true])
             }
         case "/iris/come":
-            // he called her over (core/iris_talk): "cursor" (beside his pointer) or "other_screen"
+            // the person called her over (core/iris_talk): "cursor" (beside their pointer) or "other_screen"
             let to = body["to"] as? String ?? ""
             main {
                 guard let why = self.body.come(to) else { return (200, ["ok": true]) }

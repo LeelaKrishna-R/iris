@@ -3,7 +3,7 @@ import Foundation
 
 /// is someone likely speaking into her microphone? Her ears run Apple's recognizer only while
 /// this says yes (Ears.measure). It used to be "one buffer 9 dB over the room's level", so any room
-/// sound ran the recognizer: with him idle at 23:06 and nothing playing, a task was up 79-92% of the
+/// sound ran the recognizer: with them idle at 23:06 and nothing playing, a task was up 79-92% of the
 /// time and localspeechrecognition.xpc had used 105 CPU-minutes in 15 h.
 ///
 /// A voice, unlike a fan swelling, a keyboard or a clatter, is voiced: what it adds to the room repeats

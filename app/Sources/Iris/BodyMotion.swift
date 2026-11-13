@@ -1,11 +1,11 @@
 import AppKit
 
-// Iris's body — getting around (out of Body.swift): floors, window tops, the seam between his screens,
-// her walk, hops and falls, and stepping out of his full-screen picture.
+// Iris's body — getting around (out of Body.swift): floors, window tops, the seam between their screens,
+// her walk, hops and falls, and stepping out of their full-screen picture.
 extension Body {
-    // MARK: getting around — floors, window tops, the seam between his screens
+    // MARK: getting around — floors, window tops, the seam between their screens
     //
-    // Each screen's floor is the bottom of its visible frame, and his screens'
+    // Each screen's floor is the bottom of its visible frame, and their screens'
     // floors are not level (the portrait KG241Y's is 520 pt below the Dell's).
     // She never changes height in one frame: she stands on a floor, or on the
     // top of the front window once she has landed on it from above, and gets
@@ -29,7 +29,7 @@ extension Body {
     }
 
     /// A jump to (tx, ty) along a real arc: a short crouch, then off.
-    /// `fromWindow`: why she is hopping off one of his windows (a drop of Stages.jumpDownAtLeast or more
+    /// `fromWindow`: why she is hopping off one of their windows (a drop of Stages.jumpDownAtLeast or more
     /// lands as "fall_land").
     private func leap(toX tx: CGFloat, toY ty: CGFloat, crouch: Double = 0.16, fromWindow: String? = nil) {
         let g = Body.gravity
@@ -43,14 +43,14 @@ extension Body {
         if tx != x { face.flip = tx < x }
         standingOn = nil; standingID = nil
         // she jumps on her feet: seated on a window that went from under her, she flew down still sitting
-        // (sim 21 once she settled beside him)
+        // (sim 21 once she settled beside them)
         sit.target = 0; sit.value = 0; sit.vel = 0; workingAlong = false
         trace?("leap", ["from": [Double(x), Double(y)], "to": [Double(tx), Double(ty)], "height": Double(rise)])
     }
 
     func move(_ dt: CGFloat) {
         let w = Body.size.width
-        // his windows, front to back: asked only when she's on one, in the air, or about to jump up
+        // their windows, front to back: asked only when she's on one, in the air, or about to jump up
         var asked = false, cached: [SeenWindow] = []
         var wins: [SeenWindow] { if !asked { asked = true; cached = world.windows(maxAge: 0.1) }; return cached }
         var walking: CGFloat = 0
@@ -109,7 +109,7 @@ extension Body {
             if world.now >= l.at {
                 vy = l.vy; vx = l.vx; launch = nil
                 squash.kick(2.5)
-                // off his window and down: the falling frames in the air, the landing when her feet touch
+                // off their window and down: the falling frames in the air, the landing when her feet touch
                 // (SpriteView "@fall_land"); she stays where she lands until it's done, then walks on
                 if let j = jumpDown, !held, performing.isEmpty || Body.catalog[performing]?["rig"] == "yes" {
                     trace?("act", ["what": "fall_land", "why": j.why])
@@ -140,7 +140,7 @@ extension Body {
                 }
             }
         } else if performing == "fall_land" && world.now < performUntil {
-            // landed from his window: feet planted while the landing plays
+            // landed from their window: feet planted while the landing plays
         } else if var t = targetX {
             let cur = screenAt(x + w / 2)
             let dest = screenAt(t + w / 2)
@@ -183,7 +183,7 @@ extension Body {
             let floor = floorAt(x)
             if y < floor - 0.5 { if floor - y < 30 { y = floor } else { leap(toX: x, toY: floor, crouch: 0) } }
         }
-        // standing half on two screens (he set her down on the seam): a few steps onto one
+        // standing half on two screens (the person set her down on the seam): a few steps onto one
         if vy == 0 && launch == nil && targetX == nil && standingOn == nil
             && !world.screens.contains(where: { $0.frame.insetBy(dx: -1, dy: -1).contains(CGRect(x: x, y: y, width: w, height: Body.size.height)) }) {
             let scr = screenAt(x + w / 2)
@@ -225,7 +225,7 @@ extension Body {
             fade = (0, { [weak self] in
                 guard let self else { return }
                 if let other = world.screens.first(where: { $0.frame != fs.frame }) {
-                    // reappear on his other screen, near where it meets this one
+                    // reappear on their other screen, near where it meets this one
                     let nearRight = other.frame.midX > fs.frame.midX
                     self.x = self.clampIn(other, nearRight ? other.visibleFrame.minX + 60 : other.visibleFrame.maxX - Body.size.width - 60)
                     self.y = other.visibleFrame.minY
@@ -238,7 +238,7 @@ extension Body {
                 // one screen: she stays out of sight until it ends
             })
         } else if was != nil && fs == nil && alpha < 0.5 && fade == nil {
-            fade = (1, nil)                               // his full-screen picture ended: back
+            fade = (1, nil)                               // their full-screen picture ended: back
         }
     }
 
@@ -287,6 +287,6 @@ extension Body {
         return !ws[..<i].contains { w in feet.contains { w.frame.contains(CGPoint(x: $0, y: top)) } }
     }
 
-    /// She changes screens on her own only once he has been working on the other one this long.
+    /// She changes screens on her own only once they have been working on the other one this long.
     static let screenStay: Double = 120
 }

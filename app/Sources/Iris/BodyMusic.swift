@@ -1,6 +1,6 @@
 import AppKit
 
-// Iris's body — his music (out of Body.swift): whether a song is playing, and her sway to it.
+// Iris's body — their music (out of Body.swift): whether a song is playing, and her sway to it.
 extension Body {
     /// Music playing (a music app and the speakers in use, checked every 2 s): she
     /// sways a little to it. Never over a video, never asleep. (structure audit): her own dance to it

@@ -1,12 +1,12 @@
 import AppKit
 
 // Iris's body — her gaze and face (out of Body.swift): where her eyes are between her bigger reactions,
-// and settle(): her springs, face and pose each frame, and how warm each part of his screen is to her.
+// and settle(): her springs, face and pose each frame, and how warm each part of their screen is to her.
 extension Body {
     func lookingElsewhere(_ now: Date) -> Bool { now < lookUntil }
 
     /// `head`: how far her head turns with her eyes (1 for a real look at something, less while she
-    /// just keeps an eye on things). Close to her the eyes move less, so his cursor crossing her
+    /// just keeps an eye on things). Close to her the eyes move less, so their cursor crossing her
     /// face is a smooth sweep, not a flip from one side to the other.
     func lookToward(_ p: CGPoint, snap: CGFloat, head: CGFloat = 1) {
         let me = CGPoint(x: x + Body.size.width / 2, y: y + Body.size.height * 0.68)
@@ -20,17 +20,17 @@ extension Body {
 
     // MARK: paying attention — between her bigger reactions her eyes are always somewhere
     //
-    // In order: Friday speaking through her, or him
-    // talking (the mic heard words): she looks at him, out of the screen, her head toward where he
-    // works. His caret while he types. His cursor when it's near her (600 pt). Otherwise where his
-    // screen last changed (her eyes' glance, the last 6 s), else his front window. A new window, a
+    // In order: Friday speaking through her, or them
+    // talking (the mic heard words): she looks at them, out of the screen, her head toward where the person
+    // works. His caret while the person types. His cursor when it's near her (600 pt). Otherwise where their
+    // screen last changed (her eyes' glance, the last 6 s), else their front window. A new window, a
     // new app, a click, a notification are quick glances that hold her eyes a moment (lookToward
     // with snap ≥ 0.5) before this resumes. Her rig moves the eyes and turns, nods and tilts the
     // head (Live: gaze, turn, nod, tilt), so every look is her eyes first and her head a little.
 
     static let followRange: CGFloat = 600
 
-    /// He is talking (her ears heard words, to her or not): she looks at him for a moment.
+    /// He is talking (her ears heard words, to her or not): she looks at them for a moment.
     func heardVoice() {
         heardAt = world.now
         trace?("heard_voice", ["asleep": sleeping])
@@ -47,10 +47,10 @@ extension Body {
         look(c, mode: "cursor", head: 0.5, now)
     }
 
-    /// her eyes on a point that doesn't move — the middle of his front
-    /// window (56% of sim 47's afternoon) or his parked cursor — held there for minutes, which is a stare. After
+    /// her eyes on a point that doesn't move — the middle of their front
+    /// window (56% of sim 47's afternoon) or their parked cursor — held there for minutes, which is a stare. After
     /// Body.restEyesAfter on the same still point she rests her eyes (down and ahead, her head back toward the
-    /// middle); the cursor moving, his typing or a change on his screen brings them back at once.
+    /// middle); the cursor moving, their typing or a change on their screen brings them back at once.
     static let restEyesAfter: TimeInterval = 10
 
     private func look(_ p: CGPoint, mode: String, head: CGFloat, _ now: Date) {
@@ -66,8 +66,8 @@ extension Body {
         lookToward(p, snap: 0.2, head: head); gazeMode = mode
     }
 
-    /// Eye contact: he sits in front of his screen, so her eyes come nearly to the middle (looking
-    /// out at him) and her head turns a little toward where he works (his caret or cursor).
+    /// Eye contact: the person sits in front of their screen, so her eyes come nearly to the middle (looking
+    /// out at them) and her head turns a little toward where the person works (their caret or cursor).
     func lookAtHim() {
         let me = CGPoint(x: x + Body.size.width / 2, y: y + Body.size.height * 0.68)
         let his = (world.now.timeIntervalSince(lastTyped) < 4 ? focusCaret.map { CGPoint(x: $0.midX, y: $0.midY) } : nil) ?? world.mouse
@@ -174,7 +174,7 @@ extension Body {
             saccade = CGPoint(x: CGFloat.rnd(-0.18...0.18), y: CGFloat.rnd(-0.12...0.12))
             nextSaccade = now.addingTimeInterval(Double.rnd(0.35...2.2))
         }
-        // following his moving cursor the eyes pursue smoothly; looking at him they hold steady
+        // following their moving cursor the eyes pursue smoothly; looking at them they hold steady
         let jit: CGFloat = gazeMode == "him" ? 0.35 : (gazeMode == "cursor" && cursorSpeed > 60) ? 0.3 : 1
         f.gaze = CGPoint(x: max(-1, min(1, gx.value + saccade.x * jit)), y: max(-1, min(1, gy.value + saccade.y * jit)))
         f.vx = (x - lastFaceX) / max(dt, 0.001)
@@ -194,8 +194,8 @@ extension Body {
         // woken, she was lying under her blanket one frame
         // and sitting up straight the next (sim 44 at 40.1 s, every wake in poses.jsonl: sleep -> sit held 0 s between).
         // Her own drawn wake_up is that in-between: she sits up in bed, rubs her eyes and yawns, then sits. Only when
-        // nothing needs her at once — not carried, called (listening), greeting him, talking, walking off or already
-        // in a clip of his touch — and its why is what woke her.
+        // nothing needs her at once — not carried, called (listening), greeting them, talking, walking off or already
+        // in a clip of their touch — and its why is what woke her.
         // (the face she last showed was lying asleep — her sleep pose, not her snore, which sits up already)
         if face.sleeping && face.act.isEmpty && !sleeping {
             if performing.isEmpty && !held && !listening && waveT <= 0 && vy == 0 && now >= talkUntil && sit.target > 0.5 && targetX == nil {
@@ -206,12 +206,12 @@ extension Body {
             }
         }
         // the cause of what she's doing, in the world (poses.jsonl's why)
-        // pose log: chase (his cursor flicking past her), sunset_watch, syntax_sparkles were logged
+        // pose log: chase (their cursor flicking past her), sunset_watch, syntax_sparkles were logged
         // "\(Config.agentName) speaking through her" because talking outranked the clip's own cause; a clip she is
         // performing keeps its own cause.
         // read here, once this frame's clip has ended or begun (above). Read before them, the frame her
-        // wake_up began carried her last rest's cause (poses.jsonl "clip wake_up: woke: he came back
-        // to the Mac", idle_s 1695: their screen had woken her; "clip wake_up: settled while he
+        // wake_up began carried her last rest's cause (poses.jsonl "clip wake_up: woke: the person came back
+        // to the Mac", idle_s 1695: their screen had woken her; "clip wake_up: settled while the person
         // works"), and her stand after a clip carried the clip's.
         // "Why did you do that" is answered from that journal (core/iris_brains.why_asked).
         f.why = held ? "they're carrying her" : listening ? "they're talking to her" : !performing.isEmpty ? actWhy
@@ -251,7 +251,7 @@ extension Body {
         heat[k] = min(30, (heat[k] ?? 0) + v)
     }
 
-    /// How much of his recent attention a rect of hers would cover (0…~1).
+    /// How much of their recent attention a rect of hers would cover (0…~1).
     func attentionUnder(_ me: CGRect) -> Double {
         var total: CGFloat = 0
         var cx = (me.minX / 80).rounded(.down) * 80
@@ -268,7 +268,7 @@ extension Body {
 
     func readInto(_ now: Date) {
         // every 2 s while the front app stays the same (once a second, it was her top own cost in a
-        // sample with him typing); at once when he's moved to another app
+        // sample with them typing); at once when they're moved to another app
         let app = world.frontApp ?? ""
         guard !intoBusy, now.timeIntervalSince(intoAskedAt) >= (app == intoApp ? 2 : 0) else { return }
         intoBusy = true; intoAskedAt = now; intoApp = app
@@ -294,7 +294,7 @@ extension Body {
         let bad = inTheWay(me)
         guard bad > 0.3 else { wayT = max(0, wayT - dt); return }
         wayT += dt
-        if sleeping { wake("in the way of their typing") }        // asleep on what he's typing in: she wakes and moves
+        if sleeping { wake("in the way of their typing") }        // asleep on what they're typing in: she wakes and moves
         soul.feelPlace(me.midX, me.minY, -0.6 * Double(dt) * bad)
         if wayT > 0.12 && targetX != nil && !inTheWayAt(targetX!) { speed = max(speed, 240) }   // crossing it: quickly
         if wayT > 0.12 && (targetX == nil || inTheWayAt(targetX!)) && now.timeIntervalSince(wayThoughtAt) > 1 {

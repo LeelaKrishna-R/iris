@@ -196,6 +196,21 @@ def person_in_strings(text: str) -> str:
     return _STRING.sub(one, text)
 
 
+def person_in_comments(text: str) -> str:
+    """The code's own notes were written about one man too ("his pointer resting on her"); the same words as her
+    sentences, comments only."""
+    out = []
+    for ln in text.split("\n"):
+        at = _comment_at(ln)
+        if at >= 0:
+            note = ln[at:]
+            for old, new in STRING_PERSON:
+                note = re.sub(old, new, note)
+            ln = ln[:at] + note
+        out.append(ln)
+    return "\n".join(out)
+
+
 def agent_in_strings(text: str) -> str:
     """The upstream agent's name, where she shows or logs it (inside a string literal, capitalised), as whatever agent
     this Iris runs with (Config.agentName). Lowercase keys of Core's data ("friday") and code names stay as they are."""
@@ -329,7 +344,7 @@ def sync(src: Path, dst: Path) -> None:
         p = Path(f)
         if p.name in PUBLIC_ONLY:
             continue
-        p.write_text(scrub_comments(public_text(person_in_strings(agent_in_strings(p.read_text(encoding="utf-8"))))),
+        p.write_text(person_in_comments(scrub_comments(public_text(person_in_strings(agent_in_strings(p.read_text(encoding="utf-8")))))),
                      encoding="utf-8")
     named = [f"{Path(f).name}:{i + 1}" for f in glob.glob(str(s_dst / "*.swift")) if Path(f).name not in PUBLIC_ONLY
              for i, ln in enumerate(Path(f).read_text(encoding="utf-8").split("\n")) if upstream_name_shown(ln)]

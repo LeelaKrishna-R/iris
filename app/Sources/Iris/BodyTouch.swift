@@ -1,11 +1,11 @@
 import AppKit
 
-// Iris's body — his touch (out of Body.swift): his pointer resting on her, a click, a double-click, being
+// Iris's body — their touch (out of Body.swift): their pointer resting on her, a click, a double-click, being
 // carried and dropped, and the cursor's quick passes near her.
 extension Body {
     func hover(_ on: Bool) {
         hovering = on
-        // his look counts when he brought the cursor to her, not when she walked under a still one
+        // their look counts when the person brought the cursor to her, not when she walked under a still one
         hoverSince = on && world.now.timeIntervalSince(cursorMovedAt) < 0.5 ? world.now : nil
         if on { notice("the person hovered their cursor over you") }
         if on && soul.feel(.hover) > 0.2 {
@@ -49,7 +49,7 @@ extension Body {
         touchClip("bow", 2.4, "double_click")
     }
 
-    /// Her reaction to his touch: the clip, at once, traced for the simulator.
+    /// Her reaction to their touch: the clip, at once, traced for the simulator.
     func touchClip(_ id: String, _ seconds: Double, _ why: String) {
         trace?("touch", ["what": why, "clip": id, "air": vy != 0])
         perform(id, seconds: seconds, own: true, why: Body.touchWhy[why] ?? why)
@@ -60,8 +60,8 @@ extension Body {
         if !held {
             notice("the person picked you up and moved you")
             touch("drag")
-            performing = ""; performMoves = false; fall = nil     // a clip stops when he picks her up
-            flickTimes.removeAll()                                 // his cursor darting to grab her isn't play
+            performing = ""; performMoves = false; fall = nil     // a clip stops when the person picks her up
+            flickTimes.removeAll()                                 // their cursor darting to grab her isn't play
             held = true; _ = soul.feel(.dragged); wideT = 0.4; targetX = nil; perchTop = nil
             standingOn = nil; standingID = nil; perchID = nil; launch = nil; vx = 0; leapTo = nil
             jumpDown = nil; shooWalkTo = nil; dozeWhy = nil; alongSince = nil   // carried, no stretch after
@@ -72,15 +72,15 @@ extension Body {
     }
 
     func dropped() {
-        defer { logTouch("drag_to") }            // where he set her down
+        defer { logTouch("drag_to") }            // where the person set her down
         held = false
         vy = 0
         sit.target = 0; sit.value = 0; sit.vel = 0; workingAlong = false     // carried, she's on her feet when let go
         _ = soul.feel(.dropped)
         soul.reward(-0.5)
-        // he moved her: where she was was wrong, where he put her is fine
+        // the person moved her: where she was was wrong, where the person put her is fine
         if let p = pickedUpAt { soul.feelPlace(p.x, p.y, -0.45) }
-        // (UX audit #9): carried away (not set down where she was) while he works: she was in his way
+        // (UX audit #9): carried away (not set down where she was) while the person works: she was in their way
         if let p = pickedUpAt, abs(x + Body.size.width / 2 - p.x) > Body.size.width,
            world.now.timeIntervalSince(lastTyped) < Body.workingS { soul.interrupted(0.5) }
         soul.feelPlace(x + Body.size.width / 2, screenAt(x + Body.size.width / 2).visibleFrame.minY, 0.15)
@@ -89,15 +89,15 @@ extension Body {
         // let go of high up: she falls, and gets up from it when she lands (getup, "after falling")
         fall = y - groundBelow() > 200 ? (y, world.now) : nil
         if hovering { hoverSince = world.now }
-        hisScreenSince = world.now          // where he put her is her place for a while, wherever he works
+        hisScreenSince = world.now          // where the person put her is her place for a while, wherever the person works
         placedAt = world.now
     }
 
-    /// Every frame: his cursor resting on her, or darting about near her.
+    /// Every frame: their cursor resting on her, or darting about near her.
     func touchReactions(_ now: Date, cursor c: CGPoint, me: CGPoint, dist: CGFloat) {
-        // resting on her 2 s: one line of his day in her bubble, from his day card's rows (DayCard.hint:
-        // "Next: Dentist at 2:00 PM", "3 kept for you"), never spoken; a curious look up at him. (owner: "iris
-        // needs improvement"): her shy and blush-hide here were a reaction with nothing for him in it
+        // resting on her 2 s: one line of their day in her bubble, from their day card's rows (DayCard.hint:
+        // "Next: Dentist at 2:00 PM", "3 kept for you"), never spoken; a curious look up at them. (owner: "iris
+        // needs improvement"): her shy and blush-hide here were a reaction with nothing for them in it
         if let hs = hoverSince, now.timeIntervalSince(hs) >= 2, now >= touchUntil {
             hoverSince = nil                                    // once per hover
             if !held && !sleeping {
@@ -108,7 +108,7 @@ extension Body {
                 if let line { say(line, for: 4) }
             }
         }
-        // his cursor darting past her, again and again, while he isn't typing: she plays —
+        // their cursor darting past her, again and again, while the person isn't typing: she plays —
         // chases it, or pounces when it's right by her. At most every 2 minutes.
         if let first = flickTimes.first, now.timeIntervalSince(first) >= 8 { flickTimes.removeFirst() }   // only passes of the last 8 s
         if cursorSpeed > 1800 && dist < 320 && !held && now.timeIntervalSince(lastFlickAt) > 0.6 {
@@ -116,14 +116,14 @@ extension Body {
             flickTimes.append(now)
         }
         // poses.jsonl 23:23:25: let go of high up, a chase began in mid-fall and the landing's getup cut it
-        // off 0.2 s in: she plays with his cursor with her feet on the ground, once what he did to her has played out
+        // off 0.2 s in: she plays with their cursor with her feet on the ground, once what the person did to her has played out
         if flickTimes.count >= 3 && now.timeIntervalSince(lastChaseAt) >= Body.chaseEveryS(soul.memory.playfulness)
             && !held && !sleeping && vy == 0 && fall == nil
             && now >= touchUntil
             && now.timeIntervalSince(lastTyped) > 4 && !deepFocus && !watchingVideo {
             lastChaseAt = now
             flickTimes.removeAll()
-            face.flip = c.x < me.x                              // toward his cursor
+            face.flip = c.x < me.x                              // toward their cursor
             notice("the person played with you with their cursor")
             soul.did("play")                      // a shoo or drag in the minute after teaches her playfulness
             touchClip(dist < 140 ? "pounce" : "chase", 2.6, "cursor_play")

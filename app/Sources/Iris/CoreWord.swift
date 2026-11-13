@@ -23,7 +23,7 @@ final class CoreWord {
 
     /// His click: "quiet" (an hour) or "talk" (quiet over), for Core's next look.
     func ask(_ what: String) {
-        asks.removeAll { $0.what == "quiet" || $0.what == "talk" }      // the latest click is what he wants
+        asks.removeAll { $0.what == "quiet" || $0.what == "talk" }      // the latest click is what the person wants
         asks.append((token: UUID().uuidString, what: what, at: Date()))
         log("menu: asked \(Config.agentName) for \(what)")
     }

@@ -8,9 +8,9 @@ enum Stimulus: String, Codable, CaseIterable {
 }
 
 /// Her inner life: a few continuous feelings that drift, get pushed by what
-/// he does, and tire of repetition (habituation) — so the same thing never
+/// the person does, and tire of repetition (habituation) — so the same thing never
 /// gets the same reaction twice in a row, and nothing is a fixed script.
-/// What he likes and dislikes is learned and kept (soul.json).
+/// What the person likes and dislikes is learned and kept (soul.json).
 @MainActor          // her body's (Body.soul), on her main thread
 final class Soul {
     /// Her clock, for her memory's new fields. A memory is made or read only in Soul's init, on her main thread
@@ -18,13 +18,13 @@ final class Soul {
     nonisolated static func mainNow() -> Date { MainActor.assumeIsolated { world.now } }
 
     struct Memory: Codable {
-        var focusRespect = 0.5     // learned: stay calm and out of the way while he works
-        var playfulness = 0.6      // learned: how much horseplay he enjoys
-        var cling = 0.5            // learned: how close to his cursor she stays
+        var focusRespect = 0.5     // learned: stay calm and out of the way while the person works
+        var playfulness = 0.6      // learned: how much horseplay the person enjoys
+        var cling = 0.5            // learned: how close to their cursor she stays
         var hourly = Array(repeating: 0.0, count: 168)
-        var places: [String: Double] = [:]   // learned: how good each spot on his screens feels, -1…1
+        var places: [String: Double] = [:]   // learned: how good each spot on their screens feels, -1…1
         var placesAt = Soul.mainNow()        // when the places last eased toward neutral (decayPlaces)
-        var aversion = 0.5                   // learned: how much being in his way bothers her
+        var aversion = 0.5                   // learned: how much being in their way bothers her
         var pets = 0
         var shooed = 0
         var met = Soul.mainNow()
@@ -103,7 +103,7 @@ final class Soul {
         clamp()
     }
 
-    /// Time passing, `dt` seconds. `active`: he touched the Mac recently.
+    /// Time passing, `dt` seconds. `active`: the person touched the Mac recently.
     func drift(_ dt: Double, active: Bool, typingRate: Double) {
         for (k, v) in habit { habit[k] = max(0, v - dt * 0.05) }
         valence += (0.35 - valence) * dt * 0.01 + noise(dt) * 0.6
@@ -111,7 +111,7 @@ final class Soul {
         boredom += dt * (active ? (typingRate > 20 ? 0.0004 : 0.002) : 0.006)
         curiosity += (0.5 - curiosity) * dt * 0.01 + noise(dt)
         affection += dt * (active ? -0.0003 : 0.001)
-        // late at night his being here doesn't wake her (sim 26: heavier eyelids, a nap sooner once he goes quiet)
+        // late at night their being here doesn't wake her (sim 26: heavier eyelids, a nap sooner once the person goes quiet)
         sleepiness += dt * (active ? (Soul.lateNight ? 0 : -0.0005) : 0.0025) + (Soul.lateNight ? dt * 0.0006 : 0)
         clamp()
         let c = Calendar.current.dateComponents([.weekday, .hour], from: world.now)
@@ -134,7 +134,7 @@ final class Soul {
 
     func place(_ x: CGFloat, _ y: CGFloat) -> Double { memory.places[Soul.placeKey(x, y)] ?? 0 }
 
-    /// A spot felt good (petted there, he set her down there) or bad (in his way).
+    /// A spot felt good (petted there, the person set her down there) or bad (in their way).
     func feelPlace(_ x: CGFloat, _ y: CGFloat, _ delta: Double) {
         let k = Soul.placeKey(x, y)
         let v = (memory.places[k] ?? 0) + delta
@@ -148,8 +148,8 @@ final class Soul {
     }
 
     /// (UX audit #9): a spot learned from one shoo was avoided for good (soul.json held 91 spots, most at -1).
-    /// What she learned of a place eases back toward neutral, half of it each Soul.placeHalfLifeS, so where he keeps
-    /// moving her from is kept off for days and comes back once he stops.
+    /// What she learned of a place eases back toward neutral, half of it each Soul.placeHalfLifeS, so where the person keeps
+    /// moving her from is kept off for days and comes back once the person stops.
     static let placeHalfLifeS: Double = 7 * 86400
 
     func decayPlaces() {
@@ -160,17 +160,17 @@ final class Soul {
         memory.placesAt = world.now
     }
 
-    /// He typed while she was on top of his work: it bothers her more next time.
+    /// He typed while she was on top of their work: it bothers her more next time.
     func inTheWay() { memory.aversion = min(2, memory.aversion + 0.03) }
 
     // MARK: learning
 
-    /// She did something ("play", "approach", "perform") — remembered so his
+    /// She did something ("play", "approach", "perform") — remembered so their
     /// reaction in the next minute teaches her.
     func did(_ what: String) { lastDeed = (what, world.now) }
 
-    /// (UX audit #9): he shooed her, or carried her away, while he was working: she was in the way of his work.
-    /// Her respect for his focus rises (Body.focusRespectPull keeps her pull toward him lower while he types). `how`:
+    /// (UX audit #9): the person shooed her, or carried her away, while they were working: she was in the way of their work.
+    /// Her respect for their focus rises (Body.focusRespectPull keeps her pull toward them lower while the person types). `how`:
     /// 1 for a shoo, 0.5 for a drag away, as reward weighs them.
     func interrupted(_ how: Double) {
         memory.focusRespect = bounded(memory.focusRespect + 0.08 * how)

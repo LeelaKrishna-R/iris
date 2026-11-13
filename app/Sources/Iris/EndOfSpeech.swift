@@ -10,8 +10,8 @@ enum EndOfSpeech {
     static let quietMic = 0.7            // ...for this long (Ears reads it), ends it
     static let anyway = 2.2              // no new word for this long ends it, mic or not
     static let goesOnExtra = 1.2
-    static let afterBareWake = 2.0       // only her name so far: he's still finding the words
-    static let afterClosing = 0.8        // his ask closed itself
+    static let afterBareWake = 2.0       // only her name so far: they're still finding the words
+    static let afterClosing = 0.8        // their ask closed itself
     static let goesOn: Set<String> = ["and", "or", "but", "so", "to", "the", "a", "an", "my", "your", "for", "with",
                                       "of", "in", "on", "at", "about", "from", "is", "are", "was", "can", "could",
                                       "would", "will", "should", "what", "how", "when", "where", "who", "why",
@@ -36,7 +36,7 @@ enum EndOfSpeech {
         return w.count >= 3 && closingPairs.contains("\(w[w.count - 2]) \(last)")
     }
 
-    /// Over, `since` seconds after his last new word, with the mic quiet (`micQuiet`) or not.
+    /// Over, `since` seconds after their last new word, with the mic quiet (`micQuiet`) or not.
     static func done(text: String, since: TimeInterval, micQuiet: Bool, bareWake: Bool) -> Bool {
         if bareWake { return since > afterBareWake }
         let extra = trailing(text) ? goesOnExtra : 0

@@ -1,7 +1,7 @@
 import Foundation
 
-/// What waits for him, as Core last said it with her status or her day card (core/iris_note.waiting, UX audit
-/// #5), when it said it, and the set he already looked at by clicking her (the peek). Kept on her body (Body.noteCue).
+/// What waits for them, as Core last said it with her status or her day card (core/iris_note.waiting, UX audit
+/// #5), when it said it, and the set the person already looked at by clicking her (the peek). Kept on her body (Body.noteCue).
 final class NoteCue {
     var key: String?
     var why: String?
@@ -12,9 +12,9 @@ final class NoteCue {
     static let heardForS: TimeInterval = 120
 }
 
-// Iris's body — her quiet "a note for you": while something waits for him she holds her sticky note at her
-// chest, still (Stages.seat, Stages.stillSeats); it ends when nothing waits, when he opens his Notifications (Core
-// says nothing waits), when he clicks her (that set is seen until something new comes), or when Core has said nothing
+// Iris's body — her quiet "a note for you": while something waits for them she holds her sticky note at her
+// chest, still (Stages.seat, Stages.stillSeats); it ends when nothing waits, when the person opens their Notifications (Core
+// says nothing waits), when the person clicks her (that set is seen until something new comes), or when Core has said nothing
 // for NoteCue.heardForS.
 extension Body {
     func noteWaiting(key: String?, why: String?) {
@@ -26,7 +26,7 @@ extension Body {
 
     func notePeeked() { noteCue.peekedKey = noteCue.key }
 
-    /// Her note cue's cause while it's hers to show: something waits, Core said so in the last 2 minutes, and he
+    /// Her note cue's cause while it's hers to show: something waits, Core said so in the last 2 minutes, and the person
     /// hasn't clicked her for this set.
     var noteShown: String? {
         guard let k = noteCue.key, k != noteCue.peekedKey,

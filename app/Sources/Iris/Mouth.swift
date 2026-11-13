@@ -76,7 +76,7 @@ final class Mouth {
     var isIdle: Bool { playing == nil && queue.isEmpty }
 
     /// Queue an mp3/wav; returns its length in seconds, or nil if it can't be played or the queue is full.
-    /// `listen`: it answers him, so his next words after it are for her without her name (Ears.mute).
+    /// `listen`: it answers them, so their next words after it are for her without her name (Ears.mute).
     nonisolated func play(_ data: Data, text: String, listen: Bool = true) -> Double? {
         guard let clip = PlayerClip(data) else { return nil }
         let secs = clip.duration
@@ -155,7 +155,7 @@ final class Mouth {
     }
 
     private func halt() {
-        // review what was accepted but not yet taken goes too (it played over his barge-in), with the count
+        // review what was accepted but not yet taken goes too (it played over their barge-in), with the count
         shared.withLockUnchecked { $0.inbox.removeAll(); $0.held = 0 }
         queue.removeAll()
         playing?.onEnd = nil
@@ -163,9 +163,9 @@ final class Mouth {
         playing = nil
     }
 
-    // QA: he cut in (her name while she talked: Ears' barge-in). Core makes an answer a
-    // sentence at a time, so the rest of the one he interrupted kept arriving and the next
-    // sentence played over him. Clips are refused until he has finished what he cut in with
+    // QA: the person cut in (her name while she talked: Ears' barge-in). Core makes an answer a
+    // sentence at a time, so the rest of the one the person interrupted kept arriving and the next
+    // sentence played over them. Clips are refused until they have finished what the person cut in with
     // (Ears.onDone), or 15 s pass if that never comes.
     private nonisolated let cutUntil = OSAllocatedUnfairLock(initialState: Date.distantPast)
 

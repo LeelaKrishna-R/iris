@@ -2,7 +2,7 @@ import AppKit
 import ApplicationServices
 
 /// Her hands: the keyboard and mouse, through Accessibility. Friday Core
-/// decides what may be typed or clicked (and asks him when it matters);
+/// decides what may be typed or clicked (and asks them when it matters);
 /// Iris only does it, and says when she can't.
 enum Hands {
     static var permitted: Bool { AXIsProcessTrusted() }
@@ -260,7 +260,7 @@ enum Hands {
     }
 
     /// "File > Save", "Format > Font > Show Fonts": one menu item by its path,
-    /// so a name that is in several menus ("Close") presses the one he meant.
+    /// so a name that is in several menus ("Close") presses the one the person meant.
     static func pressMenuPath(_ path: String, app: String = "") -> [String: Any] {
         let parts = path.split(separator: ">").map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
         guard parts.count >= 2, let target = targetApp(app) else { return ["ok": false, "reason": "no_such_app"] }

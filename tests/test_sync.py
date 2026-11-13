@@ -137,3 +137,12 @@ def test_a_leading_time_tag_goes():
         "        // after a power cut she crashed at launch"
     assert scrub_comments("        // 14:05: the tap failed") == "        // the tap failed"
     assert scrub_comments("    let t = 3   // waits 02:30 at most") == "    let t = 3   // waits 02:30 at most"
+
+
+def test_her_comments_are_about_whoever_is_at_the_mac_too():
+    from sync_from_friday import person_in_comments
+    assert person_in_comments('    /// whether he switched her into shares (Menu)') == \
+        '    /// whether the person switched her into shares (Menu)'
+    assert person_in_comments('let w = hisIdle   // his pointer resting on her') == \
+        'let w = hisIdle   // their pointer resting on her'
+    assert person_in_comments('gazeMode = "him"') == 'gazeMode = "him"'           # code is not a comment

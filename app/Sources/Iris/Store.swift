@@ -55,7 +55,7 @@ enum Store {
     }
 }
 
-/// when his "stop watching" / "stop listening" ends (seconds since 1970; 0 = on), kept across her restarts.
+/// when their "stop watching" / "stop listening" ends (seconds since 1970; 0 = on), kept across her restarts.
 struct OffUntil: Codable { let at: Double }
 
 func log(_ s: String) {

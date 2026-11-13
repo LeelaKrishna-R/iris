@@ -2,8 +2,8 @@ import AppKit
 import CoreAudio
 import ApplicationServices
 
-/// What Body and Soul read from the Mac — screens, his cursor, the front
-/// window, the field he's typing in, the time, chance — behind one seam, so
+/// What Body and Soul read from the Mac — screens, their cursor, the front
+/// window, the field they're typing in, the time, chance — behind one seam, so
 /// `Iris --simulate` can run her real decisions and movement against made-up
 /// screens and a fast clock (Sim.swift). Live, every value is read exactly as
 /// before (NSScreen, NSEvent, Accessibility, Date()).
@@ -13,7 +13,7 @@ struct Display {
     var id: UInt32 = 0          // the display's own number: the same monitor after it's rearranged
 }
 
-/// A window on his screens, as the window server lists them (front to back).
+/// A window on their screens, as the window server lists them (front to back).
 struct SeenWindow: Equatable {
     var id: Int
     var frame: CGRect          // Cocoa coordinates
@@ -29,17 +29,17 @@ protocol World: AnyObject, Sendable {          // main-actor, so every world is 
     var mouse: CGPoint { get }
     /// The focused window of the front app (not hers), Cocoa coordinates.
     func frontWindow() -> CGRect?
-    /// The field he's typing in and its caret, Cocoa coordinates.
+    /// The field they're typing in and its caret, Cocoa coordinates.
     func focus() -> (field: CGRect?, caret: CGRect?)
-    /// Where his keys are going (Focus.into): terminal, editor, chat, other or unknown, and why.
+    /// Where their keys are going (Focus.into): terminal, editor, chat, other or unknown, and why.
     // read off her main thread (Body.readInto): RealWorld's is Focus.into, which any thread may call
     nonisolated func keysInto() -> (kind: String, why: String)
     var frontApp: String? { get }
     /// The front window's title (a browser tab's page title): "Lo-fi beats - YouTube".
     var frontTitle: String? { get }
-    /// Whether his screen has been changing lately, when her eyes can't say (live: unknown → true).
+    /// Whether their screen has been changing lately, when her eyes can't say (live: unknown → true).
     var screenChanging: Bool { get }
-    /// Where his screen last changed and when, when her eyes can't say (live: unknown → nil).
+    /// Where their screen last changed and when, when her eyes can't say (live: unknown → nil).
     var screenChange: (at: Date, point: CGPoint)? { get }
     /// The system's count of key presses (heard even without Accessibility).
     var keyCounter: UInt32 { get }
@@ -103,9 +103,9 @@ final class RealWorld: World {
         }
         return false
     }
-    // built once and kept until macOS says his displays changed (resolution, arrangement, the Dock or
+    // built once and kept until macOS says their displays changed (resolution, arrangement, the Dock or
     // menu bar resizing the visible frame); her body reads this from ~46 places, many every frame, and
-    // rebuilding it each time was her top own function in a 10 s sample with him at the Mac
+    // rebuilding it each time was her top own function in a 10 s sample with them at the Mac
     private var screensKept: [Display]?
     private var screensWatch: NSObjectProtocol?
     var screens: [Display] {
@@ -160,7 +160,7 @@ final class RealWorld: World {
         return title as? String
     }
     // hardware keys only. The session's counter also counted keys other apps post, and one at 07:14
-    // (his last real input 05:51) had her wave "the person came back after 83 min away" to an empty room.
+    // (their last real input 05:51) had her wave "the person came back after 83 min away" to an empty room.
     var keyCounter: UInt32 { CGEventSource.counterForEventType(.hidSystemState, eventType: .keyDown) }
     var handsIdle: Double {
         CGEventSource.secondsSinceLastEventType(.hidSystemState, eventType: CGEventType(rawValue: ~0)!)

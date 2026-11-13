@@ -15,7 +15,7 @@ struct Spring {
     mutating func kick(_ v: CGFloat) { vel += v }
 }
 
-/// Iris on his screens. Reactions happen inside the event that caused them
+/// Iris on their screens. Reactions happen inside the event that caused them
 /// (a key, a scroll, an app switch), so she answers within a frame; what she
 /// wants to do next comes from her feelings, at irregular moments.
 // (strict concurrency): her body is her main thread's — AppKit, her timer, and the simulator's headless runs,
@@ -23,16 +23,16 @@ struct Spring {
 @MainActor
 final class Body {
     let soul = Soul()
-    let noteCue = NoteCue()                         // what waits for him, for her still note (BodyNote.swift)
+    let noteCue = NoteCue()                         // what waits for them, for her still note (BodyNote.swift)
     let view: SpriteView?
     let window: NSPanel?
     let bubble: Bubble?
     weak var eyes: Eyes?
     var onTalk: (() -> Void)?
     var onAsk: (() -> Void)?
-    var onPetted: (() -> Void)?             // his click on her refreshes the day card (DayCard); peeks at it
+    var onPetted: (() -> Void)?             // their click on her refreshes the day card (DayCard); peeks at it
     var onDoublePetted: (() -> Void)?       // a double-click is a bow: the peek its first click opened goes
-    var onHoverHint: (() -> String?)?       // his pointer resting on her: her one line of his day (DayCard.hint)
+    var onHoverHint: (() -> String?)?       // their pointer resting on her: her one line of their day (DayCard.hint)
     var onDayCard: (() -> Void)?            // her menu's Show / Hide My Day
 
     static let size = CGSize(width: 150, height: 196)
@@ -60,27 +60,27 @@ final class Body {
     var emoteAge: CGFloat = 9
     var talkUntil = Date.distantPast
     var listening = false
-    var listenSeated = false              // she was asleep when he said her name: listens sitting up
+    var listenSeated = false              // she was asleep when the person said her name: listens sitting up
     var sleeping = false
     var hovering = false
 
-    // his hand on her: each touch plays the catalog
+    // their hand on her: each touch plays the catalog
     // clip whose "when" is that touch — giggle "the person petted her", blow_kiss "affection",
     // bow "thank you, greeting", shy "the person looked at her for a long time", blush_hide
     // "very embarrassed", getup "after falling", chase/pounce "chasing/catching their cursor"
     var petTimes: [Date] = []              // pets in the last 20 s
-    var hoverSince: Date?                  // his cursor resting on her since (once per hover)
-    var flickTimes: [Date] = []            // fast passes of his cursor near her, last 8 s
+    var hoverSince: Date?                  // their cursor resting on her since (once per hover)
+    var flickTimes: [Date] = []            // fast passes of their cursor near her, last 8 s
     var lastFlickAt = Date.distantPast
     var lastChaseAt = Date.distantPast
-    var cursorMovedAt = Date.distantPast   // his hand last moved the mouse
+    var cursorMovedAt = Date.distantPast   // their hand last moved the mouse
     var cursorNearMovedAt = Date.distantPast   // ... within her reach (a shake across her, sim 37)
     var touchUntil = Date.distantPast      // a touch clip plays until then (a long look doesn't cut it)
     var fall: (fromY: CGFloat, at: Date)?  // let go of high up: where she fell from
 
-    // what she knows about him right now
-    // from his real last touch, not her launch. Started at launch, her 20:40 install made his 02:10
-    // return "the person came back after 330 min away" when his hands had been idle since ~14:00.
+    // what she knows about them right now
+    // from their real last touch, not her launch. Started at launch, her 20:40 install made their 02:10
+    // return "the person came back after 330 min away" when their hands had been idle since ~14:00.
     var lastInput = world.now.addingTimeInterval(-min(max(world.handsIdle, 0), 86_400))
     var keyTimes: [Date] = []
     var backspaces: [Date] = []
@@ -128,7 +128,7 @@ final class Body {
             w.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary, .ignoresCycle]
             w.hidesOnDeactivate = false
             w.contentView = v
-            w.sharingType = Menu.shared.sharing          // .none unless he switched her into shares (Menu)
+            w.sharingType = Menu.shared.sharing          // .none unless the person switched her into shares (Menu)
             view = v; window = w; bubble = Bubble()
             bubble?.share(Menu.shared.sharing)
         }
@@ -190,7 +190,7 @@ final class Body {
 
     /// her picture is drawn only while her window can be seen — on a display that's awake, not covered or
     /// off every screen (macOS's occlusion state), and not faded out over a full-screen app. SpriteKit rendering
-    /// into a window that can't be drawn said "no drawables available" every few seconds while he was away.
+    /// into a window that can't be drawn said "no drawables available" every few seconds while they were away.
     func updateDrawing() {
         guard let view, let window else { return }
         let seen = !screensAsleep && window.occlusionState.contains(.visible) && alpha > 0
@@ -212,7 +212,7 @@ final class Body {
         let dt = CGFloat(min(0.05, max(0, now.timeIntervalSince(lastTick))))
         lastTick = now
         clock += dt
-        // when she last woke (by any path), and how long his screens have kept changing or been still
+        // when she last woke (by any path), and how long their screens have kept changing or been still
         if wasAsleep && !sleeping {
             wokeAt = now; restWhy = "woke: " + (wakeWhy.isEmpty ? "\(Config.agentName) asked" : wakeWhy); wakeWhy = ""
             trace?("woke", ["why": restWhy])
@@ -220,10 +220,10 @@ final class Body {
         if sleeping != wasAsleep, timer != nil { tick(every: sleeping ? 1.0 / 30 : 1.0 / 60) }
         wasAsleep = sleeping
         if screenMoving { screenMovedAt = now; if screenMovingSince == nil { screenMovingSince = now } } else { screenMovingSince = nil }
-        // he stopped after a real stretch of typing (20 s or more, quiet 3 s): she nods, once per stretch
+        // the person stopped after a real stretch of typing (20 s or more, quiet 3 s): she nods, once per stretch
         let burst = lastTyped.timeIntervalSince(typingSince)
         // 30 of these nods in 3 h, then one each half hour; (owner: "no
-        // reactions"): at most one each Body.nodEveryS (10 min), once per stretch of his typing
+        // reactions"): at most one each Body.nodEveryS (10 min), once per stretch of their typing
         if burst > 20 && now.timeIntervalSince(lastTyped) > 3 && noddedFor != typingSince && !sleeping && !held && !listening
             && performing.isEmpty && targetX == nil && now.timeIntervalSince(noddedAt) > Body.nodEveryS && ambientFree(now)
             && dueToShow == nil {                  // a to-do come due waiting to be shown says more than a nod
@@ -241,7 +241,7 @@ final class Body {
         let c = world.mouse
         let moved = hypot(c.x - lastCursor.x, c.y - lastCursor.y)
         cursorSpeed = cursorSpeed * 0.8 + (moved / max(dt, 0.001)) * 0.2
-        if moved > 0.5 { touched(); cursorMovedAt = now }   // his hand back on the mouse after a while is him coming back too
+        if moved > 0.5 { touched(); cursorMovedAt = now }   // their hand back on the mouse after a while is them coming back too
         let me = CGPoint(x: x + Body.size.width / 2, y: y + Body.size.height * 0.68)
         let dist = hypot(c.x - me.x, c.y - me.y)
         if moved > 0.5 && dist < Body.calmRadius { cursorNearMovedAt = now }
@@ -250,7 +250,7 @@ final class Body {
         }
         touchReactions(now, cursor: c, me: me, dist: dist)
         lastCursor = c
-        // which screen he's working on (the caret while he types), and since when
+        // which screen they're working on (the caret while the person types), and since when
         let his = (now.timeIntervalSince(lastTyped) < 4 ? focusCaret.map { CGPoint(x: $0.midX, y: $0.midY) } : nil) ?? c
         let hs = world.screens.firstIndex { $0.frame.contains(his) }
         if hs != hisScreen { hisScreen = hs; hisScreenSince = now }
@@ -263,13 +263,13 @@ final class Body {
             heat = heat.compactMapValues { v in v * 0.97 > 0.05 ? v * 0.97 : nil }   // ~1 min half-life
         }
 
-        // his caret and field (an Accessibility read on this thread) only while he's at the Mac: it
-        // keeps her off his work, and every 1.5 s to an empty room it fed nothing
+        // their caret and field (an Accessibility read on this thread) only while they're at the Mac: it
+        // keeps her off their work, and every 1.5 s to an empty room it fed nothing
         if now.timeIntervalSince(lastFocusRead) > 1.5 && now.timeIntervalSince(lastInput) < 60 { readFocus() }
         feelInTheWay(dt, now)
-        // sim 27 (him reading, a scroll every minute or so): "active" was a touch in the last 30 s, so between
-        // his scrolls she grew sleepy, up to 1.0 with him right there, and sat heavy-eyed instead of with her book —
-        // the stare he sees. He's here until Stages.awayFor, as for her fishing.
+        // sim 27 (them reading, a scroll every minute or so): "active" was a touch in the last 30 s, so between
+        // their scrolls she grew sleepy, up to 1.0 with them right there, and sat heavy-eyed instead of with her book —
+        // the stare the person sees. He's here until Stages.awayFor, as for her fishing.
         soul.drift(Double(dt), active: now.timeIntervalSince(lastInput) < Stages.awayFor || watchingVideo || screenMoving,   // a busy screen is not an empty room
                    typingRate: Double(keyTimes.count) / 3 * 60)
         if now >= nextThought { think() }
@@ -285,8 +285,8 @@ final class Body {
     }
 
     /// Her body's own clips that start from what just happened to her body, each with its cause:
-    /// the window she stands on moving under her ("teeter"), arriving where she walked off to after he told
-    /// her to go away ("sulk"), and Friday's answer to him taking a while ("tap_foot").
+    /// the window she stands on moving under her ("teeter"), arriving where she walked off to after the person told
+    /// her to go away ("sulk"), and Friday's answer to them taking a while ("tap_foot").
     private func bodyClips(_ now: Date) {
         // how long she has sat awake (her sleep, and sitting up from it, don't count toward a long quiet sit)
         let seatedAwake = sit.target > 0.5 && !sleeping
@@ -298,7 +298,7 @@ final class Body {
             }
         }
         if let to = shooWalkTo {
-            if targetX.map({ abs($0 - to) >= 1 }) == true || held { shooWalkTo = nil }      // another walk, or he picked her up
+            if targetX.map({ abs($0 - to) >= 1 }) == true || held { shooWalkTo = nil }      // another walk, or the person picked her up
             else if targetX == nil && vy == 0 && launch == nil {
                 shooWalkTo = nil
                 perform("sulk", seconds: 4, own: true, why: "the person told her to go away")
@@ -309,16 +309,16 @@ final class Body {
             perform("tap_foot", seconds: awaitingUntil.timeIntervalSince(now), own: true,
                     why: "\(Config.agentName)'s answer is taking over \(Int(Stages.impatientAfter)) s")
         }
-        // her laptop out, typing along with him for a long stretch of his typing,
-        // goes away (Body.typeAlongHoldS after his last key): she gets up and stretches ("yoga", "stretch break,
+        // her laptop out, typing along with them for a long stretch of their typing,
+        // goes away (Body.typeAlongHoldS after their last key): she gets up and stretches ("yoga", "stretch break,
         // calm"), at most hourly and not right after Friday's own stretch nudge. Its why is the stretch she typed.
         if workingAlong {
             if alongSince == nil { alongSince = now }
         } else if let since = alongSince {
             alongSince = nil
             let alongFor = lastTyped.timeIntervalSince(since)
-            // (a walk she just set off on waits for it, unless it's out of his way or to a corner for his call or film;
-            // his carrying her, calling her over or shooing her ends the stretch she typed along, alongSince = nil)
+            // (a walk she just set off on waits for it, unless it's out of their way or to a corner for their call or film;
+            // their carrying her, calling her over or shooing her ends the stretch she typed along, alongSince = nil)
             let walkWaits = targetX == nil || (walkWhy != "out of their way" && !walkWhy.hasPrefix("corner"))
             if Stages.stretches(alongFor: alongFor, keysRested: now.timeIntervalSince(lastTyped),
                                 sinceHerStretch: now.timeIntervalSince(herStretchAt), sinceFridayStretch: now.timeIntervalSince(fridayStretchAt)),
@@ -330,7 +330,7 @@ final class Body {
                                     now.timeIntervalSince(lastTyped)))
             }
         }
-        // a to-do on his day card came due (dayCard): her sticky note, once he can look, within
+        // a to-do on their day card came due (dayCard): her sticky note, once the person can look, within
         // Stages.showWithin of the card saying so (her eyes went to the card when it did)
         if let d = dueToShow {
             if now.timeIntervalSince(d.at) > Stages.showWithin { dueToShow = nil }
@@ -338,7 +338,7 @@ final class Body {
                                    watching: watchingVideo, callOn: callSince != nil),
                     !held, !listening, performing.isEmpty, targetX == nil, vy == 0, now >= talkUntil, waveT <= 0 {
                 dueToShow = nil
-                noddedFor = typingSince              // in place of her nod at this stretch of his typing, not before it
+                noddedFor = typingSince              // in place of her nod at this stretch of their typing, not before it
                 let c = dayCardAt(d.card)
                 lookToward(CGPoint(x: c.midX, y: c.midY), snap: 1)
                 perform("sticky_note", seconds: Body.noteSeconds, own: true, why: "a to-do on their day card came due: " + d.title)
@@ -346,14 +346,14 @@ final class Body {
         }
     }
 
-    /// Where his day card is: as DayCard placed it, or (the simulator, no panel) where it goes, left of her.
+    /// Where their day card is: as DayCard placed it, or (the simulator, no panel) where it goes, left of her.
     private func dayCardAt(_ card: CGRect?) -> CGRect {
         card ?? CGRect(x: x - 288, y: y + Body.size.height - 200, width: 280, height: 200)
     }
 
-    /// Core sent his day card (DayCard, every 10 min). A to-do on it came due
+    /// Core sent their day card (DayCard, every 10 min). A to-do on it came due
     /// since the last card (Stages.cameDue: listed with its time ahead, now past) and no push or sticky note of
-    /// Friday's told him of it lately: her eyes go to the card now, and her sticky note follows once he can look.
+    /// Friday's told them of it lately: her eyes go to the card now, and her sticky note follows once the person can look.
     /// `todosBefore` / `todosAfter`: the card's "todos" row text before and after (nil: unread, "off", or no card).
     func dayCard(todosBefore: String?, todosAfter: String?, card: CGRect?) {
         let now = world.now
@@ -371,8 +371,8 @@ final class Body {
         }
     }
 
-    /// he answered Friday's approval on the card beside her (ApprovalCard). His
-    /// Allow gets her bow ("thank you"), its why the request he allowed; a Deny gets nothing of hers (Friday's
+    /// the person answered Friday's approval on the card beside her (ApprovalCard). His
+    /// Allow gets her bow ("thank you"), its why the request the person allowed; a Deny gets nothing of hers (Friday's
     /// "Okay, I won't" says it). Never asleep, carried or listening.
     func approvalAnswered(_ choice: String, what: String) {
         trace?("approval_answered", ["choice": choice, "asleep": sleeping])
@@ -382,11 +382,11 @@ final class Body {
 
     var lookUntil = Date.distantPast
 
-    /// What her eyes are on (the simulator logs it): him, caret, cursor, change, front, glance.
+    /// What her eyes are on (the simulator logs it): them, caret, cursor, change, front, glance.
     var gazeMode = ""
     var heardAt = Date.distantPast
-    var frontSeen: CGRect?                       // his front window, as watchAction last read it
-    var changeSeen: (at: Date, point: CGPoint)?   // where his screen last changed, read with it
+    var frontSeen: CGRect?                       // their front window, as watchAction last read it
+    var changeSeen: (at: Date, point: CGPoint)?   // where their screen last changed, read with it
     var knownWins: Set<Int>?
     var winCheckAt = Date.distantPast
 
@@ -394,20 +394,20 @@ final class Body {
     var stillSince = Date.distantPast
 
     var myScreen: (id: UInt32, frame: CGRect)?
-    /// poses.jsonl 09:03-09:08: she crossed between his screens every 1-2 min, back and forth, each time a
-    /// run "to the screen they're working on" (an invitation one way, out of his way the other). After a change of
+    /// poses.jsonl 09:03-09:08: she crossed between their screens every 1-2 min, back and forth, each time a
+    /// run "to the screen they're working on" (an invitation one way, out of their way the other). After a change of
     /// screen she stays on the new one Body.crossGap before she crosses again of her own accord; carried or
     /// called over (Body.come) she goes at once as before.
     var crossedAt = Date.distantPast
     var lastFloor: CGFloat?
     var moved = false
 
-    // MARK: his full-screen picture
+    // MARK: their full-screen picture
     //
-    // A full-screen app (a film, a game, a full-screen editor) is his whole screen: she steps out of
-    // it — fades, and reappears on his other screen near the seam — or, with one screen, stays out
+    // A full-screen app (a film, a game, a full-screen editor) is their whole screen: she steps out of
+    // it — fades, and reappears on their other screen near the seam — or, with one screen, stays out
     // of sight until it ends. `defaults write app.iris.companion IrisOverFullScreen -bool YES` lets
-    // her stay over it. (Her window keeps .fullScreenAuxiliary so she can live on his other screen
+    // her stay over it. (Her window keeps .fullScreenAuxiliary so she can live on their other screen
     // while one is full screen, and so this opt-in works.)
 
     var fsCheckAt = Date.distantPast
@@ -422,56 +422,56 @@ final class Body {
     var standingID: Int?                // … which window (the window server's id)
     var perchID: Int?                   // the window whose top she's heading for
 
-    /// Which screen he is working on now and since when (the caret while he types, else his cursor).
+    /// Which screen they are working on now and since when (the caret while the person types, else their cursor).
     var hisScreen: Int?
     var hisScreenSince = Date.distantPast
 
     var wokeAt = Date.distantPast
     private var wasAsleep = false
-    var screenMovedAt = Date.distantPast        // his screens last changed (her eyes, or the sim)
+    var screenMovedAt = Date.distantPast        // their screens last changed (her eyes, or the sim)
     var screenMovingSince: Date?                // and have kept changing since
     var lastYawnAt = Date.distantPast
-    // her body's own clips (Stages): the doze before sleep, the walk-off when he shoos her, the jump
-    // down from his window, and when Friday's answer is taking a while
+    // her body's own clips (Stages): the doze before sleep, the walk-off when the person shoos her, the jump
+    // down from their window, and when Friday's answer is taking a while
     var dozeWhy: String?                        // nodding off: falls asleep with this cause when the doze ends
-    var dozeInputAt = Date.distantPast          // his last input when the doze began (any newer wakes her)
+    var dozeInputAt = Date.distantPast          // their last input when the doze began (any newer wakes her)
     var shooWalkTo: CGFloat?                    // where she is walking off to after "go away"
-    var jumpDown: (why: String, flight: Double)?   // a hop off his window, about to launch
+    var jumpDown: (why: String, flight: Double)?   // a hop off their window, about to launch
     var awaitingSince = Date.distantPast
     var seatedAwakeSince: Date?
-    private var noddedFor = Date.distantPast            // the burst of his typing she last nodded at
+    private var noddedFor = Date.distantPast            // the burst of their typing she last nodded at
     private var noddedAt = Date.distantPast             // when she last nodded at one (Body.nodEveryS apart)
-    // her stretch after typing along, a to-do come due on his day card, his Allow
-    var alongSince: Date?                       // her laptop came out to type along with him (Stages.stretches)
+    // her stretch after typing along, a to-do come due on their day card, their Allow
+    var alongSince: Date?                       // her laptop came out to type along with them (Stages.stretches)
     private var herStretchAt = Date.distantPast         // her last stretch (Stages.stretchEvery apart)
     var fridayStretchAt = Date.distantPast      // Friday's stretch nudge ("stretch_guide", /iris/act) last played
-    var fridayNoteAt = Date.distantPast         // Friday's sticky note (his reminder going off, /iris/act) last played
-    var toldTitles: [(title: String, at: Date)] = []   // pushes he got lately (notified), for Stages.cameDue
-    private var dueToShow: (title: String, at: Date, card: CGRect?)?   // a to-do come due, shown once he can look
+    var fridayNoteAt = Date.distantPast         // Friday's sticky note (their reminder going off, /iris/act) last played
+    var toldTitles: [(title: String, at: Date)] = []   // pushes the person got lately (notified), for Stages.cameDue
+    private var dueToShow: (title: String, at: Date, card: CGRect?)?   // a to-do come due, shown once the person can look
     // what each of her bodies is for, this moment — the cause in the world (Face.why, poses.jsonl)
     var actWhy = "", sleepWhy = "", waveWhy = "", walkWhy = "", restWhy = "", wakeWhy = ""
-    /// times his screens woke her since he last touched the Mac, none of it him
+    /// times their screens woke her since the person last touched the Mac, none of it them
     var screenWokeHer = 0
-    var lastWaveAt = Date.distantPast        // her last wave for his return (Body.waveEvery)
-    var frontScreen: Int?                       // which screen his front window is on
+    var lastWaveAt = Date.distantPast        // her last wave for their return (Body.waveEvery)
+    var frontScreen: Int?                       // which screen their front window is on
     var frontScreenSince = Date.distantPast
     var frontNoticed = false
-    var placedAt = Date.distantPast             // he carried her, or she stepped out of his full screen
+    var placedAt = Date.distantPast             // the person carried her, or she stepped out of their full screen
     var actionCheckAt = Date.distantPast
     var attendAt = Date.distantPast
-    var attendX: CGFloat?                       // beside his front window, re-picked every ~10 s
+    var attendX: CGFloat?                       // beside their front window, re-picked every ~10 s
     var callSince: Date?
     var callCorner: CGFloat?           // her corner for this call, chosen at its start
 
     var riding = false
     var hurry = false
-    var focusSince = Date.distantPast      // when his current stretch of typing began
-    var deepFocus = false                  // he's been typing steadily a couple of minutes
+    var focusSince = Date.distantPast      // when their current stretch of typing began
+    var deepFocus = false                  // they're been typing steadily a couple of minutes
     var satSince = Date.distantPast
     var walkSince = Date.distantPast       // when she set off for where she's going
     var wayThoughtAt = Date.distantPast
     var currentWalk: CGFloat = 0
-    /// sim 33 seed 8: what's left of this leg of her walk — to his screen's edge when a hop down comes first
+    /// sim 33 seed 8: what's left of this leg of her walk — to their screen's edge when a hop down comes first
     /// (a 0.18 s run, then her crouch), else to her spot; the run is judged by it (Stages.gait).
     var legLeft: CGFloat = 0
     var lastX: CGFloat = 0
@@ -489,20 +489,20 @@ final class Body {
     var nextSaccade = world.now
     var lastFaceX: CGFloat = 0
     var sleptAt = world.now
-    // a nap asked for (the agent's 60 s hold) used to end at the first touch of the mouse. A nap he
-    // asked for holds until then; only his touch on her (touched) or Wake ends it sooner.
+    // a nap asked for (the agent's 60 s hold) used to end at the first touch of the mouse. A nap the person
+    // asked for holds until then; only their touch on her (touched) or Wake ends it sooner.
     var napUntil = Date.distantPast
     // switching between apps, each with its text field somewhere else, sent her "out of their way" every
     // minute or two: her clear spot for one field was in the way of the next.
-    // Every field he used in the last 10 min counts when she picks where to be (inTheWayAt).
+    // Every field the person used in the last 10 min counts when she picks where to be (inTheWayAt).
     var recentWays: [(CGRect, Date)] = []
     var performing = ""                 // a library animation (Resources/anim/<id>)
     var performUntil = Date.distantPast
     var performMoves = false
-    var noticedAt = world.now             // when he last paid her any attention
+    var noticedAt = world.now             // when the person last paid her any attention
     var events: [String] = []          // what happened since her mind last thought
     // His pets, shoos and drags with their times (/iris/health "touches"), kept, not taken:
-    // Core's reflex reads them every tick to learn which of her reactions he likes.
+    // Core's reflex reads them every tick to learn which of her reactions the person likes.
     var touches: [(what: String, at: Date)] = []
     var workingAlong = false
     var dizzyAt = Date.distantPast
@@ -511,12 +511,12 @@ final class Body {
     var wantStrength = 0.0
     var wantUntil = Date.distantPast
     var postureUntil = world.now
-    var heat: [Int: CGFloat] = [:]      // where his hand has been lately (80-pt cells), fading
+    var heat: [Int: CGFloat] = [:]      // where their hand has been lately (80-pt cells), fading
     private var heatDecayAt = world.now
 
-    /// Where his keys went, read off the main thread at most once a second while he types
+    /// Where their keys went, read off the main thread at most once a second while the person types
     /// (finding a web view's focused field can take a second): Core counts the words that follow
-    /// as his only after keys into a terminal or an editor (/health typed_into).
+    /// as their only after keys into a terminal or an editor (/health typed_into).
     var typedInto: (kind: String, why: String, at: Date) = ("unknown", "no keys yet", .distantPast)
     var intoAskedAt = Date.distantPast, intoBusy = false, intoApp = ""
 
@@ -533,7 +533,7 @@ final class Body {
         return min(hi, max(lo, v))
     }
 
-    /// what he said to her is on its way to
+    /// what the person said to her is on its way to
     /// Friday. Her thinking pose the moment her ears finish hearing it, here on the Mac, until
     /// Friday's first words come back (speaking/showing end it) or 8 seconds pass.
     var awaitingUntil = Date.distantPast
@@ -541,8 +541,8 @@ final class Body {
     var bubbleText = ""
     var bubbleUntil = Date.distantPast
 
-    /// (structure audit): the moments she starts herself, not asked and not answering his hand (a nod when his
-    /// typing stops, a late yawn, "@_@" at his scrolling), kept an hour for /health: Core's one gap between her
+    /// (structure audit): the moments she starts herself, not asked and not answering their hand (a nod when their
+    /// typing stops, a late yawn, "@_@" at their scrolling), kept an hour for /health: Core's one gap between her
     /// ambient moments (core/iris_reflex.AMBIENT_GAP_S) counts these too, so its next moment never follows one.
     var ownMoments: [(kind: String, at: Date)] = []
     /// When Core's last moment of its own was (its mind message's "ambient_at", core/iris_reflex), one budget

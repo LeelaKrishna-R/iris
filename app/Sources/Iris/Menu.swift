@@ -17,7 +17,7 @@ final class Menu: NSObject {
     @objc func quit() { body?.soul.save(); NSApp.terminate(nil) }
 
     /// whether her body and her bubble can be captured in a screen share or recording. Off at every launch and
-    /// never remembered: she and what she says stay out of shares unless he switches this on for the share at hand
+    /// never remembered: she and what she says stay out of shares unless the person switches this on for the share at hand
     /// (a demo). His day card stays out whatever this says (DayCard).
     private(set) var inScreenShares = false
     var sharing: NSWindow.SharingType { inScreenShares ? .readOnly : .none }

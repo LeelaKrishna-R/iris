@@ -15,11 +15,11 @@ final class ApprovalCard: NSObject {
     private var showingText = ""
     private var buttons: [NSButton] = []
     private var waitTimer: Timer?
-    /// after his click the card waits for Core to say what became of it (core/iris_approvals.tick: closed when
+    /// after their click the card waits for Core to say what became of it (core/iris_approvals.tick: closed when
     /// done, offered again when it still waits, with her reason in her bubble). Core not answering in this long (her
-    /// loop down, Friday's store unreadable): his buttons come back, so the card is never stuck.
+    /// loop down, Friday's store unreadable): their buttons come back, so the card is never stuck.
     static let WAIT_S: TimeInterval = 20
-    /// his click, as it's made (choice, what the card asked): Iris answers his Allow (Body.approvalAnswered).
+    /// their click, as it's made (choice, what the card asked): Iris answers their Allow (Body.approvalAnswered).
     var onDecided: ((String, String) -> Void)?
 
     /// His clicks Core hasn't confirmed yet. Read, not taken (review emptied on read while Core waited 3 s
@@ -52,8 +52,8 @@ final class ApprovalCard: NSObject {
         let deny = NSButton(title: "Deny", target: self, action: #selector(denied))
         let allow = NSButton(title: "Allow", target: self, action: #selector(allowed))
         buttons = [deny, allow]
-        // Allow is never a key he might press while typing elsewhere: the card doesn't take focus when it shows,
-        // and Allow has no key at all. Once he clicks into the card, Tab moves between the buttons, Space presses
+        // Allow is never a key the person might press while typing elsewhere: the card doesn't take focus when it shows,
+        // and Allow has no key at all. Once the person clicks into the card, Tab moves between the buttons, Space presses
         // the focused one, and Esc denies (nothing runs).
         allow.keyEquivalent = ""
         deny.keyEquivalent = "\u{1b}"
@@ -103,7 +103,7 @@ final class ApprovalCard: NSObject {
         p.autorecalculatesKeyViewLoop = true
         p.setFrameOrigin(ApprovalCard.place(size: size, near: near))
         p.initialFirstResponder = deny
-        p.orderFrontRegardless()                     // shown, never made key: his typing stays where it is
+        p.orderFrontRegardless()                     // shown, never made key: their typing stays where it is
         panel = p
         NSAccessibility.post(element: fx, notification: .announcementRequested,
                              userInfo: [.announcement: "\(Config.agentName) asks for your approval: \(text)",
@@ -162,7 +162,7 @@ final class ApprovalCard: NSObject {
     }
 }
 
-/// The approval card's panel: shown without taking focus (non-activating), but able to be the key window once he
+/// The approval card's panel: shown without taking focus (non-activating), but able to be the key window once the person
 /// clicks into it, so its buttons take Tab, Space and Esc (accessibility pass). It never makes itself key.
 final class ApprovalPanel: NSPanel {
     override var canBecomeKey: Bool { true }

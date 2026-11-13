@@ -19,15 +19,15 @@ enum Stages {
     /// night") and falls asleep when it ends; seated, she just falls asleep. False seated or going home.
     static func dozeFirst(dozy: Bool, goingHome: Bool, seated: Bool) -> Bool { dozy && !goingHome && !seated }
 
-    /// The doze ends in sleep only if nothing woke her during it: no input from him since it began,
+    /// The doze ends in sleep only if nothing woke her during it: no input from them since it began,
     /// not carried, not listening.
     static func dozeEndsInSleep(inputSinceDozeBegan: Bool, held: Bool, listening: Bool) -> Bool {
         !inputSinceDozeBegan && !held && !listening
     }
 
-    /// How she walks, when her walk has a cause that changes it: "sad_walk" when he told her to go
-    /// away, "tiptoe" on her way to a quiet corner because of his call or his film. "" is her own walk.
-    /// poses.jsonl (with what pose() read): after the hop down between his screens she was often a few
+    /// How she walks, when her walk has a cause that changes it: "sad_walk" when the person told her to go
+    /// away, "tiptoe" on her way to a quiet corner because of their call or their film. "" is her own walk.
+    /// poses.jsonl (with what pose() read): after the hop down between their screens she was often a few
     /// steps from her spot, and the drawn run came back for 0.1-0.2 s before she arrived (run <-> stand
     /// flickers, 5 in 45 min). The run is for the way over; a stretch shorter than this is her walk.
     /// A run starts only with runStartLeft still to go (at her ~320 pt/s, more than 0.4 s of running before
@@ -49,64 +49,64 @@ enum Stages {
     struct Seat: Equatable { var clip: String; var why: String }
 
     /// What she does seated, when a drawn clip says it better than her sit pose:
-    /// - on top of one of his windows: "sit_legs" ("sitting on top of a window"), legs over the edge;
-    /// - he has been away 5 minutes or more, nothing moving on his screens: "fishing" ("waiting,
-    ///   patient"), waiting for him;
-    /// - a quiet sit with him here (seated a minute, his hand on the Mac within awayFor, no keys for a
+    /// - on top of one of their windows: "sit_legs" ("sitting on top of a window"), legs over the edge;
+    /// - they have been away 5 minutes or more, nothing moving on their screens: "fishing" ("waiting,
+    ///   patient"), waiting for them;
+    /// - a quiet sit with them here (seated a minute, their hand on the Mac within awayFor, no keys for a
     ///   minute): "read_book" ("quiet time while the person works").
-    /// Never while she types along, watches his video, listens, talks, or is asleep; nil otherwise.
+    /// Never while she types along, watches their video, listens, talks, or is asleep; nil otherwise.
     static func seat(seated: Bool, onWindow: Bool, typingAlong: Bool, watchingVideo: Bool, asleep: Bool,
                      listening: Bool, talking: Bool, seatedFor: Double, hisIdle: Double, sinceKeys: Double,
                      sleepiness: Double, screenMoving: Bool, callOn: Bool, music: Bool,
                      fishing: Bool = false, noteFor: String? = nil) -> Seat? {
         guard seated, !typingAlong, !asleep, !listening, !talking else { return nil }
-        // (UX audit #5): something waits for him (core/iris_note: a note that interrupted him, unopened; one
-        // kept for him alone is not a cue, review): she holds her sticky note at her chest, still (stillSeats),
-        // while he's at the Mac, not typing and not on a call; no sound, no bubble, no walk over. `noteFor` is its
+        // (UX audit #5): something waits for them (core/iris_note: a note that interrupted them, unopened; one
+        // kept for them alone is not a cue, review): she holds her sticky note at her chest, still (stillSeats),
+        // while they're at the Mac, not typing and not on a call; no sound, no bubble, no walk over. `noteFor` is its
         // cause, said in her pose journal.
         if let note = noteFor, !callOn, sinceKeys >= 4, hisIdle < noteAtMacS {
             return Seat(clip: "sticky_note", why: "a note for you: " + note)
         }
         if onWindow { return Seat(clip: "sit_legs", why: "sitting on top of their window") }
         guard !watchingVideo, !callOn, !music else { return nil }
-        // pose log 13:00-15:42: fishing held 0-90 s, 23 times in 3 h — a Discord line moving on his other
-        // screen ended it and stillness began it again. Once she's fishing she waits until he's back.
+        // pose log 13:00-15:42: fishing held 0-90 s, 23 times in 3 h — a Discord line moving on their other
+        // screen ended it and stillness began it again. Once she's fishing she waits until they're back.
         if fishing && hisIdle >= 30 {
             return Seat(clip: "fishing", why: String(format: "waiting for them: away %.0f min", hisIdle / 60))
         }
         if hisIdle >= awayFor && !screenMoving {
             return Seat(clip: "fishing", why: String(format: "waiting for them: away %.0f min", hisIdle / 60))
         }
-        // sim 27 (him reading, no input for 30 s or more at a time): her book needed his hand in the last
-        // 30 s, so she sat plainly for 783 of 900 s — the stare he sees. He's here until awayFor (then she fishes).
+        // sim 27 (them reading, no input for 30 s or more at a time): her book needed their hand in the last
+        // 30 s, so she sat plainly for 783 of 900 s — the stare the person sees. He's here until awayFor (then she fishes).
         // -03:00 live (sim 51): "not sleepy" kept her book from every quiet sit after 1 AM, when her
-        // sleepiness is 1.00, and her doze waits for 2 min of no input from him: plain sits of 2-5 min. Asleep is
-        // already no seat (above), so a sleepy quiet sit with him here is her book too.
+        // sleepiness is 1.00, and her doze waits for 2 min of no input from them: plain sits of 2-5 min. Asleep is
+        // already no seat (above), so a sleepy quiet sit with them here is her book too.
         if seatedFor >= quietSitFor && hisIdle < awayFor && sinceKeys >= 60 {
             return Seat(clip: "read_book", why: String(format: "quiet time with them: seated %.0f min, no keys %.0f s",
                                                        seatedFor / 60, min(sinceKeys, 3600)))
         }
         return nil
     }
-    // 23:00 and 23:15 she fished, "away 3 min", with him reading at
-    // the Mac. No input is all she has of him (no camera), and three still minutes is a page he's reading, not him gone:
-    // ten minutes is away; under it, seated, she reads her book beside him. (was 300, then 180.)
+    // 23:00 and 23:15 she fished, "away 3 min", with them reading at
+    // the Mac. No input is all she has of them (no camera), and three still minutes is a page they're reading, not them gone:
+    // ten minutes is away; under it, seated, she reads her book beside them. (was 300, then 180.)
     static let awayFor: Double = 600
-    /// he's at the Mac for her note cue: some input this recently.
+    /// they're at the Mac for her note cue: some input this recently.
     static let noteAtMacS: Double = 120
     /// seats drawn as one still frame of their clip, its last (SpriteView): the sticky note held at her chest,
     /// not her slapping it forward again and again.
     static let stillSeats: Set<String> = ["sticky_note"]
     static let quietSitFor: Double = 60      // was 300; a long sit is her book, not a stare
 
-    /// A hop down from one of his windows is a jump she lands from ("fall_land", "jumping down from a
+    /// A hop down from one of their windows is a jump she lands from ("fall_land", "jumping down from a
     /// window") when it drops at least this far: less is a step, too short for the falling frames.
     static let jumpDownAtLeast: Double = 100
     static func jumpsDown(fromWindow: Bool, drop: Double) -> Bool { fromWindow && drop >= jumpDownAtLeast }
 
-    /// Which way she walks off when he tells her to go away: away from his cursor, unless that side has
+    /// Which way she walks off when the person tells her to go away: away from their cursor, unless that side has
     /// under half a walk-off of room and the other has more; then toward the room.
-    /// me / cursor: x of her left edge and his cursor; minX / maxX: where her left edge can be on this screen.
+    /// me / cursor: x of her left edge and their cursor; minX / maxX: where her left edge can be on this screen.
     static func shooDirection(me: Double, cursor: Double, minX: Double, maxX: Double, width: Double,
                               step: Double = 300) -> (dir: Double, why: String) {
         let mid = me + width / 2
@@ -117,7 +117,7 @@ enum Stages {
         return (-away, "toward the room on their cursor's side")
     }
 
-    /// Waiting on Friday's answer to him: thinking first, then foot-tapping ("tap_foot", "waiting,
+    /// Waiting on Friday's answer to them: thinking first, then foot-tapping ("tap_foot", "waiting,
     /// impatient") once it has taken this long — standing only (the clip stands; seated she keeps thinking).
     static let impatientAfter: Double = 4
     static func impatient(waiting: Bool, waitedFor: Double, seated: Bool) -> Bool {
@@ -126,8 +126,8 @@ enum Stages {
 
     // MARK: — three more moves of her own, each from a signal she already has
 
-    /// Her laptop was out, typing along with him, at least this long of his typing when it goes away (Body.typeAlongHoldS
-    /// after his last key, or a walk with a reason once he has stopped): she gets up and stretches ("yoga", "stretch
+    /// Her laptop was out, typing along with them, at least this long of their typing when it goes away (Body.typeAlongHoldS
+    /// after their last key, or a walk with a reason once they have stopped): she gets up and stretches ("yoga", "stretch
     /// break, calm"). His keys have rested at least quietFor first: a clip that stood her up mid-typing is no end of it.
     static let longTypeAlong: Double = 1200
     static let quietFor: Double = 20
@@ -136,15 +136,15 @@ enum Stages {
     static let stretchEvery: Double = 3600
     static let afterFridayStretch: Double = 1800
 
-    /// She stretches as her laptop goes away after typing along with him `alongFor` seconds of his typing.
+    /// She stretches as her laptop goes away after typing along with them `alongFor` seconds of their typing.
     static func stretches(alongFor: Double, keysRested: Double, sinceHerStretch: Double, sinceFridayStretch: Double) -> Bool {
         alongFor >= longTypeAlong && keysRested >= quietFor && sinceHerStretch >= stretchEvery
             && sinceFridayStretch >= afterFridayStretch
     }
 
-    /// A moment she shows him (a to-do on his day card come due) waits until he can look: she's awake, he's
-    /// at the Mac (input within awayFor), his keys have rested this long, no video or call in front.
-    static let showAfterKeys: Double = 8      // past her nod's 3 s: a short pause between his lines isn't his keys at rest
+    /// A moment she shows them (a to-do on their day card come due) waits until the person can look: she's awake, they're
+    /// at the Mac (input within awayFor), their keys have rested this long, no video or call in front.
+    static let showAfterKeys: Double = 8      // past her nod's 3 s: a short pause between their lines isn't their keys at rest
     static func canShow(awake: Bool, hisIdle: Double, sinceKeys: Double, watching: Bool, callOn: Bool) -> Bool {
         awake && hisIdle < awayFor && sinceKeys >= showAfterKeys && !watching && !callOn
     }
@@ -153,10 +153,10 @@ enum Stages {
     /// A reminder push (or Friday's sticky note) for a to-do this recently means it was shown already.
     static let alreadyToldWithin: Double = 900
 
-    /// The to-do on his day card (core/iris_day_card's "todos" row: "Title · 3:00 PM", "(past)" once its time
+    /// The to-do on their day card (core/iris_day_card's "todos" row: "Title · 3:00 PM", "(past)" once its time
     /// has passed, one per line) that came due between the last card and this one: listed before with its time
     /// still ahead, listed now as past. A to-do that first shows up already past (moved up from "and N more",
-    /// or added late) didn't come due now; one whose title is in a push he got lately (`told`: its reminder went
+    /// or added late) didn't come due now; one whose title is in a push the person got lately (`told`: its reminder went
     /// off, and Friday already showed it) is left out. Nil before there was a card, or when none came due.
     static func cameDue(before: String?, after: String?, told: [String] = []) -> String? {
         guard let before, let after else { return nil }
@@ -184,7 +184,7 @@ enum Stages {
 
     // MARK: an ask Friday didn't take
 
-    /// What he said to her (or typed) waits in her for Friday's next poll (core/iris_answer._loop asks /ears/next
+    /// What the person said to her (or typed) waits in her for Friday's next poll (core/iris_answer._loop asks /ears/next
     /// again the moment the last one ends), so with Friday up it is taken within moments. Still in her queue after
     /// this long (her 8 s of thinking, Body.awaitingAnswer), Friday isn't taking her words: she says so, and the ask
     /// leaves the queue (Ears.takeBack), so it isn't answered aloud whenever Friday comes back.
@@ -198,8 +198,8 @@ enum Stages {
     /// A peek is up at most this long: it never stays on its own.
     static let peekMostS: Double = 60
 
-    /// Why a peek at his day card ends now ("the person typed", "their pointer moved away", "a minute up"), or nil to keep it.
-    /// `away`: how far his pointer is outside her frame and the card's (0 on either).
+    /// Why a peek at their day card ends now ("the person typed", "their pointer moved away", "a minute up"), or nil to keep it.
+    /// `away`: how far their pointer is outside her frame and the card's (0 on either).
     static func peekEnds(shownFor: Double, typedSince: Bool, away: Double) -> String? {
         if typedSince { return "the person typed" }
         if away >= peekAwayAt { return "their pointer moved away" }
@@ -207,11 +207,11 @@ enum Stages {
         return nil
     }
 
-    /// The one line her bubble says when his pointer rests on her: from the card's own rows (core/iris_day_card),
+    /// The one line her bubble says when their pointer rests on her: from the card's own rows (core/iris_day_card),
     /// never a read of its own. The next thing today ("Next: Dentist at 2:00 PM"); with nothing next, what was kept
-    /// for him ("3 kept for you"), else the top line as it is ("Nothing else today", or what couldn't be read). Nil
+    /// for them ("3 kept for you"), else the top line as it is ("Nothing else today", or what couldn't be read). Nil
     /// before the card has rows, and while the card itself is up beside her (`cardUp`): a click on her peeks
-    /// at it and leaves his pointer resting on her, and 2 s later her bubble said the card's own top line again.
+    /// at it and leaves their pointer resting on her, and 2 s later her bubble said the card's own top line again.
     static func hoverHint(rows: [(key: String, head: String, text: String, off: Bool)], cardUp: Bool = false) -> String? {
         guard !cardUp, let top = rows.first(where: { $0.key == "glance" }) else { return nil }
         let first = String(top.text.split(separator: "\n").first ?? "").trimmingCharacters(in: .whitespaces)

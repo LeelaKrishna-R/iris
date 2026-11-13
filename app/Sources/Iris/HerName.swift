@@ -1,11 +1,11 @@
 import Foundation
 
-/// Her name in what he said, and what of it is for her, decided on his finished words.
+/// Her name in what the person said, and what of it is for her, decided on their finished words.
 ///
 /// her ears woke on a partial guess and kept that guess's place in the text. The on-device
-/// recognizer rewrites its words as he goes on, so a name in one guess can be gone from the next, and a
+/// recognizer rewrites its words as the person goes on, so a name in one guess can be gone from the next, and a
 /// place in one guess points elsewhere in the next. In Iris's ears.jsonl (on-device words) and Friday's
-/// surface_history (what reached Core): "I was sick" reached Friday as "s sick", and a sentence he
+/// surface_history (what reached Core): "I was sick" reached Friday as "s sick", and a sentence the person
 /// said to someone else in the room, with no name in its finished words, reached Friday cut at its first
 /// word and was answered. Now her name is looked for again in the finished words, and the text is
 /// cut there; when it is in neither recognizer's finished words, it was not said to her.
@@ -18,12 +18,12 @@ enum HerName {
     /// "Iris" misheard, only at the start and only before one of her commands.
     static let misheardName = #"^\s*(?:hey\s+)?(?:i was|i will|i'll|irish|ires|iras)(?=\s+(?:come|dance|sit|sleep|wake|stop|go|wave|look|move|be quiet|hush|shh|nap|giggle|say hi))"#
     /// "Iris" written "Siri" (her ears.jsonl held "Hey Siri" 20 times and "Siri" alone 5 in a month, none of
-    /// them taken as hers, with both recognizers told to expect "hey Iris"): at the start of what he says, alone or
+    /// them taken as hers, with both recognizers told to expect "hey Iris"): at the start of what the person says, alone or
     /// after a greeting. Mid-sentence it is talk about Siri.
     static let misheardIris = #"^\s*(?:(?:hey|hi|okay|ok)[\s,]+)?siri\b"#
     static let trim = CharacterSet(charactersIn: " ,.!?").union(.whitespaces)
 
-    /// (production "…\(Config.agentName) is the moderator so we can know who is active", said to his
+    /// (production "…\(Config.agentName) is the moderator so we can know who is active", said to their
     /// Discord, answered aloud): her name said about her, or the weekday, is not said to her.
     static let greetingOnly = #"^\s*(?:(?:hey|hi|hello|okay|ok|yo|oh)[\s,]*)*$"#
     static let weekdayBefore = #"\b(?:on|this|next|last|every|by|until|till|since|before|after|from)\s+$"#
@@ -31,7 +31,7 @@ enum HerName {
     static let aboutAfter = #"^(?:'s|’s|\s+(?:is|was|has|had|does|did|will|would|can|could|should|isn't|wasn't|doesn't|didn't|won't|can't|just|always|never|said|says|told|keeps)\b)"#
 
     /// Whether the name at `r` in `low` is talked about (mid-sentence, then "is", "was", "'s"...) or is the
-    /// day ("on \(Config.agentName)", "\(Config.agentName) night"); at the start, or after a greeting, it is always his call.
+    /// day ("on \(Config.agentName)", "\(Config.agentName) night"); at the start, or after a greeting, it is always their call.
     static func about(_ low: String, _ r: Range<String.Index>) -> Bool {
         let before = String(low[..<r.lowerBound]), after = String(low[r.upperBound...])
         if before.range(of: greetingOnly, options: .regularExpression) != nil { return false }
@@ -40,7 +40,7 @@ enum HerName {
         return after.range(of: aboutAfter, options: .regularExpression) != nil
     }
 
-    /// Her name as a recognizer is known to mishear it, at the start of `low` (his words, lowercased): where; nil: none.
+    /// Her name as a recognizer is known to mishear it, at the start of `low` (their words, lowercased): where; nil: none.
     static func misheard(_ low: String) -> Range<String.Index>? {
         for pat in [misheardName] + (wakeWords.contains("friday") ? [misheardFriday] : []) {
             if let r = low.range(of: pat, options: .regularExpression) { return r }
@@ -68,7 +68,7 @@ enum HerName {
                           limitedBy: text.endIndex) ?? text.endIndex
     }
 
-    /// What he said after her name in `text` (all of it for a follow-up); nil when her name isn't in it
+    /// What the person said after her name in `text` (all of it for a follow-up); nil when her name isn't in it
     /// or nothing follows it.
     static func after(_ text: String, followUp: Bool) -> String? {
         if followUp {
@@ -89,7 +89,7 @@ enum HerName {
         return all.isEmpty ? nil : all
     }
 
-    /// The words handed to Friday when he finished: the server's when what follows her name is in them
+    /// The words handed to Friday when the person finished: the server's when what follows her name is in them
     /// (they are better at names and whole sentences); else the on-device words when her name is in
     /// those; else the server's when her name alone is in them. Nil: her name was in neither recognizer's
     /// finished words (only in a guess the on-device one took back), so it was not said to her.

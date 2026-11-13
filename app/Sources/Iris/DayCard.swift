@@ -21,7 +21,7 @@ final class DayCard: NSObject {
     private static let hiddenKey = "dayCardHidden"
     var hidden: Bool { UserDefaults.standard.bool(forKey: DayCard.hiddenKey) }
 
-    /// What Core reads every look: whether to rebuild now (his click, read once), whether to bother, and his
+    /// What Core reads every look: whether to rebuild now (their click, read once), whether to bother, and their
     /// button clicks waiting.
     func state() -> [String: Any] {
         defer { refresh = false }
@@ -32,7 +32,7 @@ final class DayCard: NSObject {
     /// Core acted on these clicks; they leave the list.
     func ack(_ tokens: [String]) { acts.removeAll { tokens.contains($0.token) } }
 
-    /// Core's rows, shown beside her (kept, not shown, while he has it hidden).
+    /// Core's rows, shown beside her (kept, not shown, while they have it hidden).
     func update(rows raw: [[String: Any]], at: Date?, near: CGRect) {
         rows = raw.prefix(8).map { r in
             Row(key: String((r["key"] as? String ?? "").prefix(20)),
@@ -99,7 +99,7 @@ final class DayCard: NSObject {
     }
 
     /// Friday's app on this Mac (FridayMac), on `screen` ("notifications"): its friday:// link, which the app takes to
-    /// that screen (NotificationRouting.macScreen). A Friday installed before it took the link opens where he left it,
+    /// that screen (NotificationRouting.macScreen). A Friday installed before it took the link opens where the person left it,
     /// and that is said in her log.
     static var fridayApp: String { Config.agentApp }
 
@@ -119,7 +119,7 @@ final class DayCard: NSObject {
 
     // MARK: a peek
     // The card had been hidden since (× hid it for good), so a click on her only giggled. A click on her
-    // now always peeks: the card beside her until he types, moves his pointer well away, clicks her again, or a
+    // now always peeks: the card beside her until the person types, moves their pointer well away, clicks her again, or a
     // minute passes (Stages.peekEnds); it never stays on its own. Pinned (Show My Day), a click moves it beside her.
     private(set) var peeking = false
     private var peekAt = Date.distantPast
@@ -156,10 +156,10 @@ final class DayCard: NSObject {
         log("day card: peek over (\(why))")
     }
 
-    /// Four times a second while it's up: his keys since it opened (his hands only: the HID count, as Eyes reads idle; no keys read), and how
-    /// far his pointer is outside her and the card.
+    /// Four times a second while it's up: their keys since it opened (their hands only: the HID count, as Eyes reads idle; no keys read), and how
+    /// far their pointer is outside her and the card.
     private func watchPeek() {
-        // his keys inside the card (a keyboard user moving through it) don't put it away; his typing elsewhere does
+        // their keys inside the card (a keyboard user moving through it) don't put it away; their typing elsewhere does
         let typed = !(panel?.isKeyWindow ?? false)
             && CGEventSource.secondsSinceLastEventType(.hidSystemState, eventType: .keyDown) < Date().timeIntervalSince(peekAt)
         let p = NSEvent.mouseLocation
@@ -171,8 +171,8 @@ final class DayCard: NSObject {
         }
     }
 
-    /// Her one line for his pointer resting on her (Stages.hoverHint), from these rows; nil before there are any, and
-    /// while the card is on his screen (a peek, or pinned): it says the same line itself.
+    /// Her one line for their pointer resting on her (Stages.hoverHint), from these rows; nil before there are any, and
+    /// while the card is on their screen (a peek, or pinned): it says the same line itself.
     func hint() -> String? { Stages.hoverHint(rows: rows.map { (key: $0.key, head: $0.head, text: $0.text, off: $0.off) }, cardUp: panel != nil) }
 
     /// Show My Day / Hide My Day, from her menu.
@@ -196,7 +196,7 @@ final class DayCard: NSObject {
     /// a row's text as Core read it (core/iris_day_card's key: "todos", "next" …); nil when the card has
     /// no such row or Core couldn't read it ("off"). Iris reads the to-dos for one come due (Body.dayCard).
     func text(_ key: String) -> String? { rows.first { $0.key == key && !$0.off }?.text }
-    /// Where the card is on his screen, while it's shown.
+    /// Where the card is on their screen, while it's shown.
     var frame: CGRect? { panel?.frame }
 
     private func show(near: CGRect) {
@@ -253,8 +253,8 @@ final class DayCard: NSObject {
         fx.layoutSubtreeIfNeeded()
         let size = NSSize(width: width, height: max(80, fx.fittingSize.height))
         let p = panel ?? {
-            // a panel that can take keys once he clicks into it (Tab between its buttons, Space presses one);
-            // shown, it never takes his typing (orderFrontRegardless, non-activating)
+            // a panel that can take keys once the person clicks into it (Tab between its buttons, Space presses one);
+            // shown, it never takes their typing (orderFrontRegardless, non-activating)
             let p = CardPanel(contentRect: NSRect(origin: .zero, size: size),
                               styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
             p.isOpaque = false
@@ -305,8 +305,8 @@ final class DayCard: NSObject {
 
 /// the day card's panel. Key (taking keys, so Tab moves between its buttons and Space presses one) only for a
 /// keyboard user who moves into it, VoiceOver or Full Keyboard Access on, never from a mouse click: 5e124c06 let any
-/// click make it key, and his next keystrokes went to the card instead of his app (review). When it closes
-/// while key, the app he was in gets its keys back.
+/// click make it key, and their next keystrokes went to the card instead of their app (review). When it closes
+/// while key, the app they were in gets its keys back.
 final class CardPanel: NSPanel {
     static var keyboardUser: Bool { NSApp.isFullKeyboardAccessEnabled || NSWorkspace.shared.isVoiceOverEnabled }
     private var byMouse = false
@@ -317,7 +317,7 @@ final class CardPanel: NSPanel {
     override func sendEvent(_ e: NSEvent) {
         let mouse: Set<NSEvent.EventType> = [.leftMouseDown, .rightMouseDown, .otherMouseDown]
         guard mouse.contains(e.type) else { return super.sendEvent(e) }
-        byMouse = true                        // a click presses its button; it doesn't make the card take his keys
+        byMouse = true                        // a click presses its button; it doesn't make the card take their keys
         defer { byMouse = false }
         super.sendEvent(e)
     }
@@ -329,7 +329,7 @@ final class CardPanel: NSPanel {
         log("day card: keys taken (keyboard user)")
     }
 
-    /// Closing: if the card held the keys, they go back to the app he was in.
+    /// Closing: if the card held the keys, they go back to the app they were in.
     func giveKeysBack() {
         guard isKeyWindow else { return }
         resignKey()

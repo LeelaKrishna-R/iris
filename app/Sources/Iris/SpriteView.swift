@@ -14,7 +14,7 @@ struct Face: Equatable {
     var sit: CGFloat = 0
     var lid: CGFloat = 0         // 1 = eyes shut (a blink)
     var mood: CGFloat = 0        // how she feels, -1 sad … 1 happy (shows on her mouth)
-    var held = false             // he is carrying her with the mouse
+    var held = false             // they are carrying her with the mouse
     var happyEyes: CGFloat = 0
     var wide: CGFloat = 0
     var dizzy: CGFloat = 0
@@ -32,7 +32,7 @@ struct Face: Equatable {
     var hint = ""
     var emote: String? = nil
     var emoteAge: CGFloat = 9
-    var keys = 0                 // his keystrokes so far (typing frames step on each)
+    var keys = 0                 // their keystrokes so far (typing frames step on each)
     var vy: CGFloat = 0          // vertical speed, for the jump frames
     var gaze = CGPoint.zero      // where her eyes look, -1…1
     var vx: CGFloat = 0          // how fast she's moving sideways (hair swings with it)
@@ -318,7 +318,7 @@ final class SpriteView: SKView {
          // legs swing, pages turn, a line waits for a bite
          "@doze": 0.35, "@snore": 0.5, "@sit_legs": 0.18, "@read_book": 0.6,
          "@fishing": 0.8, "@sulk": 0.3,
-         // her stretch after typing along with him, a slow tree pose (Body.yogaSeconds)
+         // her stretch after typing along with them, a slow tree pose (Body.yogaSeconds)
          "@yoga": 0.35,
          // waking, she sits up in bed, rubs her eyes and yawns, slowly (8 frames, about 2.4 s)
          "@wake_up": 0.3][want] ?? 0.13
@@ -346,7 +346,7 @@ final class SpriteView: SKView {
 
         // asleep, her breathing needs few frames (the app held a steady ~16% CPU at 60 fps)
         // awake and still (sitting, typing along, a clip in place) was 60 fps too; her drawing was about a
-        // third of her CPU (sample, 37% with him at it). Movement keeps 60: walking, carried, a hop or fall.
+        // third of her CPU (sample, 37% with them at it). Movement keeps 60: walking, carried, a hop or fall.
         let moving = f.held || f.walk > 0.05 || abs(f.vx) > 1 || f.vy != 0 || f.hop > 0.5
         let fps = f.sleeping ? 20 : moving ? 60 : 30
         if preferredFramesPerSecond != fps { preferredFramesPerSecond = fps }
@@ -354,14 +354,14 @@ final class SpriteView: SKView {
         if !f.act.isEmpty && want == "@" + f.act { actShowing = f.act; actShowingMoves = f.actMoves }
         else if !(f.act.isEmpty && want == "@" + actShowing) { actShowing = "" }
         if want != journalPose {
-            // from, to and why: what drove it (a clip, sleep, his typing, walking, sitting), and how long
+            // from, to and why: what drove it (a clip, sleep, their typing, walking, sitting), and how long
             // the last pose held — the report reads this to find poses that flicker or never change
             // a drawn walk or seat in place of her rig is named as the clip it is
             let drawnStage = want == "@" + f.gait || want == "@" + f.seat
             let what = !f.act.isEmpty ? "clip \(f.act)" : drawnStage ? "clip \(want.dropFirst())" : f.sleeping ? "asleep" : !f.hint.isEmpty ? f.hint
                 : f.walk > 0.05 ? "walking" : f.sit > 0.6 ? "sitting" : "standing"
             let why = f.why.isEmpty ? what : "\(what): \(f.why)"     // and its cause
-            // idle_s: seconds since his last key, click or mouse move (the system's clock) — whether he
+            // idle_s: seconds since their last key, click or mouse move (the system's clock) — whether the person
             // was at the Mac for this change, which the report can't otherwise tell
             let idle = CGEventSource.secondsSinceLastEventType(.hidSystemState, eventType: CGEventType(rawValue: ~0)!)
             // typing <-> idle still flips in 50-100 ms while she types along (poses.jsonl),
@@ -430,7 +430,7 @@ final class SpriteView: SKView {
             case "@hop":                                   // the jump frames follow her real arc
                 frameIndex = f.vy > 150 ? min(2, n - 1) : f.vy > -80 ? min(3, n - 1) : min(4, n - 1)
             case "@fall_land":
-                // down from his window — the falling frames (0-2) while she is in the air, then the
+                // down from their window — the falling frames (0-2) while she is in the air, then the
                 // landing (3 onward, 0.15 s each) once her feet are down, holding the last
                 if f.vy != 0 { landedFor = 0; frameIndex = f.vy > 0 ? 0 : f.vy > -400 ? min(1, n - 1) : min(2, n - 1) }
                 else { landedFor += dt; frameIndex = min(n - 1, 3 + Int(landedFor / 0.15)) }
@@ -452,7 +452,7 @@ final class SpriteView: SKView {
             setTexture(t, name: want)
         }
 
-        // chasing or pouncing on his cursor: drawn toward the right, turned to face it when it's on her left
+        // chasing or pouncing on their cursor: drawn toward the right, turned to face it when it's on her left
         let towardCursor = showing == "@chase" || showing == "@pounce"
         let mirror = ((showing == "@walk" || showing == "@run" || showing == "@sad_walk" || showing == "@tiptoe" || towardCursor || (f.actMoves && showing == "@" + f.act)) && f.flip)
         // a change of body is a little squash and settle, so the dissolve reads as her moving
@@ -576,7 +576,7 @@ final class SpriteView: SKView {
             p.wave = sin(waveClock * 9)
             p.mouth = ""
         case "laptop":
-            // a dip on each of his keystrokes (she types along), else a gentle rhythm of her own
+            // a dip on each of their keystrokes (she types along), else a gentle rhythm of her own
             if f.keys != lastKeys { tapAt = 0.12; lastKeys = f.keys } else { tapAt = max(0, tapAt - dt) }
             p.tap = tapAt > 0 ? 1 : max(0, CGFloat(sin(Double(f.clock) * 11))) * 0.6
             p.mouth = ""                           // her laptop picture has no mouths drawn

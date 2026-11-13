@@ -7,7 +7,7 @@ import Vision
 
 /// Her eyes: every screen, a glance a second at most (a stream per display). A frame that changed is read
 /// (Vision, on this Mac) once it settles; what's on each display, which app
-/// and window he's in, and every window on screen are kept for Friday to ask
+/// and window they're in, and every window on screen are kept for Friday to ask
 /// about. Without Screen Recording she sees nothing and says so — never an
 /// old frame passed off as now.
 // (strict concurrency): her eyes' state is `q`'s — read and written only inside q.sync — except the timer
@@ -42,17 +42,17 @@ final class Eyes: @unchecked Sendable {
     static let windowsEveryS: Double = 3
     private var lastChange = Date.distantPast
     private var lastError: String?
-    // (owner: = off for an hour): no screen read and nothing of his
+    // (owner: = off for an hour): no screen read and nothing of their
     // screens handed to Friday until then
     private var offUntil = Date.distantPast
-    // his focused window as Friday last asked (now()), to tell the screen he works on from the other one
+    // their focused window as Friday last asked (now()), to tell the screen the person works on from the other one
     private var focusedCache: CGRect?
-    // her screen reads were ~45% of her CPU (a 10 s sample; 37% CPU with him at it). Words on his
-    // screens count only while he's at the Mac and mostly on the screen he works on (core/iris_reflex)
-    static let readAwayS: Double = 300        // away this long: no reads; the first look after he's back reads
-    static let otherScreenEveryS: Double = 60 // the screen he isn't working on: at most once a minute (was 10 s)
-    static let handsBusyS: Double = 60        // his last key, click or scroll this recent: his screen read every 10 s
-    static let restingEveryS: Double = 30     // his hands resting longer: at most every 30 s
+    // her screen reads were ~45% of her CPU (a 10 s sample; 37% CPU with them at it). Words on their
+    // screens count only while they're at the Mac and mostly on the screen the person works on (core/iris_reflex)
+    static let readAwayS: Double = 300        // away this long: no reads; the first look after they're back reads
+    static let otherScreenEveryS: Double = 60 // the screen the person isn't working on: at most once a minute (was 10 s)
+    static let handsBusyS: Double = 60        // their last key, click or scroll this recent: their screen read every 10 s
+    static let restingEveryS: Double = 30     // their hands resting longer: at most every 30 s
     var pausedUntil: Date? { q.sync { offUntil > Date() ? offUntil : nil } }
     func pause(for seconds: Double) {
         q.sync {
@@ -66,10 +66,10 @@ final class Eyes: @unchecked Sendable {
 
     var changingRecently: Bool { q.sync { Date().timeIntervalSince(lastChange) < 8 } }
 
-    // where on his screens the picture last changed: the middle of the changed cells of
+    // where on their screens the picture last changed: the middle of the changed cells of
     // the 32x18 glance, in the window server's coordinates (y down from the primary's top)
     private var changeSpotCG: (at: Date, point: CGPoint)?
-    /// Where his screen last changed, and when, in Cocoa coordinates (main thread: reads NSScreen).
+    /// Where their screen last changed, and when, in Cocoa coordinates (main thread: reads NSScreen).
     var changeSpot: (at: Date, point: CGPoint)? {
         guard let c = q.sync(execute: { changeSpotCG }) else { return nil }
         let primaryH = NSScreen.screens.first?.frame.height ?? 0
@@ -99,11 +99,11 @@ final class Eyes: @unchecked Sendable {
 
     func start() {
         if let off = Store.load(OffUntil.self, "eyes_off.json"), off.at > Date().timeIntervalSince1970 {
-            q.sync { offUntil = Date(timeIntervalSince1970: off.at) }   // his "stop watching" outlives her restart
+            q.sync { offUntil = Date(timeIntervalSince1970: off.at) }   // their "stop watching" outlives her restart
         }
-        // she never asks on her own: he allowed it once, and a request at
-        // every launch was the dialog he kept clicking. If it is really gone,
-        // /health says screen_recording_not_allowed and Friday tells him.
+        // she never asks on her own: the person allowed it once, and a request at
+        // every launch was the dialog the person kept clicking. If it is really gone,
+        // /health says screen_recording_not_allowed and Friday tells them.
         timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in self?.look() }
         NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification,
                                                object: nil, queue: nil) { [weak self] _ in self?.close() }
@@ -124,7 +124,7 @@ final class Eyes: @unchecked Sendable {
         let (open, tried) = q.sync { (!streams.isEmpty || opening, openTried) }
         if !open && Date().timeIntervalSince(tried) >= 5 { await openStreams() }
         let (looks, targets, mine) = q.sync { (glances, shown, me) }
-        // the window list every 3 s, not every tick (a top own cost in a sample with him at the Mac)
+        // the window list every 3 s, not every tick (a top own cost in a sample with them at the Mac)
         if Date().timeIntervalSince(windowsAt) >= Eyes.windowsEveryS || q.sync(execute: { windows.isEmpty }) {
             windowsAt = Date()
             let wins = Eyes.windowList(on: Array(targets.values))
@@ -180,7 +180,7 @@ final class Eyes: @unchecked Sendable {
         }
     }
 
-    /// Stops every stream (his displays changed, or one stopped); the next tick opens them again.
+    /// Stops every stream (their displays changed, or one stopped); the next tick opens them again.
     private func close() {
         let old: [SCStream] = q.sync {
             let s = Array(streams.values)
@@ -214,7 +214,7 @@ final class Eyes: @unchecked Sendable {
         close()
     }
 
-    /// The window server's list of his windows on screen (Iris left out), placed on `displays`.
+    /// The window server's list of their windows on screen (Iris left out), placed on `displays`.
     static func windowList(on displays: [SCDisplay]) -> [Win] {
         let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
             as? [[String: Any]] ?? []
@@ -243,14 +243,14 @@ final class Eyes: @unchecked Sendable {
         return Double(diff) / Double(new.count) > 1.5
     }
 
-    /// Whether to read a screen now (see(_:frame:_:)): never while a read runs, within 10 s of the last, while he
-    /// asked her not to watch, or with him away; the screen he isn't on at most every Eyes.otherScreenEveryS; his hands
+    /// Whether to read a screen now (see(_:frame:_:)): never while a read runs, within 10 s of the last, while the person
+    /// asked her not to watch, or with them away; the screen the person isn't on at most every Eyes.otherScreenEveryS; their hands
     /// resting, at most every Eyes.restingEveryS; then once it has settled (0.9 s still), or every 30 s while it keeps
     /// changing (pure, tested).
     static func readNow(now: Date, changed: Bool, pendingSince: Date?, readAt: Date?, lastRead: Date, reading: Bool,
                         offUntil: Date, idle: Double, front: Bool) -> Bool {
         guard !reading, now.timeIntervalSince(lastRead) >= 10, now >= offUntil else { return false }
-        guard idle < Eyes.readAwayS else { return false }        // he's away: his screens' words feed nothing
+        guard idle < Eyes.readAwayS else { return false }        // they're away: their screens' words feed nothing
         guard front || now.timeIntervalSince(readAt ?? .distantPast) >= Eyes.otherScreenEveryS else { return false }
         let sinceRead = now.timeIntervalSince(readAt ?? .distantPast)
         guard idle < Eyes.handsBusyS || sinceRead >= Eyes.restingEveryS else { return false }
@@ -281,11 +281,11 @@ final class Eyes: @unchecked Sendable {
             displays[id] = d
             // reading costs seconds of CPU on this Mac: at most one read every 10 s, both screens together
             guard reading.isEmpty, now.timeIntervalSince(lastRead) >= 10, now >= offUntil else { return false }
-            // hardware input only (keys another app posts aren't him: the phantom wave)
+            // hardware input only (keys another app posts aren't them: the phantom wave)
             let idle = CGEventSource.secondsSinceLastEventType(.hidSystemState, eventType: CGEventType(rawValue: ~0)!)
             let front = focusedCache.map { frame.contains(CGPoint(x: $0.midX, y: $0.midY)) } ?? true
-            // his hands resting a minute or more (reading, watching), at most every 30 s: a chat or a video
-            // moving had her read every ~9 s, each read a 45-60% CPU spike, for words that only count while he works;
+            // their hands resting a minute or more (reading, watching), at most every 30 s: a chat or a video
+            // moving had her read every ~9 s, each read a 45-60% CPU spike, for words that only count while the person works;
             // once it settles; while it keeps changing, one every 30 s
             return Eyes.readNow(now: now, changed: changed, pendingSince: pendingRead[id], readAt: d.readAt,
                                 lastRead: lastRead, reading: false, offUntil: offUntil, idle: idle, front: front)
@@ -303,9 +303,9 @@ final class Eyes: @unchecked Sendable {
             // "AssertionError"s read "AssertlonError" and 28 of 75 "N failed" "N falled" (i as l, m as
             // rn, "è" for e), and the two reads of one screen spelled its lines differently, so lines
             // already there came back as new. Measured on this Mac (Intel, no Neural Engine) on
-            // four 1920x1080 frames drawn like his VS Code (editor, terminal, chat; 103-110 known lines
-            // each) and his two real screens (scratch bench, per read after warm-up):
-            //   .fast:               CER 21-26%, 5-8 lines exact, 0.25 s CPU (0.1 s on his screens)
+            // four 1920x1080 frames drawn like their VS Code (editor, terminal, chat; 103-110 known lines
+            // each) and their two real screens (scratch bench, per read after warm-up):
+            //   .fast:               CER 21-26%, 5-8 lines exact, 0.25 s CPU (0.1 s on their screens)
             //   accurate rev 3 + LC: CER 13-16%, 32-51 lines exact, 3.6-5.4 s CPU
             //   accurate rev 2:      CER  8-10%, 68-76 lines exact, 1.3-1.7 s CPU, 2.6-3.3 s wall
             // Revision 3's text finder drops whole lines and cuts their first letters on a large
@@ -345,11 +345,11 @@ final class Eyes: @unchecked Sendable {
         }
     }
 
-    // MARK: a screenshot he asked for
+    // MARK: a screenshot the person asked for
 
-    /// Every display as he sees it (Iris left out), saved as PNGs in
+    /// Every display as the person sees it (Iris left out), saved as PNGs in
     /// ~/Pictures/Iris Screenshots (not a folder macOS guards, so nothing is
-    /// asked of him). The saved files' paths, or [] when it couldn't be taken.
+    /// asked of them). The saved files' paths, or [] when it couldn't be taken.
     func shot(_ done: @escaping @Sendable ([String]) -> Void) {
         Task.detached(priority: .userInitiated) {
             var saved: [String] = []
@@ -391,7 +391,7 @@ final class Eyes: @unchecked Sendable {
     /// What's playing, from window titles she can already read (Screen Recording, her eyes): Spotify's window
     /// is titled with the song while one plays ("Spotify Premium" / "Spotify" when not); a browser window on a
     /// YouTube video ("… - YouTube") counts only while sound is playing. No other app is asked (an AppleScript
-    /// query would be a new permission prompt on his screen). "what's playing" could only say whether.
+    /// query would be a new permission prompt on their screen). "what's playing" could only say whether.
     static func nowPlaying(soundOn: Bool) -> [String: String]? {
         guard let list = CGWindowListCopyWindowInfo([.optionAll], kCGNullWindowID) as? [[String: Any]] else { return nil }
         return nowPlaying(from: list, soundOn: soundOn)
@@ -424,14 +424,14 @@ final class Eyes: @unchecked Sendable {
         var out: [String: Any] = [
             "front_app": front?.localizedName ?? "",
             "front_title": Eyes.focusedTitle() ?? "",
-            "idle_s": CGEventSource.secondsSinceLastEventType(.hidSystemState, eventType: any),   // his hands only
+            "idle_s": CGEventSource.secondsSinceLastEventType(.hidSystemState, eventType: any),   // their hands only
             "permitted": Eyes.permitted,
             // an app has the mic (a call is live) / something is playing (any tab)
             "mic_others": AudioUse.micByOthers,
             "sound": AudioUse.soundPlaying,
         ]
-        // (structure audit): whether he's watching a film and whether music is playing are her body's
-        // answers (Body.isVideo with his screen moving; World.musicPlaying, her own voice left out), so Core's
+        // (structure audit): whether they're watching a film and whether music is playing are her body's
+        // answers (Body.isVideo with their screen moving; World.musicPlaying, her own voice left out), so Core's
         // reflexes read these instead of keeping lists of their own
         let sensed = Senses.now()
         out["video"] = sensed.video
@@ -441,10 +441,10 @@ final class Eyes: @unchecked Sendable {
             focusedCache = focused
             out["ok"] = Eyes.permitted && lastError == nil && !displays.isEmpty
             if let e = lastError { out["reason"] = e } else if displays.isEmpty { out["reason"] = "no_frame_yet" }
-            if offUntil > Date() {                     // he asked her not to watch: nothing of his screens
+            if offUntil > Date() {                     // the person asked her not to watch: nothing of their screens
                 out["ok"] = false
                 out["reason"] = "paused"
-                out["front_app"] = ""                  // which app and window he's in is his screen too
+                out["front_app"] = ""                  // which app and window they're in is their screen too
                 out["front_title"] = ""
                 out["paused_until"] = offUntil.timeIntervalSince1970
                 return
@@ -458,8 +458,8 @@ final class Eyes: @unchecked Sendable {
                 return m
             }
             out["windows"] = windows.map { ["app": $0.app, "title": $0.title, "display": $0.display ?? 0, "frame": $0.frame] }
-            // the display his focused window is on — where his typing goes, so where its
-            // output appears (her reflexes took Claude's output on his other screen as his)
+            // the display their focused window is on — where their typing goes, so where its
+            // output appears (her reflexes took Claude's output on their other screen as their)
             if let f = focused,
                let d = displays.values.first(where: { $0.frame.count == 4
                    && CGRect(x: $0.frame[0], y: $0.frame[1], width: $0.frame[2], height: $0.frame[3])
@@ -505,7 +505,7 @@ final class Eyes: @unchecked Sendable {
         return union == 0 ? false : Double(sa.intersection(sb).count) / Double(union) < 0.9
     }
 
-    /// The app he's working in: the frontmost one, unless that's one of macOS's own agents with no Dock
+    /// The app they're working in: the frontmost one, unless that's one of macOS's own agents with no Dock
     /// icon (a notification banner's UserNotificationCenter, Control Center, the Dock), then the last
     /// regular app that was (her eye break, watch and thoughts ran "on UserNotificationCenter"
     /// while a banner had focus for a second).
@@ -575,7 +575,7 @@ private final class Output: NSObject, SCStreamOutput, SCStreamDelegate {
 }
 
 
-/// what her body senses of his music and his film (Body sets it on her main thread), read by /eyes/now off it.
+/// what her body senses of their music and their film (Body sets it on her main thread), read by /eyes/now off it.
 enum Senses {
     private static let sensed = OSAllocatedUnfairLock(initialState: (music: false, video: false))   // Sendable
 

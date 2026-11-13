@@ -3,9 +3,9 @@ import AppKit
 /// `Iris --simulate scenario.json [out.json] [--seeds ]`: her real Body
 /// and Soul, headless, against made-up screens, windows, a cursor, typing,
 /// petting and dragging, on a clock stepped at 60 frames a second as fast as
-/// the Mac can go. Every frame is checked for what looks wrong on his screens
+/// the Mac can go. Every frame is checked for what looks wrong on their screens
 /// (a jump across a monitor seam, a fall between displays, standing half on
-/// two screens, sitting on his text box while he types, walking one way and
+/// two screens, sitting on their text box while the person types, walking one way and
 /// facing the other, turning back and forth) and a sample of frames, every
 /// decision and the reasons she gave are written to JSON. Her memory lives in
 /// a scratch folder, never in ~/Library/Application Support/Iris.
@@ -115,7 +115,7 @@ enum Sim {
 
     static func runOnce(_ sc: [String: Any], seed: UInt64, keepFrames: Bool) -> [String: Any] {
         dice = Dice(seed: seed)
-        // her memory: a fresh one, or a copy of what she has learned on his Mac (read, never written)
+        // her memory: a fresh one, or a copy of what she has learned on their Mac (read, never written)
         let tmp = FileManager.default.temporaryDirectory.appendingPathComponent("iris-sim-\(ProcessInfo.processInfo.processIdentifier)-\(seed)")
         try? FileManager.default.removeItem(at: tmp)
         try? FileManager.default.createDirectory(at: tmp, withIntermediateDirectories: true)
@@ -153,7 +153,7 @@ enum Sim {
         // spots she already likes ([x, y, how much]), as if learned on earlier days
         for p in (sc["places"] as? [[Double]]) ?? [] where p.count == 3 { body.soul.feelPlace(CGFloat(p[0]), CGFloat(p[1]), p[2]) }
         let fav0 = ((sc["places"] as? [[Double]]) ?? []).first
-        var frontIdx = -9, frontSince = 0.0, following = false   // where the action is: his front window's screen
+        var frontIdx = -9, frontSince = 0.0, following = false   // where the action is: their front window's screen
 
         var events: [[String: Any]] = []
         var t = 0.0
@@ -162,7 +162,7 @@ enum Sim {
         var acts: [(Double, String)] = []
         var asleepAt: [Double] = []          // frames' times she was asleep (sampled 1/s)
         var extra: [String: Double] = [:]
-        var coming: (t: Double, x: Double)?    // "come here" / "other screen": when he asked, and where she set off for
+        var coming: (t: Double, x: Double)?    // "come here" / "other screen": when the person asked, and where she set off for
         var wokes: [(t: Double, why: String)] = []   // each wake and its cause (Body's "woke"), for her picture's wake_up rows
         body.trace = { kind, info in
             var e = info; e["t"] = (t * 100).rounded() / 100; e["kind"] = kind
@@ -185,7 +185,7 @@ enum Sim {
                 extra["touch_" + clip, default: 0] += 1
                 if (info["air"] as? Bool) == true { extra["touch_in_air", default: 0] += 1 }   // a touch clip begun mid-fall
             }
-            if kind == "come", let x = info["x"] as? Double { extra["comes", default: 0] += 1; coming = (t, x) }   // he called her over
+            if kind == "come", let x = info["x"] as? Double { extra["comes", default: 0] += 1; coming = (t, x) }   // the person called her over
             // a wake with no cause of its own, journaled as the agent's ask
             if kind == "woke", (info["why"] as? String) == "woke: \(Config.agentName) asked" { extra["woke_friday_asked", default: 0] += 1 }
             if kind == "woke", let why = info["why"] as? String { wokes.append((t, why)) }
@@ -194,7 +194,7 @@ enum Sim {
                 acts.append((t, what))
                 // every move of her own names its cause in the world
                 if ((info["why"] as? String) ?? "").isEmpty { extra["acts_uncaused", default: 0] += 1 }
-                // her stretch, her sticky note for a to-do come due, her bow for his Allow — and any over his typing
+                // her stretch, her sticky note for a to-do come due, her bow for their Allow — and any over their typing
                 if ["yoga", "sticky_note", "bow"].contains(what) {
                     extra["own_" + what, default: 0] += 1
                     if A.typing { extra["own_" + what + "_typing", default: 0] += 1 }
@@ -208,7 +208,7 @@ enum Sim {
             if kind == "think", let why = info["why"] as? String, why.hasPrefix("home"), (info["moving"] as? Bool) == true {
                 extra["home_walks", default: 0] += 1
             }
-            // a walk set off while he's been away 5 min+: only home or a corner is a reason then
+            // a walk set off while they're been away 5 min+: only home or a corner is a reason then
             if kind == "walk", let why = info["why"] as? String, why.hasPrefix("home") { extra["walks_home", default: 0] += 1 }
             if kind == "walk", let why = info["why"] as? String, ((info["idle"] as? Double) ?? 0) >= Body.trulyAway,
                !why.hasPrefix("home"), !why.hasPrefix("corner") {
@@ -218,7 +218,7 @@ enum Sim {
             if kind == "fell_asleep" { extra["naps", default: 0] += 1; if extra["first_sleep_t"] == nil { extra["first_sleep_t"] = t } }
             if kind == "boss_back" {
                 extra["boss_backs", default: 0] += 1
-                // a hop and a wave: only when he was really away (a reading pause gets a look)
+                // a hop and a wave: only when they were really away (a reading pause gets a look)
                 if (info["greets"] as? Bool) ?? (((info["k"] as? Double) ?? 0) > 0.25) { extra["greeted", default: 0] += 1 }
                 A.returnedAt = t
             }
@@ -294,7 +294,7 @@ enum Sim {
                     } else { w.window = rect(e["window"]) }
                 }
                 if e["windows"] != nil { w.wins = windows(e["windows"]) }
-                // he clicks into a window: it comes to the front
+                // the person clicks into a window: it comes to the front
                 if let id = e["front"] as? Int, let i = w.wins.firstIndex(where: { $0.id == id }) {
                     let win = w.wins.remove(at: i); w.wins.insert(win, at: 0)
                     w.frontApp = win.app; body.touched(); body.appSwitched(name: win.app)
@@ -307,14 +307,14 @@ enum Sim {
                 if e.keys.contains("title") { w.frontTitle = e["title"] as? String }
                 if let ch = e["screen_changing"] as? Bool { w.screenChanging = ch }
                 if let p = point(e["screen_change"]) { w.screenChange = (w.now, p) }   // something changed there (her eyes' glance)
-                if e["voice"] as? Bool == true { body.heardVoice() }                    // he says something, not to her
+                if e["voice"] as? Bool == true { body.heardVoice() }                    // the person says something, not to her
                 if let on = e["call"] as? Bool { w.callOn = on }        // an app took the mic (a call)
                 if let on = e["sound"] as? Bool { w.soundOn = on }      // something is making sound
                 if let a = e["app"] as? String { w.frontApp = a; body.touched(); body.appSwitched(name: a) }
                 if e["pet"] as? Bool == true { body.touched(); body.petted() }
                 if e["double_pet"] as? Bool == true { body.touched(); body.petted(); body.doublePetted() }   // as her view sends a double-click
                 // Friday through her: a voiced line (/mouth/play), shown words (/mouth/show), a push (/iris/notice)
-                // he talks to her: her name heard (onWake), then what he said finished (onHeard, onDone)
+                // the person talks to her: her name heard (onWake), then what the person said finished (onHeard, onDone)
                 if e["wake"] as? Bool == true { body.setListening(true) }
                 if e["heard"] as? Bool == true { body.awaitingAnswer(); body.setListening(false) }
                 if let sp = e["speak"] as? [String: Any] { body.speaking(sp["text"] as? String ?? "", seconds: sp["seconds"] as? Double ?? 3) }
@@ -325,7 +325,7 @@ enum Sim {
                     let todos = c["todos"] as? String
                     body.dayCard(todosBefore: cardTodos, todosAfter: todos, card: nil); cardTodos = todos
                 }
-                // his click on Friday's approval card (ApprovalCard): "approve" or "reject"
+                // their click on Friday's approval card (ApprovalCard): "approve" or "reject"
                 if let a = e["approval"] as? [String: Any] {
                     body.touched(); body.approvalAnswered(a["choice"] as? String ?? "", what: a["what"] as? String ?? "")
                 }
@@ -333,7 +333,7 @@ enum Sim {
                 if let d = e["drag"] as? [String: Any], let path = d["path"] as? [[Double]] {
                     dragPath = path.compactMap { point($0) }; dragT0 = t; dragT1 = t + ((d["over"] as? Double) ?? 1.5)
                     if let first = dragPath.first {
-                        // he picks her up where she is: the path starts at her
+                        // the person picks her up where she is: the path starts at her
                         let s = body.simState()
                         let me = CGPoint(x: (s["x"] as! Double) + Double(Body.size.width) / 2, y: (s["y"] as! Double) + Double(Body.size.height) * 0.8)
                         dragPath[0] = me; _ = first
@@ -350,16 +350,16 @@ enum Sim {
                     if let v = mood["sleepiness"] { body.soul.sleepiness = v }
                     if let v = mood["boredom"] { body.soul.boredom = v }
                 }
-                if let to = e["come"] as? String { _ = body.come(to) }          // he called her over (/iris/come)
+                if let to = e["come"] as? String { _ = body.come(to) }          // the person called her over (/iris/come)
                 if let a = e["act"] as? [String: Any], let id = a["id"] as? String {  // Core asks for a clip (/iris/act)
                     body.perform(id, seconds: a["seconds"] as? Double ?? 6, asked: a["why"] as? String ?? "")
                 }
                 if e["shoo"] as? Bool == true { body.shooed() }                 // "Iris, go away" (/iris/mood shoo)
-                if e.keys.contains("note") {                                   // what waits for him (/iris/day)
+                if e.keys.contains("note") {                                   // what waits for them (/iris/day)
                     let n = e["note"] as? [String: Any]
                     body.noteWaiting(key: n?["key"] as? String, why: n?["why"] as? String)
                 }
-                if e["peek"] as? Bool == true { body.notePeeked() }            // he clicked her (the day card's peek)
+                if e["peek"] as? Bool == true { body.notePeeked() }            // the person clicked her (the day card's peek)
                 if let h = e["hold"] as? [String: Any] { body.hold(h["seconds"] as? Double ?? 10, talk: false, pose: h["pose"] as? String ?? "") }
                 if e["screens"] != nil { w.screens = screens(e["screens"]); A.screens = w.screens }
                 if let back = e["clock_back"] as? Double { w.now = w.now.addingTimeInterval(-back) }   // the Mac's clock stepped back
@@ -386,7 +386,7 @@ enum Sim {
                     }
                 }
             }
-            // his hand
+            // their hand
             if t < mouseT1 {
                 let k = (t - mouseT0) / max(0.001, mouseT1 - mouseT0)
                 let e = k < 0.5 ? 2 * k * k : 1 - pow(-2 * k + 2, 2) / 2
@@ -447,8 +447,8 @@ enum Sim {
             rend?.frame(face: body.face)
             let s = body.simState()
             if i % 60 == 0 && (s["sleeping"] as! Bool) { asleepAt.append(t) }
-            // where the action is: following his front window to his other screen, sitting near it,
-            // out of a call's way, in a corner for his full-screen film
+            // where the action is: following their front window to their other screen, sitting near it,
+            // out of a call's way, in a corner for their full-screen film
             do {
                 let bw = Double(Body.size.width), bx = s["x"] as! Double, by = s["y"] as! Double
                 let me = CGRect(x: bx, y: by, width: bw, height: Double(Body.size.height))
@@ -499,8 +499,8 @@ enum Sim {
             A.caret = w.caret
             A.change = w.screenChange.map { ($0.point, t - w.now.timeIntervalSince($0.at)) }
             A.step(t: t, s, face: body.face, mouse: w.mouse, windows: w.wins.map(\.frame), hand: hand)
-            // he's at the Mac: the scenario says so ("present": [[from, to], …], e.g. reading without
-            // a touch), else he touched something in the last two minutes
+            // they're at the Mac: the scenario says so ("present": [[from, to], …], e.g. reading without
+            // a touch), else the person touched something in the last two minutes
             let present = presentSpans.map { sp in sp.contains { $0.count == 2 && t >= $0[0] && t < $0[1] } }
                 ?? ((s["his_idle"] as? Double ?? 999) < 120)
             A.life(t: t, s, face: body.face, present: present)
@@ -518,14 +518,14 @@ enum Sim {
             i += 1
         }
         var fs = A.findings(); if forcedHops > 0 { fs["window_left_her"] = Double(forcedHops) }
-        // the bodies her real picture swapped through (SpriteView's pose journal, as on his Mac): how many,
+        // the bodies her real picture swapped through (SpriteView's pose journal, as on their Mac): how many,
         // and how many showed under a second — a body that pops in and straight out again
         var viewPoses: [[String: Any]] = []
         var viewNotes: [String] = []
         if rend != nil, let text = try? String(contentsOf: Store.url("poses.jsonl"), encoding: .utf8) {
             let t0 = start.timeIntervalSince1970
             let rows = text.split(separator: "\n").compactMap { try? JSONSerialization.jsonObject(with: Data($0.utf8)) as? [String: Any] }
-                .filter { r in r["touch"] == nil }               // his touches' lines aren't poses
+                .filter { r in r["touch"] == nil }               // their touches' lines aren't poses
             var under1 = 0.0
             for (k, r) in rows.enumerated() {
                 let at = ((r["at"] as? Double ?? t0) - t0) * 100
@@ -629,7 +629,7 @@ enum Sim {
     }
 }
 
-/// Watches every frame for what would look wrong on his screens.
+/// Watches every frame for what would look wrong on their screens.
 @MainActor          // the simulator's, on the main thread
 final class Analyzer {
     var screens: [Display]
@@ -644,7 +644,7 @@ final class Analyzer {
     private var moveDirAt = -99.0
     private var screenNow = -1
     private var restStart: (t: Double, x: Double)?
-    private var mouseSeen: (t: Double, at: CGPoint)?    // when his cursor last moved (a parked one is no one to follow)
+    private var mouseSeen: (t: Double, at: CGPoint)?    // when their cursor last moved (a parked one is no one to follow)
     init(screens: [Display]) { self.screens = screens }
 
     func screenIndex(_ px: CGFloat) -> Int {
@@ -660,9 +660,9 @@ final class Analyzer {
     var plainStandFrom: Double?                      // when her plain awake stand began (no walk, no clip, no act)
     var field: CGRect?
     var caret: CGRect?
-    var change: (point: CGPoint, t: Double)?         // where his screen last changed, and when (sim time)
+    var change: (point: CGPoint, t: Double)?         // where their screen last changed, and when (sim time)
     private var expects: [(t: Double, at: CGPoint?, why: String)] = []
-    /// She should look at `at` (nil: at him) within half a second of t.
+    /// She should look at `at` (nil: at them) within half a second of t.
     func expect(_ t: Double, _ at: CGPoint?, _ why: String) { expects.append((t, at, why)) }
     func step(t: Double, _ s: [String: Any], face: Face, mouse: CGPoint, windows: [CGRect], hand: CGPoint) {
         let dt = t - lastT
@@ -681,7 +681,7 @@ final class Analyzer {
         let px = CGFloat(p["x"] as! Double), py = CGFloat(p["y"] as! Double), pvy = CGFloat(p["vy"] as! Double)
         let dx = x - px, dy = y - py
 
-        // (a display rearranged under her, or a move made while she was faded out, is not a jump he sees)
+        // (a display rearranged under her, or a move made while she was faded out, is not a jump the person sees)
         let unseen = (s["display_moved"] as? Bool) == true || ((s["alpha"] as? Double) ?? 1) < 0.05 || ((p["alpha"] as? Double) ?? 1) < 0.05
         // 1. a jump in place that no walk or carry explains
         if !unseen && !held && !(p["held"] as! Bool) && !((s["riding"] as? Bool) ?? false) && vy == 0 && pvy == 0 && abs(dx) > max(speed, 160) * CGFloat(dt) * 1.6 + 1 {
@@ -746,7 +746,7 @@ final class Analyzer {
                 if (c["s_standing_on_nothing"] ?? 0) < dt * 1.5 { note(t, String(format: "STANDING ON NOTHING at x %.0f y %.0f", x, y)) }
             }
         }
-        // 5b. fallen below every screen (she'd be gone from his sight)
+        // 5b. fallen below every screen (she'd be gone from their sight)
         if y < (screens.map(\.frame.minY).min() ?? 0) - 200 {
             if (c["s_below_all_screens"] ?? 0) == 0 { note(t, String(format: "FELL BELOW EVERY SCREEN at x %.0f y %.0f", x, y)) }
             c["s_below_all_screens"] = (c["s_below_all_screens"] ?? 0) + dt
@@ -784,10 +784,10 @@ final class Analyzer {
             if (dx > 0) != (dir > 0) { c["s_flip_wrong"] = (c["s_flip_wrong"] ?? 0) + dt }
             let rigTurn = max(-1, min(1, face.turn * 0.3 + dir * 0.75 * min(1, face.walk)))
             if rigTurn * dir < 0.2 { c["s_face_not_toward_travel"] = (c["s_face_not_toward_travel"] ?? 0) + dt }
-            // toward him: walking at his cursor (she comes to him with her face to him)
+            // toward them: walking at their cursor (she comes to them with her face to them)
             if (mouse.x - mid) * dx > 0 { c["s_walking_toward_cursor"] = (c["s_walking_toward_cursor"] ?? 0) + dt }
         }
-        // 9. in his way while he types
+        // 9. in their way while the person types
         if typing {
             c["s_typing"] = (c["s_typing"] ?? 0) + dt
             if (s["in_the_way"] as! Double) > 0.3 { c["s_in_his_way_typing"] = (c["s_in_his_way_typing"] ?? 0) + dt }
@@ -797,13 +797,13 @@ final class Analyzer {
             c["s_on_window"] = (c["s_on_window"] ?? 0) + dt
             if (s["on_front_window"] as? Bool) != true { c["s_on_back_window"] = (c["s_on_back_window"] ?? 0) + dt }
         }
-        // 9c. watching a video with him: sitting to watch, and never in front of it
+        // 9c. watching a video with them: sitting to watch, and never in front of it
         if (s["watching_video"] as? Bool) == true {
             c["s_video"] = (c["s_video"] ?? 0) + dt
             if face.hint == "watching" { c["s_watching_pose"] = (c["s_watching_pose"] ?? 0) + dt }
             if let front = windows.first, front.intersects(me.insetBy(dx: 10, dy: 10)) { c["s_covering_video"] = (c["s_covering_video"] ?? 0) + dt }
         }
-        // 9d. while he types: how far from his hands, and how restless
+        // 9d. while the person types: how far from their hands, and how restless
         if typing {
             c["typing_dist_sum"] = (c["typing_dist_sum"] ?? 0) + Double(abs(mid - hand.x)) * dt
             if face.walk > 0.5 { c["s_walking_while_typing"] = (c["s_walking_while_typing"] ?? 0) + dt }
@@ -812,20 +812,20 @@ final class Analyzer {
                 c["field_gap_sum"] = (c["field_gap_sum"] ?? 0) + Double(gap) * dt
             }
         }
-        // 9e. after he comes back: how long until she's near him
+        // 9e. after the person comes back: how long until she's near them
         if let r = returnedAt {
             if hypot(mid - mouse.x, (y + h * 0.5) - mouse.y) < 450 || (s["sleeping"] as! Bool) == false && abs(mid - mouse.x) < 400 {
                 c["greet_approach_s"] = (c["greet_approach_s"] ?? 0) + (t - r); returnedAt = nil
             } else if t - r > 60 { c["greet_approach_s"] = (c["greet_approach_s"] ?? 0) + 60; returnedAt = nil }
         }
-        // 9f. a plain sit, awake: no drawn seat, no act, not typing along — what he sees as her staring
+        // 9f. a plain sit, awake: no drawn seat, no act, not typing along — what the person sees as her staring
         if Sim.pose(face) == "sit" && face.seat.isEmpty && face.act.isEmpty && face.hint.isEmpty && (s["talking"] as? Bool) != true {
             let from = plainSitFrom ?? t
             plainSitFrom = from
             c["plain_sit_max"] = max(c["plain_sit_max"] ?? 0, t - from)
         } else { plainSitFrom = nil }
         // 9g. a plain stand, awake: not walking, no act, no hint — standing still and looking is the stare (
-        // poses.jsonl 14:40-14:50: 595 s standing on the screen he works on, his cursor out of her reach)
+        // poses.jsonl 14:40-14:50: 595 s standing on the screen the person works on, their cursor out of her reach)
         if Sim.pose(face) == "stand" && face.act.isEmpty && face.hint.isEmpty && face.walk < 0.05 && !(s["sleeping"] as! Bool)
             && (s["talking"] as? Bool) != true {
             let from = plainStandFrom ?? t
@@ -836,7 +836,7 @@ final class Analyzer {
         if (s["sleeping"] as! Bool) && ((s["talking"] as? Bool) == true || (s["listening"] as? Bool) == true) {
             c["s_asleep_attending"] = (c["s_asleep_attending"] ?? 0) + dt
         }
-        // Friday talking through her: her mouth moving, her face toward him; her bubble off his work
+        // Friday talking through her: her mouth moving, her face toward them; her bubble off their work
         if (s["talking"] as? Bool) == true {
             c["s_talking"] = (c["s_talking"] ?? 0) + dt
             let dxh = hand.x - mid
@@ -856,8 +856,8 @@ final class Analyzer {
             if let f = field, old.intersects(f) { c["s_old_bubble_over_field"] = (c["s_old_bubble_over_field"] ?? 0) + dt }
             if let k = caret, old.intersects(k.insetBy(dx: -40, dy: -20)) { c["s_old_bubble_over_caret"] = (c["s_old_bubble_over_caret"] ?? 0) + dt }
         }
-        // her eyes: on his cursor when it's near, on what changed when it's far, at him while
-        // she talks; and a glance within half a second at a new window, a new app, his voice
+        // her eyes: on their cursor when it's near, on what changed when it's far, at them while
+        // she talks; and a glance within half a second at a new window, a new app, their voice
         let eye = CGPoint(x: mid, y: y + h * 0.68)
         let free = (s["sleeping"] as! Bool) == false && !held && face.walk < 0.05 && face.act.isEmpty
             && face.hint != "typing" && face.hint != "wave" && !face.listening && vy == 0
@@ -894,14 +894,14 @@ final class Analyzer {
         let em = (s["emote"] as? String) ?? ""
         if !em.isEmpty && ((p["emote"] as? String) ?? "").isEmpty { c["emotes"] = (c["emotes"] ?? 0) + 1 }
         if (s["sleeping"] as! Bool) == false && t > 0 { c["lid_sum"] = (c["lid_sum"] ?? 0) + (s["lid"] as? Double ?? 0) * dt; c["s_awake"] = (c["s_awake"] ?? 0) + dt }
-        // 9f. over his full-screen picture (visible), and time out of sight
+        // 9f. over their full-screen picture (visible), and time out of sight
         let alpha = (s["alpha"] as? Double) ?? 1
         if alpha < 0.05 { c["s_hidden"] = (c["s_hidden"] ?? 0) + dt }
         if alpha > 0.5, let fw = windows.first, screens.contains(where: { $0.frame.insetBy(dx: -2, dy: -2).contains(fw) && fw.width >= $0.frame.width - 4 && fw.height >= $0.frame.height - 4 }),
            fw.intersects(me.insetBy(dx: 5, dy: 5)) {
             c["s_over_fullscreen"] = (c["s_over_fullscreen"] ?? 0) + dt
         }
-        // 10. under his cursor
+        // 10. under their cursor
         if me.contains(mouse) && !held { c["s_under_cursor"] = (c["s_under_cursor"] ?? 0) + dt }
         // 11. pose flicker: a pose held for under 0.4 s
         if let lp = p["_pose"] as? String, lp != pose { _ = lp }
@@ -928,14 +928,14 @@ final class Analyzer {
         curPose = pose; poseSince = t
     }
 
-    // MARK: how alive she looks to him (the same measures scripts/iris_journal_report.py takes from
+    // MARK: how alive she looks to them (the same measures scripts/iris_journal_report.py takes from
     // her real poses.jsonl)
     private var lifePose = ""
     private var lifeSince = 0.0
     private var lifePrev: (pose: String, held: Double)?   // the body before this one, and how long it held
     private var wokeAt: Double?                           // she last left sleep
     private var wasSleeping = false
-    private var lastStir = 0.0                            // last thing he could see her do (a body, a clip, a step, a hop)
+    private var lastStir = 0.0                            // last thing the person could see her do (a body, a clip, a step, a hop)
     /// The body as SpriteView draws it: a drawn clip is its own body; walking and standing are one rig.
     static func lifeBody(_ f: Face) -> String {
         if !f.act.isEmpty && !SpriteView.rigActs.contains(f.act) && Body.catalog[f.act] != nil { return "clip" }
@@ -949,7 +949,7 @@ final class Analyzer {
         if present {
             c["s_present"] = (c["s_present"] ?? 0) + dt
             if asleep { c["s_present_asleep"] = (c["s_present_asleep"] ?? 0) + dt }
-            // fishing is waiting for him gone, not him reading
+            // fishing is waiting for them gone, not them reading
             if face.act == "fishing" { c["s_present_fishing"] = (c["s_present_fishing"] ?? 0) + dt }
         }
         // out of sleep (her snore is a clip she sleeps through, not a wake)
@@ -978,7 +978,7 @@ final class Analyzer {
         }
         // walking, hopping or playing a clip is doing something the whole time it lasts
         if !face.act.isEmpty || moving { stir = true }
-        // (on her laptop her hands type along with his: that is doing something, not sitting and blinking)
+        // (on her laptop her hands type along with their: that is doing something, not sitting and blinking)
         if stir || !present || asleep || pose == "laptop" { lastStir = t }
         if present && !asleep { c["still_max_present_s"] = max(c["still_max_present_s"] ?? 0, t - lastStir) }
     }

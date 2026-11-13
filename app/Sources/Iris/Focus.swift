@@ -16,7 +16,7 @@ enum AXQuick {
     }
 }
 
-/// Where his attention is on screen right now: the text field he's typing in
+/// Where their attention is on screen right now: the text field they're typing in
 /// and, when the app tells us, the caret itself. Cocoa global coordinates
 /// (bottom-left origin). Read through Accessibility; Electron apps (VS Code,
 /// Discord, Slack) only expose their fields once asked (AXManualAccessibility).
@@ -56,9 +56,9 @@ enum Focus {
         return Seen(field: field, caret: caret, app: app.localizedName ?? "", role: roleV as? String ?? "")
     }
 
-    /// Where his keys go (Claude's output in his VS Code counted as his because he had just
-    /// typed, into Claude's message box): "terminal" (a shell: what follows is his command's
-    /// output), "editor" (code: what follows is his own), "chat" (a message box: he is asking
+    /// Where their keys go (Claude's output in their VS Code counted as their because the person had just
+    /// typed, into Claude's message box): "terminal" (a shell: what follows is their command's
+    /// output), "editor" (code: what follows is their own), "chat" (a message box: they are asking
     /// someone else, and the answer is theirs), "other" (any other field), "unknown" (Accessibility
     /// could not say). `why` names what decided it. `appName` reads that app instead of the front one.
     static func into(appName: String? = nil) -> (kind: String, why: String) {
@@ -93,7 +93,7 @@ enum Focus {
     /// One element of the focused field's chain, as kind(...) reads it: its DOM classes and its identifier.
     struct Node { var classes: Set<String>; var identifier: String }
 
-    /// Where his keys go, from what Accessibility said of the focused field and its ancestors (the field first)
+    /// Where their keys go, from what Accessibility said of the focused field and its ancestors (the field first)
     /// (pure, tested; into(appName) reads them).
     static func kind(bundle: String, appName: String, chain: [Node], description: String, roleDescription: String,
                      role: String) -> (kind: String, why: String) {
@@ -103,7 +103,7 @@ enum Focus {
         if classes.contains("xterm-helper-textarea") { return ("terminal", "xterm.js terminal") }
         // a message box: its own name says so (Discord 'Message #channel', Claude Code 'Message input',
         // Messages 'Message'), or it sits in a chat (Discord chat_…, Claude Code chatContainer_…,
-        // Messages MessageEntryView); Monaco editors inside a chat are its diffs, not his code
+        // Messages MessageEntryView); Monaco editors inside a chat are its diffs, not their code
         let desc = description.lowercased()
         if desc.hasPrefix("message") { return ("chat", "a field named '\(desc.prefix(40))'") }
         for (i, c) in chain.enumerated() {

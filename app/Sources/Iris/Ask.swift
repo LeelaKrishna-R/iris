@@ -48,7 +48,7 @@ final class AskBox: NSObject, NSTextFieldDelegate {
         p.makeFirstResponder(field)
     }
 
-    /// Where the box opens: just above his pointer, centred on it, kept 8 pt inside his screen (pure, tested).
+    /// Where the box opens: just above their pointer, centred on it, kept 8 pt inside their screen (pure, tested).
     nonisolated static func origin(mouse at: NSPoint, size: NSSize, visible vf: NSRect?) -> NSPoint {
         var origin = NSPoint(x: at.x - size.width / 2, y: at.y + 24)
         if let vf {
@@ -93,7 +93,7 @@ final class AskBox: NSObject, NSTextFieldDelegate {
 }
 
 /// A panel that takes typing although Iris is an accessory app, and closes
-/// when he clicks elsewhere.
+/// when the person clicks elsewhere.
 final class AskPanel: NSPanel {
     override var canBecomeKey: Bool { true }
     override func resignKey() { super.resignKey(); orderOut(nil) }

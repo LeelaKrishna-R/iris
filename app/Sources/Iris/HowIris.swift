@@ -84,7 +84,7 @@ enum HowIris {
         return ago <= fridayQuietS ? "\(Config.agentName): reaching me" : "\(Config.agentName): hasn't reached me for \(span(ago))"
     }
 
-    /// Her quiet hour ("make Iris quiet", Core's) or his do not disturb; nil when neither holds.
+    /// Her quiet hour ("make Iris quiet", Core's) or their do not disturb; nil when neither holds.
     static func quiet(_ core: [String: Any]?, fresh: Bool, now: Date) -> String? {
         guard fresh, let q = core?["quiet"] as? [String: Any] else { return "Quiet: unknown (no word from \(Config.agentName) lately)" }
         if let why = q["unread"] as? String { return "Quiet: unknown (\(why))" }

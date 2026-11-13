@@ -88,8 +88,8 @@ final class Bubble {
         max(18, min(width - 18, petMidX - originX)) / width
     }
 
-    /// Where her bubble goes: above her head, unless that covers what he's typing in (his field,
-    /// the caret's neighbourhood) — then shifted aside, beside her, or above his field; always on
+    /// Where her bubble goes: above her head, unless that covers what they're typing in (their field,
+    /// the caret's neighbourhood) — then shifted aside, beside her, or above their field; always on
     /// her screen. A pure function, so the simulator checks it too.
     nonisolated static func place(size: NSSize, pet: CGRect, screens: [Display], avoid: [CGRect]) -> CGPoint {
         let vis = (screens.first { $0.frame.intersects(pet) } ?? screens.first)?.visibleFrame ?? .infinite
@@ -104,7 +104,7 @@ final class Bubble {
             CGPoint(x: pet.minX - size.width + 24, y: pet.maxY - 70),         // beside her head, left
             CGPoint(x: pet.maxX - 24, y: pet.maxY - 70),                      // beside her head, right
         ]
-        for a in avoid { candidates.append(CGPoint(x: pet.midX - size.width / 2, y: a.maxY + 6)) }   // up over his field
+        for a in avoid { candidates.append(CGPoint(x: pet.midX - size.width / 2, y: a.maxY + 6)) }   // up over their field
         func overlap(_ o: CGPoint) -> CGFloat {
             let r = CGRect(origin: o, size: size)
             return avoid.reduce(0) { t, a in let i = r.intersection(a); return t + (i.isNull ? 0 : i.width * i.height) }

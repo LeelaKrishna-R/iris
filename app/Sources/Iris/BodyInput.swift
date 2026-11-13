@@ -1,9 +1,9 @@
 import AppKit
 
-// Iris's body — him, instantly (out of Body.swift): his keys, scrolls, clicks and app switches, each
-// answered inside the event that caused it, and what changed on his page.
+// Iris's body — them, instantly (out of Body.swift): their keys, scrolls, clicks and app switches, each
+// answered inside the event that caused it, and what changed on their page.
 extension Body {
-    // MARK: him, instantly
+    // MARK: them, instantly
 
     func event(_ e: NSEvent) {
         touched()
@@ -17,15 +17,15 @@ extension Body {
 
     /// Without Accessibility the global key monitor is silent; the system
     /// key counter still says a key went down (no code), checked every frame.
-    /// He touched a key, the wheel or a button: after two minutes away, that's him coming back.
+    /// He touched a key, the wheel or a button: after two minutes away, that's them coming back.
     func touched() {
-        // a key, scroll or click no hand made (another app posting events) is not him
+        // a key, scroll or click no hand made (another app posting events) is not them
         guard world.handsIdle < 5 else { return }
         let now = world.now
         let away = now.timeIntervalSince(lastInput)
         lastInput = now
-        screenWokeHer = 0                                    // he's here: his screens matter again
-        if performing == "doze" { performUntil = now }      // nodding off, his touch rouses her (no sleep after)
+        screenWokeHer = 0                                    // they're here: their screens matter again
+        if performing == "doze" { performUntil = now }      // nodding off, their touch rouses her (no sleep after)
         if away > 120 { bossBack(away: away); activeSince = now }
     }
 
@@ -33,7 +33,7 @@ extension Body {
     /// monitor: after a rebuild macOS can keep reporting Accessibility while the
     /// global monitor silently stops delivering keys ("iris isn't being
     /// responsive to me typing"). Any key the counter saw that the monitor didn't
-    /// is counted here, so his typing always reaches her.
+    /// is counted here, so their typing always reaches her.
     func keysFromCounter() {
         let k = world.keyCounter
         if k != keyCounter {
@@ -48,8 +48,8 @@ extension Body {
 
     func key(code: UInt16?, cmd: Bool = false) {
         let now = world.now
-        // his own shortcuts are moments of hers.
-        // ⌘S: he saved — a nod and a sparkle. ⌘Z three times in a few seconds: undo, undo, undo — a
+        // their own shortcuts are moments of hers.
+        // ⌘S: the person saved — a nod and a sparkle. ⌘Z three times in a few seconds: undo, undo, undo — a
         // little shake of her head. Each at most every 20 s, never asleep, held or mid-clip.
         if cmd, !sleeping, !held, performing.isEmpty, now.timeIntervalSince(shortcutAt) > 20 {
             if code == 1 {
@@ -72,7 +72,7 @@ extension Body {
         readInto(now)
         keyTimes.append(now)
         keyTimes.removeAll { now.timeIntervalSince($0) > 3 }
-        // her hands type along with his, one tap per key
+        // her hands type along with their, one tap per key
         typingHand.toggle()
         if typingHand { armL.kick(7); armR.kick(-3) } else { armR.kick(7); armL.kick(-3) }
         tilt.kick(CGFloat.rnd(-0.4...0.4))
@@ -86,7 +86,7 @@ extension Body {
             backspaces.append(now)
             backspaces.removeAll { now.timeIntervalSince($0) > 1.6 }
             if backspaces.count >= 5 && soul.feel(.backspaceBurst) > 0.3 {
-                // her wince only; a "…" bubble on half his backspace bursts (a coin) was a reaction to nothing he'd want noticed
+                // her wince only; a "…" bubble on half their backspace bursts (a coin) was a reaction to nothing the person'd want noticed
                 winceT = 0.5; sweatT = 1.6; backspaces.removeAll()
             }
         } else if code == 36 {
@@ -126,8 +126,8 @@ extension Body {
         appSwitched(name: app.localizedName ?? "")
     }
 
-    /// A new page or tab in the same app (his browsing): she glances up at it,
-    /// her mind hears what he opened, and a video tab is noticed at once.
+    /// A new page or tab in the same app (their browsing): she glances up at it,
+    /// her mind hears what the person opened, and a video tab is noticed at once.
     func pageChanged() {
         let app = world.frontApp ?? "", title = world.frontTitle ?? ""
         defer { lastPage = (app, title) }
@@ -158,11 +158,11 @@ extension Body {
     private func bossBack(away: Double) {
         events.append("the person just came back to the Mac")
         let k = soul.feel(.bossBack)
-        // the hop and the wave are for him really coming back; two or three minutes of reading
-        // without a touch is him still there, and gets only her eyes and a smile (a wave on
+        // the hop and the wave are for them really coming back; two or three minutes of reading
+        // without a touch is them still there, and gets only her eyes and a smile (a wave on
         // nearly every wake)
         // real log: back after 19, 9 and 9 minutes within an hour, three waves (13 in two hours):
-        // his activity acknowledged rarely. The wave is for a long absence, or his first return in an hour.
+        // their activity acknowledged rarely. The wave is for a long absence, or their first return in an hour.
         let greets = k > 0.25 && away >= Body.trulyAway
             && (away >= Body.longAway || world.now.timeIntervalSince(lastWaveAt) >= Body.waveEvery)
         trace?("boss_back", ["k": k, "was_sleeping": sleeping, "away": away, "greets": greets])
@@ -170,7 +170,7 @@ extension Body {
         if sleeping { wakeWhy = "the person came back to the Mac"; sleeping = false; wideT = 0.6; sit.target = 1 }
         guard k > 0.25 else { return }
         happyT = 1.6
-        lookToward(world.mouse, snap: 0.6)               // a look at where his hand came back
+        lookToward(world.mouse, snap: 0.6)               // a look at where their hand came back
         targetX = nil
         think(soon: 1.5)
         guard greets else { return }

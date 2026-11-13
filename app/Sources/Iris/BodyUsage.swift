@@ -1,9 +1,9 @@
 import AppKit
 
-// Iris's body — what he uses (out of Body.swift): the seconds he spends in each app and window, by day
+// Iris's body — what the person uses (out of Body.swift): the seconds the person spends in each app and window, by day
 // and hour, as she records them for Friday (her usage files).
 extension Body {
-    /// How he spends his day at the Mac: active seconds per front app (he typed,
+    /// How the person spends their day at the Mac: active seconds per front app (the person typed,
     /// clicked or moved the mouse in the last 2 minutes), saved under her own
     /// folder by day ("use-2026-10-11.json"), never leaving this Mac.
     func countUse(_ now: Date) {
@@ -11,7 +11,7 @@ extension Body {
         let step = min(10, now.timeIntervalSince(useCountedAt))
         useCountedAt = now
         // the system's own idle clock (any key, click, scroll or mouse move): lastInput starts at
-        // launch, so the two minutes after every launch were counted as his (00:00 install)
+        // launch, so the two minutes after every launch were counted as their (00:00 install)
         let idle = world is RealWorld
             ? CGEventSource.secondsSinceLastEventType(.hidSystemState, eventType: CGEventType(rawValue: ~0)!)
             : now.timeIntervalSince(lastInput)
@@ -25,7 +25,7 @@ extension Body {
             Body.pruneUse(before: Body.dayKey(now.addingTimeInterval(-60 * 86400)))
         }
         use[app, default: 0] += step
-        // what he was on, by the hour: the window's title with its app, so "what was I
+        // what they were on, by the hour: the window's title with its app, so "what was I
         // working on this afternoon" is the file or page, not just "Code"
         let hour = String(format: "%02d", Calendar.current.component(.hour, from: now))
         let title = String((world.frontTitle ?? "").prefix(120))
@@ -38,7 +38,7 @@ extension Body {
         }
     }
 
-    /// The day files older than 60 days go: his windows aren't kept forever.
+    /// The day files older than 60 days go: their windows aren't kept forever.
     static func pruneUse(before cutoff: String) {
         let names = (try? FileManager.default.contentsOfDirectory(atPath: Store.dir.path)) ?? []
         for n in names where n.hasPrefix("use-") || n.hasPrefix("work-") {
@@ -48,7 +48,7 @@ extension Body {
         }
     }
 
-    /// Her day: the calendar date on his clock, turning at midnight, as Core's days of hers do (core/iris_reflex._day_key
+    /// Her day: the calendar date on their clock, turning at midnight, as Core's days of hers do (core/iris_reflex._day_key
     /// says why).
     static func dayKey(_ d: Date) -> String {
         let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; f.timeZone = .current

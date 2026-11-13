@@ -33,7 +33,7 @@ extension Body {
          "boredom": soul.boredom, "affection": soul.affection, "his_idle": world.now.timeIntervalSince(lastInput)]
     }
 
-    /// Where she is on his screens (an approval card goes beside her, ApprovalCard).
+    /// Where she is on their screens (an approval card goes beside her, ApprovalCard).
     var frameOnScreen: CGRect { CGRect(x: x, y: y, width: Body.size.width, height: Body.size.height) }
 
     func state() -> [String: Any] {

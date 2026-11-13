@@ -1,7 +1,7 @@
 import AppKit
 
 // Iris's body — Friday through her (out of Body.swift): listening, waiting for and speaking Friday's
-// answers, what Friday's mind asks of her body, his shoos and calls, held poses and clips.
+// answers, what Friday's mind asks of her body, their shoos and calls, held poses and clips.
 extension Body {
     // MARK: Friday through her
 
@@ -40,7 +40,7 @@ extension Body {
         if performing == "think" || (waiting && performing == "tap_foot") { performUntil = world.now }   // her pose gives way to talking
     }
 
-    /// Friday's voice through her mouth (/mouth/play): she wakes if asleep, turns to him, and talks.
+    /// Friday's voice through her mouth (/mouth/play): she wakes if asleep, turns to them, and talks.
     func speaking(_ text: String, seconds: Double) {
         answerCame()
         _ = soul.feel(.fridaySpoke)
@@ -50,7 +50,7 @@ extension Body {
         trace?("speaking", ["seconds": seconds, "voiced": true])
     }
 
-    /// Friday's words shown without a voice (/mouth/show): the bubble, her face to him, and her lips
+    /// Friday's words shown without a voice (/mouth/show): the bubble, her face to them, and her lips
     /// moving for about as long as the words take to say (never the whole time the bubble stays up).
     func showing(_ text: String, seconds: Double) {
         answerCame()
@@ -63,13 +63,13 @@ extension Body {
     private func turnToHim() {
         if sleeping { wakeWhy = "\(Config.agentName) had something to tell them"; sleeping = false; sit.target = 1; wideT = 0.3 }
         lookAtHim()
-        lookUntil = .distantPast            // she keeps looking at him while she talks (attend)
+        lookUntil = .distantPast            // she keeps looking at them while she talks (attend)
         turn.kick(turn.target * 6)
         gazeMode = "him"
     }
 
-    /// A reminder or push from Friday just appeared (top right of his main screen): a glance up there,
-    /// and if he isn't busy, a tiny wave — never a fuss while he types or watches, nothing while asleep.
+    /// A reminder or push from Friday just appeared (top right of their main screen): a glance up there,
+    /// and if the person isn't busy, a tiny wave — never a fuss while the person types or watches, nothing while asleep.
     func notified(_ title: String) {
         notice("a notification came: " + title)
         toldTitles.append((title, world.now))                // a to-do it named is told already (dayCard)
@@ -78,7 +78,7 @@ extension Body {
         let main = world.screens.first { $0.frame.origin == .zero } ?? world.screens[0]
         lookToward(CGPoint(x: main.visibleFrame.maxX - 160, y: main.visibleFrame.maxY - 40), snap: 1)
         let busy = deepFocus || watchingVideo || world.now.timeIntervalSince(lastTyped) < 4
-        curiousT = busy ? 0.8 : 1.4; if !busy { show("!") }     // a look up there; waves are for his return
+        curiousT = busy ? 0.8 : 1.4; if !busy { show("!") }     // a look up there; waves are for their return
         trace?("notified", ["busy": busy])
     }
 
@@ -89,7 +89,7 @@ extension Body {
         bubbleUntil = world.now.addingTimeInterval(seconds + Double(text.count) * 0.03)
     }
 
-    /// What her bubble must not cover: his field and the area around his caret.
+    /// What her bubble must not cover: their field and the area around their caret.
     func bubbleAvoid() -> [CGRect] {
         [focusField?.insetBy(dx: -8, dy: -8), focusCaret?.insetBy(dx: -60, dy: -30)].compactMap { $0 }
     }
@@ -100,10 +100,10 @@ extension Body {
     /// on in her own time — never an order executed on the spot.
     func mind(want w: String, strength: Double, mood: [String: Double], say: String, face: String = "") {
         // Her body has the last word on safety, whatever her mind says (core already filters too):
-        // asleep, only a sleepy face; while he types, no words over his typing.
+        // asleep, only a sleepy face; while the person types, no words over their typing.
         let typingNow = world.now.timeIntervalSince(lastTyped) < 4
         let face = sleeping && face != "sleepy" ? "" : face
-        let say = typingNow || sleeping || callSince != nil ? "" : say      // and never a word over his call
+        let say = typingNow || sleeping || callSince != nil ? "" : say      // and never a word over their call
         trace?("mind", ["want": w, "face": face, "said": !say.isEmpty, "typing": typingNow])
         // what her mind feels shows on her face for a few seconds, on whatever pose she's in
         let hold = CGFloat.rnd(2.5...4.5)
@@ -133,16 +133,16 @@ extension Body {
     func shooed() {
         touch("shoo")
         soul.reward(-1)
-        // (UX audit #9): shooed while he works, she was in the way of his work
+        // (UX audit #9): shooed while the person works, she was in the way of their work
         if world.now.timeIntervalSince(lastTyped) < Body.workingS { soul.interrupted(1) }
-        // where he shooed her from is a spot she learns to keep off, as where he picked her up from (82 shoos
+        // where the person shooed her from is a spot she learns to keep off, as where the person picked her up from (82 shoos
         // lifetime, and only reactions within 20 s taught her anything; she went back to the same place)
         soul.feelPlace(x + Body.size.width / 2, y, -0.45)
         // QA: "go away" while she napped slid her 300 pt along the floor still lying asleep
         if sleeping { wakeWhy = "the person shooed her"; sleeping = false; sit.target = 0 }   // she gets up first, then walks off
         poutT = 2
         // she walks off sadly ("sad_walk", "sad, ignored") and sulks where she stops ("sulk", in
-        // bodyClips); which way is away from his cursor, or toward the room when that side has none (it was
+        // bodyClips); which way is away from their cursor, or toward the room when that side has none (it was
         // a coin toss)
         let scr = screenAt(x + Body.size.width / 2).visibleFrame
         let way = Stages.shooDirection(me: Double(x), cursor: Double(world.mouse.x), minX: Double(scr.minX),
@@ -159,8 +159,8 @@ extension Body {
         think(soon: Double(abs(to - x)) / 45 + 3)    // she finishes walking off (and sulks) before her next thought picks a place
     }
 
-    /// He called her over (core/iris_talk): "cursor" — beside his pointer — or
-    /// "other_screen" — the middle of his nearest other screen. She sets off at once, and
+    /// He called her over (core/iris_talk): "cursor" — beside their pointer — or
+    /// "other_screen" — the middle of their nearest other screen. She sets off at once, and
     /// her next thought waits until she has had time to get there. nil when she went;
     /// else why not ("held", "one_screen", "unknown_place").
     func come(_ to: String) -> String? {
@@ -179,7 +179,7 @@ extension Body {
                 .min(by: { abs($0.frame.midX - here.frame.midX) < abs($1.frame.midX - here.frame.midX) })
             else { return "one_screen" }
             tx = clampIn(there, there.visibleFrame.midX - w / 2)
-            hisScreenSince = world.now          // where he sent her is her place for a while
+            hisScreenSince = world.now          // where the person sent her is her place for a while
             placedAt = world.now
         default:
             return "unknown_place"
@@ -231,7 +231,7 @@ extension Body {
             m.addItem(withTitle: DayCard.shared.hidden ? "Show My Day" : "Hide My Day", action: #selector(Menu.day),
                       keyEquivalent: "").target = Menu.shared
         }
-        // she is out of screen shares unless he says so, for this launch only (Menu.screenShares)
+        // she is out of screen shares unless the person says so, for this launch only (Menu.screenShares)
         let shares = m.addItem(withTitle: "Show Me in Screen Shares", action: #selector(Menu.screenShares), keyEquivalent: "")
         shares.target = Menu.shared
         shares.state = Menu.shared.inScreenShares ? .on : .off
@@ -247,7 +247,7 @@ extension Body {
     /// a pose — "sit", "work" (her laptop), "wave", "sleep", "carry" (as if held by the mouse).
     func hold(_ seconds: Double, talk: Bool, pose: String = "") {
         targetX = nil
-        napUntil = .distantPast                 // Wake (a hold of its own) ends a nap he asked for
+        napUntil = .distantPast                 // Wake (a hold of its own) ends a nap the person asked for
         waveT = 0; held = false                 // a hold starts clean: no wave or carry left from the last one
         performing = ""
         performMoves = false
@@ -277,7 +277,7 @@ extension Body {
     }
 
     /// where she is (her feet's middle, her screen's index, a window top or the floor), on each line of her pose
-    /// journal (SpriteView) and his touches': so a replay can show where she settles and where he moved her from.
+    /// journal (SpriteView) and their touches': so a replay can show where she settles and where the person moved her from.
     static var lastPlace: [String: Any] = [:]
 
     var placeNow: [String: Any] {
@@ -298,8 +298,8 @@ extension Body {
 
     /// Perform a library animation for a while; the moving ones travel as they play.
     /// `own`: one of her own impulses (Body); otherwise asked from outside (her mind, /iris/act).
-    /// Friday just pressed or clicked something on his screen through her hands:
-    /// she glances at it and nods, so he can see who moved his mouse.
+    /// Friday just pressed or clicked something on their screen through her hands:
+    /// she glances at it and nods, so the person can see who moved their mouse.
     func usedHands(at p: CGPoint) {
         lookToward(p, snap: 0.9)
         perform("nod", seconds: 1.4, own: true, why: "\(Config.agentName) used the mouse through her hands")
@@ -311,7 +311,7 @@ extension Body {
         guard let e = Body.catalog[id] else { return }
         let rig = e["rig"] == "yes"
         if !own {
-            // her mind's moves never wake her, and never bounce about while he types, focuses or watches
+            // her mind's moves never wake her, and never bounce about while the person types, focuses or watches
             let quiet = deepFocus || watchingVideo || world.now.timeIntervalSince(lastTyped) < 4
             let refused = rig && (sleeping || (quiet && ["dance", "giggle"].contains(id)))
             trace?("mind_act", ["what": id, "refused": refused, "quiet": quiet, "asleep": sleeping])

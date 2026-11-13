@@ -160,7 +160,7 @@ final class RealWorld: World {
         return title as? String
     }
     // hardware keys only. The session's counter also counted keys other apps post, and one at 07:14
-    // (his last real input 05:51) had her wave "he came back after 83 min away" to an empty room.
+    // (his last real input 05:51) had her wave "the person came back after 83 min away" to an empty room.
     var keyCounter: UInt32 { CGEventSource.counterForEventType(.hidSystemState, eventType: .keyDown) }
     var handsIdle: Double {
         CGEventSource.secondsSinceLastEventType(.hidSystemState, eventType: CGEventType(rawValue: ~0)!)

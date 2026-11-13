@@ -7,7 +7,7 @@ extension Body {
         hovering = on
         // his look counts when he brought the cursor to her, not when she walked under a still one
         hoverSince = on && world.now.timeIntervalSince(cursorMovedAt) < 0.5 ? world.now : nil
-        if on { notice("he hovered his cursor over you") }
+        if on { notice("the person hovered their cursor over you") }
         if on && soul.feel(.hover) > 0.2 {
             catT = 1.2
             tilt.kick(Double.rnd(0...1) < 0.5 ? 1.2 : -1.2)
@@ -18,9 +18,9 @@ extension Body {
         touch("pet")
         _ = soul.feel(.petted)
         soul.reward(1)
-        notice("he petted you")
+        notice("the person petted you")
         soul.feelPlace(x + Body.size.width / 2, y, 0.3)
-        if sleeping { wakeWhy = "he petted her"; sleeping = false; sit.target = 1; wideT = 0.3 }
+        if sleeping { wakeWhy = "the person petted her"; sleeping = false; sit.target = 1; wideT = 0.3 }
         happyT = 1.4; giggleT = 0.9
         show("♥")
         blush.kick(4)
@@ -40,8 +40,8 @@ extension Body {
 
     /// A double-click on her: a polite bow, coming up smiling (the first click was a pet already).
     func doublePetted() {
-        notice("he double-clicked you")
-        if sleeping { wakeWhy = "he double-clicked her"; sleeping = false; sit.target = 1 }
+        notice("the person double-clicked you")
+        if sleeping { wakeWhy = "the person double-clicked her"; sleeping = false; sit.target = 1 }
         happyT = 2.2; giggleT = 0
         petTimes.removeAll()
         if hovering { hoverSince = world.now }
@@ -58,7 +58,7 @@ extension Body {
 
     func dragged(_ p: CGPoint) {
         if !held {
-            notice("he picked you up and moved you")
+            notice("the person picked you up and moved you")
             touch("drag")
             performing = ""; performMoves = false; fall = nil     // a clip stops when he picks her up
             flickTimes.removeAll()                                 // his cursor darting to grab her isn't play
@@ -101,7 +101,7 @@ extension Body {
         if let hs = hoverSince, now.timeIntervalSince(hs) >= 2, now >= touchUntil {
             hoverSince = nil                                    // once per hover
             if !held && !sleeping {
-                notice("he rested his cursor on you")
+                notice("the person rested their cursor on you")
                 let line = onHoverHint?()
                 trace?("touch", ["what": "hover", "clip": "hint", "said": line != nil, "air": vy != 0])
                 curiousT = max(curiousT, 1.2)
@@ -124,7 +124,7 @@ extension Body {
             lastChaseAt = now
             flickTimes.removeAll()
             face.flip = c.x < me.x                              // toward his cursor
-            notice("he played with you with his cursor")
+            notice("the person played with you with their cursor")
             soul.did("play")                      // a shoo or drag in the minute after teaches her playfulness
             touchClip(dist < 140 ? "pounce" : "chase", 2.6, "cursor_play")
         }

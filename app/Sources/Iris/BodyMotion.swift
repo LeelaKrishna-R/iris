@@ -78,7 +78,7 @@ extension Body {
                 if soul.feel(.dropped, 0.3) > 0.2 { wideT = 0.5 }
                 let scr = screenAt(x + w / 2)
                 let land = clampIn(scr, x + (x + w / 2 < scr.frame.midX ? 1 : -1) * 60)
-                leap(toX: land, toY: floorAt(land), crouch: 0.25, fromWindow: "his window went from under her")
+                leap(toX: land, toY: floorAt(land), crouch: 0.25, fromWindow: "their window went from under her")
             }
         }
         moved = false
@@ -149,7 +149,7 @@ extension Body {
             if onWindow, let on = standingOn, !(perchTop != nil && perchID == standingID && spans(on, t)) {
                 // leaving the window top: a hop down toward where she's going
                 let land = clampIn(cur, x + (t > x ? 1 : -1) * min(150, abs(t - x)))
-                leap(toX: land, toY: floorAt(land), crouch: 0.12, fromWindow: "jumping down from his window: " + walkWhy)
+                leap(toX: land, toY: floorAt(land), crouch: 0.12, fromWindow: "jumping down from their window: " + walkWhy)
             } else if !onWindow && dest.frame != cur.frame {
                 // another screen: to the edge of this one, whole, then across
                 let left = dest.frame.midX < cur.frame.midX

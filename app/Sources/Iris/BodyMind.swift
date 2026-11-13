@@ -43,7 +43,7 @@ extension Body {
         let now = world.now
         if sleeping {
             if now < napUntil { return }            // the nap he asked for (hold "sleep")
-            if idle < 3 { wake("his hands on the Mac") }
+            if idle < 3 { wake("their hands on the Mac") }
             // something happening on a screen wakes her too, him there or not —
             // when it keeps happening; a few seconds of change is a flicker. poses.jsonl
             // 06:01-12:31: away all morning, a busy Discord woke her 26 times, each a sit, a fishing stint
@@ -53,7 +53,7 @@ extension Body {
                 let needs = Body.screenWakeAfter * pow(2, Double(min(screenWokeHer, 6)))
                 if now.timeIntervalSince(since) >= needs {
                     screenWokeHer += 1
-                    wake(String(format: "his screen kept changing %.0f s (%@)", now.timeIntervalSince(since), world.frontApp ?? "a screen"))
+                    wake(String(format: "their screen kept changing %.0f s (%@)", now.timeIntervalSince(since), world.frontApp ?? "a screen"))
                 }
             }
             return
@@ -88,7 +88,7 @@ extension Body {
         }
         if performing == "doze" { return }          // nodding off: the doze decides what comes next
 
-        let pick = corner.map { Spot(x: $0, perch: nil, nearHim: false, why: world.callOn ? "corner: a call" : "corner: his film") }
+        let pick = corner.map { Spot(x: $0, perch: nil, nearHim: false, why: world.callOn ? "corner: a call" : "corner: their film") }
             ?? home.map { Spot(x: $0, perch: nil, nearHim: false, why: "home: nothing happening") }
             ?? choosePlace(typing: typing, idle: idle)
         let far = abs(pick.x - x)
@@ -110,16 +110,16 @@ extension Body {
         let meNow = CGRect(x: x, y: y, width: Body.size.width, height: Body.size.height)
         let otherScreen = screenAt(pick.x + Body.size.width / 2).frame != screenAt(x + Body.size.width / 2).frame
         // ( poses.jsonl 13:40-23:18, him away for hours: woken by a chat moving on a screen, she
-        // walked "to the screen he's working on", sat, walked "home", sat, walked off toward his
+        // walked "to the screen they're working on", sat, walked "home", sat, walked off toward his
         // cursor and home again, 44 home walks since noon. Away, his cursor is where he left it, not
         // him, and no screen is one he's working on: neither is a reason to walk.)
         let here = idle < Body.trulyAway
         let pull: String? = corner != nil || home != nil ? pick.why
-            : hurry || inTheWay(meNow) > 0.3 ? "out of his way"
+            : hurry || inTheWay(meNow) > 0.3 ? "out of their way"
             : targetX.map({ abs($0 - pick.x) < 1 }) == true ? walkWhy
-            : otherScreen && here ? "to the screen he's working on"
-            : attendX.map({ abs($0 - pick.x) < 60 }) == true ? "beside his front window"
-            : pick.nearHim && here && abs(meNow.midX - world.mouse.x) > 450 ? "closer to him"
+            : otherScreen && here ? "to the screen they're working on"
+            : attendX.map({ abs($0 - pick.x) < 60 }) == true ? "beside their front window"
+            : pick.nearHim && here && abs(meNow.midX - world.mouse.x) > 450 ? "closer to them"
             : ["explore", "give_space", "be_close"].contains(wanting.want) && wanting.k > 0.3 ? "her mind: \(wanting.want)"
             : nil
         if !stay, let pull, (far > 40 || (!atPerch && far > 0.5) || (pick.x == targetX && targetX != nil)) {
@@ -131,7 +131,7 @@ extension Body {
             if hurry { speed = max(speed, 240); hurry = false }    // in his way while he types: she scurries
             // poses.jsonl: 8 crossings to the screen he's working on took 13.4 of 60 min (a stroll across a
             // whole display); she runs there, a short trip, then she's with him
-            if pull == "to the screen he's working on" { speed = max(speed, Body.crossSpeed) }
+            if pull == "to the screen they're working on" { speed = max(speed, Body.crossSpeed) }
             // the action's pull is a stroll, never a dash: home and beside his window slowly,
             // out of a call's way a little quicker
             if corner != nil { speed = min(max(speed, 70), 110) }
@@ -168,9 +168,9 @@ extension Body {
                 // a calm moment, not mid-shake across her (sim 37); his mousing elsewhere is no shake (sim 54: a move
                 // every 1-3 s anywhere on the screen kept her standing 545-658 s)
                 let cursorCalm = world.now.timeIntervalSince(cursorNearMovedAt) > 2
-                let sitFor: String? = typedFor > 0 ? "keeping him company while he types"
-                    : watchingVideo ? "watching his video with him"
-                    : deepFocus ? "keeping him company while he focuses"
+                let sitFor: String? = typedFor > 0 ? "keeping them company while the person types"
+                    : watchingVideo ? "watching their video with them"
+                    : deepFocus ? "keeping them company while the person focuses"
                     : s.sleepiness > 0.45 ? String(format: "sleepy %.2f", s.sleepiness)
                     : ["watch", "rest", "work_along", "nap"].contains(w.want) && w.k > 0.3 ? "her mind: \(w.want)"
                     // (sim 28 lively browsing: standing 596 of 600 s): near him a few
@@ -183,7 +183,7 @@ extension Body {
                     // down. With him at the Mac she settles wherever his hand is (sim 53); with a video in front
                     // (his front app and title say so), only near his hand, so she isn't settled in front of it (sim 24)
                     : settleReady && cursorCalm
-                        ? "settled while he works"            // never over his work or what he's watching (sim 24)
+                        ? "settled while the person works"            // never over his work or what he's watching (sim 24)
                     : nil
                 sit.target = wasSitting || sitFor != nil ? 1 : 0
                 if sit.target > 0.5 && !wasSitting { satSince = world.now; restWhy = sitFor ?? "" }
@@ -191,7 +191,7 @@ extension Body {
                 // she gets her own laptop out and types along, key for key, every time (it was by dice,
                 // 8-20 s in, "never certain"); 20 s after he stops it goes away
                 let along = typedFor > typeAlongAfter
-                if along && !wasSitting { sit.target = 1; satSince = world.now; restWhy = "typing along with him" }
+                if along && !wasSitting { sit.target = 1; satSince = world.now; restWhy = "typing along with them" }
                 workingAlong = sit.target > 0.5 && (along || workingAlong && world.now.timeIntervalSince(lastTyped) < Body.typeAlongHoldS
                     || w.want == "work_along" && w.k > 0.5 && idle < 60)
                 // while he keeps typing she checks in again sooner; once he stops, the laptop goes away in time
@@ -495,7 +495,7 @@ extension Body {
     /// Nothing happening for this long and she goes to her favourite spot.
     static let homeAfter: Double = 600
 
-    // pose log: "typing along with him" 74 times in 3 h, in and out with every burst of keys
+    // pose log: "typing along with them" 74 times in 3 h, in and out with every burst of keys
     static let typeAlongAfterS: Double = 15     // his typing this long: her laptop comes out (was 4)
 
     static let typeAlongHoldS: Double = 90      // and goes away this long after his last key (was 20)
@@ -554,9 +554,9 @@ extension Body {
     static let noteSeconds: Double = 2.2
 
     /// The cause of each touch clip, in his terms.
-    static let touchWhy = ["pet": "he petted her", "pets": "he petted her again and again", "double_click": "he double-clicked her",
-                           "hover": "his cursor rested on her",
-                           "cursor_play": "his cursor darted past her again and again", "fall": "she fell when he let go of her"]
+    static let touchWhy = ["pet": "the person petted her", "pets": "the person petted her again and again", "double_click": "the person double-clicked her",
+                           "hover": "their cursor rested on her",
+                           "cursor_play": "their cursor darted past her again and again", "fall": "she fell when the person let go of her"]
 
     private var myScreenIndex: Int? {
         let mid = x + Body.size.width / 2

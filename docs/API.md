@@ -126,7 +126,7 @@ why: never as fine.
 | `POST /iris/usage` | `{"day": "YYYY-MM-DD"}` | Your active minutes per app that day, from her eyes |
 | `GET /eyes/focus` | none, or `?app=<name>` | Where your keyboard focus is: `{"app", "role", "field": [x, y, w, h], "caret": [x, y, w, h], "into", "why"}`, or `{"ok": false, "reason": "no_focus"}`. With `?app=`, only `{"into", "why"}`: where that app's keystrokes would land |
 | `POST /eyes/shot` | none | Screenshots every display, leaving her own window out, into `~/Pictures/Iris Screenshots`: `{"paths": [str]}`, or 500 `capture_failed` |
-| `GET /iris/events` | none | What she noticed since the last read, as plain sentences (`he just came back to the Mac`, `music started playing`, `he opened "…" in Safari`); reading empties the list |
+| `GET /iris/events` | none | What she noticed since the last read, as plain sentences (`the person just came back to the Mac`, `music started playing`, `the person opened "…" in Safari`); reading empties the list |
 
 ## Hands: not for agents by default
 

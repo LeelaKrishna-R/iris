@@ -40,7 +40,7 @@ enum Stages {
         guard walking, !inAir else { return "" }
         if shooed { return "sad_walk" }
         if walkWhy.hasPrefix("corner:") { return "tiptoe" }
-        if walkWhy == "to the screen he's working on" && left > (running ? runMinLeft : runStartLeft) {
+        if walkWhy == "to the screen they're working on" && left > (running ? runMinLeft : runStartLeft) {
             return "run"                                                     // a quick run over, not a stroll
         }
         return ""
@@ -53,7 +53,7 @@ enum Stages {
     /// - he has been away 5 minutes or more, nothing moving on his screens: "fishing" ("waiting,
     ///   patient"), waiting for him;
     /// - a quiet sit with him here (seated a minute, his hand on the Mac within awayFor, no keys for a
-    ///   minute): "read_book" ("quiet time while he works").
+    ///   minute): "read_book" ("quiet time while the person works").
     /// Never while she types along, watches his video, listens, talks, or is asleep; nil otherwise.
     static func seat(seated: Bool, onWindow: Bool, typingAlong: Bool, watchingVideo: Bool, asleep: Bool,
                      listening: Bool, talking: Bool, seatedFor: Double, hisIdle: Double, sinceKeys: Double,
@@ -67,15 +67,15 @@ enum Stages {
         if let note = noteFor, !callOn, sinceKeys >= 4, hisIdle < noteAtMacS {
             return Seat(clip: "sticky_note", why: "a note for you: " + note)
         }
-        if onWindow { return Seat(clip: "sit_legs", why: "sitting on top of his window") }
+        if onWindow { return Seat(clip: "sit_legs", why: "sitting on top of their window") }
         guard !watchingVideo, !callOn, !music else { return nil }
         // pose log 13:00-15:42: fishing held 0-90 s, 23 times in 3 h — a Discord line moving on his other
         // screen ended it and stillness began it again. Once she's fishing she waits until he's back.
         if fishing && hisIdle >= 30 {
-            return Seat(clip: "fishing", why: String(format: "waiting for him: away %.0f min", hisIdle / 60))
+            return Seat(clip: "fishing", why: String(format: "waiting for them: away %.0f min", hisIdle / 60))
         }
         if hisIdle >= awayFor && !screenMoving {
-            return Seat(clip: "fishing", why: String(format: "waiting for him: away %.0f min", hisIdle / 60))
+            return Seat(clip: "fishing", why: String(format: "waiting for them: away %.0f min", hisIdle / 60))
         }
         // sim 27 (him reading, no input for 30 s or more at a time): her book needed his hand in the last
         // 30 s, so she sat plainly for 783 of 900 s — the stare he sees. He's here until awayFor (then she fishes).
@@ -83,7 +83,7 @@ enum Stages {
         // sleepiness is 1.00, and her doze waits for 2 min of no input from him: plain sits of 2-5 min. Asleep is
         // already no seat (above), so a sleepy quiet sit with him here is her book too.
         if seatedFor >= quietSitFor && hisIdle < awayFor && sinceKeys >= 60 {
-            return Seat(clip: "read_book", why: String(format: "quiet time with him: seated %.0f min, no keys %.0f s",
+            return Seat(clip: "read_book", why: String(format: "quiet time with them: seated %.0f min, no keys %.0f s",
                                                        seatedFor / 60, min(sinceKeys, 3600)))
         }
         return nil
@@ -113,8 +113,8 @@ enum Stages {
         let away: Double = cursor > mid ? -1 : 1
         let roomAway = away < 0 ? me - minX : maxX - me
         let roomOther = away < 0 ? maxX - me : me - minX
-        if roomAway >= step / 2 || roomAway >= roomOther { return (away, "away from his cursor") }
-        return (-away, "toward the room on his cursor's side")
+        if roomAway >= step / 2 || roomAway >= roomOther { return (away, "away from their cursor") }
+        return (-away, "toward the room on their cursor's side")
     }
 
     /// Waiting on Friday's answer to him: thinking first, then foot-tapping ("tap_foot", "waiting,
@@ -198,11 +198,11 @@ enum Stages {
     /// A peek is up at most this long: it never stays on its own.
     static let peekMostS: Double = 60
 
-    /// Why a peek at his day card ends now ("he typed", "his pointer moved away", "a minute up"), or nil to keep it.
+    /// Why a peek at his day card ends now ("the person typed", "their pointer moved away", "a minute up"), or nil to keep it.
     /// `away`: how far his pointer is outside her frame and the card's (0 on either).
     static func peekEnds(shownFor: Double, typedSince: Bool, away: Double) -> String? {
-        if typedSince { return "he typed" }
-        if away >= peekAwayAt { return "his pointer moved away" }
+        if typedSince { return "the person typed" }
+        if away >= peekAwayAt { return "their pointer moved away" }
         if shownFor >= peekMostS { return "a minute up" }
         return nil
     }

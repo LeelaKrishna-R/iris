@@ -12,7 +12,7 @@ extension Body {
             // woken by her name she sits up and listens sitting (standing straight out of
             // sleep flashed a sitting frame for 0.08 s on the way up, the sim's 40_talking_to_her)
             listenSeated = sleeping
-            if sleeping { wakeWhy = "he said her name"; sleeping = false; wideT = 0.4 }
+            if sleeping { wakeWhy = "the person said her name"; sleeping = false; wideT = 0.4 }
             targetX = nil
             show("!")
         } else {
@@ -24,7 +24,7 @@ extension Body {
     func awaitingAnswer() {
         awaitingUntil = world.now.addingTimeInterval(8)
         awaitingSince = world.now
-        if sleeping { wakeWhy = "he asked \(Config.agentName) something"; sleeping = false; wideT = 0.4 }
+        if sleeping { wakeWhy = "the person asked \(Config.agentName) something"; sleeping = false; wideT = 0.4 }
         targetX = nil
         perform("think", seconds: 8, own: true, why: "waiting for \(Config.agentName)'s answer")
         trace?("awaiting", ["seconds": 8.0])
@@ -61,7 +61,7 @@ extension Body {
     }
 
     private func turnToHim() {
-        if sleeping { wakeWhy = "\(Config.agentName) had something to tell him"; sleeping = false; sit.target = 1; wideT = 0.3 }
+        if sleeping { wakeWhy = "\(Config.agentName) had something to tell them"; sleeping = false; sit.target = 1; wideT = 0.3 }
         lookAtHim()
         lookUntil = .distantPast            // she keeps looking at him while she talks (attend)
         turn.kick(turn.target * 6)
@@ -139,7 +139,7 @@ extension Body {
         // lifetime, and only reactions within 20 s taught her anything; she went back to the same place)
         soul.feelPlace(x + Body.size.width / 2, y, -0.45)
         // QA: "go away" while she napped slid her 300 pt along the floor still lying asleep
-        if sleeping { wakeWhy = "he shooed her"; sleeping = false; sit.target = 0 }   // she gets up first, then walks off
+        if sleeping { wakeWhy = "the person shooed her"; sleeping = false; sit.target = 0 }   // she gets up first, then walks off
         poutT = 2
         // she walks off sadly ("sad_walk", "sad, ignored") and sulks where she stops ("sulk", in
         // bodyClips); which way is away from his cursor, or toward the room when that side has none (it was
@@ -151,9 +151,9 @@ extension Body {
         let to = clampIn(screenAt(x + Body.size.width / 2), x + CGFloat(way.dir) * 300)
         targetX = to
         shooWalkTo = abs(to - x) >= 3 ? to : nil
-        walkWhy = "he told her to go away (" + way.why + ")"; walkSince = world.now
+        walkWhy = "the person told her to go away (" + way.why + ")"; walkSince = world.now
         trace?("walk", ["why": walkWhy, "to": Double(to)])
-        if shooWalkTo == nil { perform("sulk", seconds: 4, own: true, why: "he told her to go away") }   // nowhere to go: sulks here
+        if shooWalkTo == nil { perform("sulk", seconds: 4, own: true, why: "the person told her to go away") }   // nowhere to go: sulks here
         perchTop = nil
         speed = 45
         think(soon: Double(abs(to - x)) / 45 + 3)    // she finishes walking off (and sulks) before her next thought picks a place

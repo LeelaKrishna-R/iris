@@ -178,6 +178,24 @@ def neutral_person(text: str) -> str:
 _STRING = re.compile(r'"(?:[^"\\\n]|\\\([^"()]*(?:\([^"()]*\)[^"()]*)*\)|\\.)*"')
 
 
+# Inside her own sentences (what she logs as her reason, and the events agents read) "the person" reads badly twice in
+# one line, so the possessive is "their" there.
+STRING_PERSON = [(r"\bhis\b", "their")] + PERSON[1:]
+
+
+def person_in_strings(text: str) -> str:
+    """Her sentences were written about one man ("he petted her", "his cursor"); say them about whoever is at the Mac.
+    One-word literals are her state keys (gazeMode "him") and stay, as do code and comments."""
+    def one(m: re.Match) -> str:
+        lit = m.group(0)
+        if re.fullmatch(r'"\w+"', lit):
+            return lit
+        for old, new in STRING_PERSON:
+            lit = re.sub(old, new, lit)
+        return lit
+    return _STRING.sub(one, text)
+
+
 def agent_in_strings(text: str) -> str:
     """The upstream agent's name, where she shows or logs it (inside a string literal, capitalised), as whatever agent
     this Iris runs with (Config.agentName). Lowercase keys of Core's data ("friday") and code names stay as they are."""
@@ -311,7 +329,8 @@ def sync(src: Path, dst: Path) -> None:
         p = Path(f)
         if p.name in PUBLIC_ONLY:
             continue
-        p.write_text(scrub_comments(public_text(agent_in_strings(p.read_text(encoding="utf-8")))), encoding="utf-8")
+        p.write_text(scrub_comments(public_text(person_in_strings(agent_in_strings(p.read_text(encoding="utf-8"))))),
+                     encoding="utf-8")
     named = [f"{Path(f).name}:{i + 1}" for f in glob.glob(str(s_dst / "*.swift")) if Path(f).name not in PUBLIC_ONLY
              for i, ln in enumerate(Path(f).read_text(encoding="utf-8").split("\n")) if upstream_name_shown(ln)]
     if named:

@@ -54,7 +54,7 @@ extension Body {
         if cmd, !sleeping, !held, performing.isEmpty, now.timeIntervalSince(shortcutAt) > 20 {
             if code == 1 {
                 shortcutAt = now; sparkleT = 1.0
-                perform("nod", seconds: 1.6, own: true, why: "he saved")
+                perform("nod", seconds: 1.6, own: true, why: "the person saved")
             } else if code == 6 {
                 undos.append(now); undos.removeAll { now.timeIntervalSince($0) > 4 }
                 if undos.count >= 3 { shortcutAt = now; undos.removeAll(); perform("shake_head", seconds: 1.8, own: true, why: "undo, undo, undo") }
@@ -77,7 +77,7 @@ extension Body {
         if typingHand { armL.kick(7); armR.kick(-3) } else { armR.kick(7); armL.kick(-3) }
         tilt.kick(CGFloat.rnd(-0.4...0.4))
         _ = soul.feel(.key, 0.3)
-        if sleeping && keyTimes.count >= 3 { wake("his typing") }       // a few keys, not one brushed
+        if sleeping && keyTimes.count >= 3 { wake("their typing") }       // a few keys, not one brushed
         let rate = Double(keyTimes.count) / 3 * 60
         if rate > 300 && soul.feel(.fastTyping, 0.6) > 0.35 {
             sparkleT = 1.2
@@ -135,7 +135,7 @@ extension Body {
               app != (Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String ?? "Iris") else { return }
         if let w = world.frontWindow() { lookToward(CGPoint(x: w.midX, y: w.maxY - 60), snap: 0.7) }
         if soul.feel(.appSwitch, 0.4) > 0.5 { wideT = 0.25 }
-        events.append("he opened \"\(String(title.prefix(60)))\" in \(app)")
+        events.append("the person opened \"\(String(title.prefix(60)))\" in \(app)")
         think(soon: 0.5)
     }
 
@@ -156,7 +156,7 @@ extension Body {
     }
 
     private func bossBack(away: Double) {
-        events.append("he just came back to the Mac")
+        events.append("the person just came back to the Mac")
         let k = soul.feel(.bossBack)
         // the hop and the wave are for him really coming back; two or three minutes of reading
         // without a touch is him still there, and gets only her eyes and a smile (a wave on
@@ -167,7 +167,7 @@ extension Body {
             && (away >= Body.longAway || world.now.timeIntervalSince(lastWaveAt) >= Body.waveEvery)
         trace?("boss_back", ["k": k, "was_sleeping": sleeping, "away": away, "greets": greets])
         // what woke her is said in her journal (without it, "woke: <agent> asked" was all it said)
-        if sleeping { wakeWhy = "he came back to the Mac"; sleeping = false; wideT = 0.6; sit.target = 1 }
+        if sleeping { wakeWhy = "the person came back to the Mac"; sleeping = false; wideT = 0.6; sit.target = 1 }
         guard k > 0.25 else { return }
         happyT = 1.6
         lookToward(world.mouse, snap: 0.6)               // a look at where his hand came back
@@ -177,7 +177,7 @@ extension Body {
         hop(380 * CGFloat(min(1, k + 0.3)))
         waveT = 1.8
         lastWaveAt = world.now
-        waveWhy = String(format: "he came back after %.0f min away", away / 60)
+        waveWhy = String(format: "the person came back after %.0f min away", away / 60)
         trace?("act", ["what": "wave", "why": waveWhy])
         show("♪")                                        // was "!" or "♪" by a coin
     }

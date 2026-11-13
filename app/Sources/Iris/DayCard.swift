@@ -134,7 +134,7 @@ final class DayCard: NSObject {
             if let p = panel { p.setFrameOrigin(place(size: p.frame.size, near: near)) }
             return
         }
-        if peeking { unpeek("he clicked her again"); return }
+        if peeking { unpeek("the person clicked her again"); return }
         guard !rows.isEmpty else { log("day card: no rows yet to peek at"); return }
         peeking = true
         peekAt = Date()
@@ -185,7 +185,7 @@ final class DayCard: NSObject {
 
     /// ×: a peek closes (a click still peeks again); the pinned card unpins, and a click on her still peeks.
     @objc private func dismissed() {
-        if peeking { unpeek("he closed it"); return }
+        if peeking { unpeek("the person closed it"); return }
         UserDefaults.standard.set(true, forKey: DayCard.hiddenKey)
         close()
         log("day card: unpinned (a click on her still peeks)")

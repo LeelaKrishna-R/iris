@@ -280,7 +280,7 @@ final class SpriteView: SKView {
         }
         // a nod or a shake of her head is her head only, and her laptop pose has one: she nods over her
         // keys instead of putting the laptop away for a second and a half and taking it out again (sim 47 and
-        // poses.jsonl /29: typing -> sit -> typing for each "his typing stopped" nod). A dance still stands.
+        // poses.jsonl /29: typing -> sit -> typing for each "their typing stopped" nod). A dance still stands.
         if f.hint == "typing" && (!rigAct || SpriteView.headActs.contains(f.act)) { return "@typing" }
         if f.hint == "watching" || f.sit > (seatedNow ? 0.4 : 0.6) {
             // seated, a drawn clip says it better when its state holds (Stages.seat)

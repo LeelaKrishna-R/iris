@@ -6,7 +6,7 @@ extension Body {
     /// What happened since her mind last asked (it asks with every thought).
     func takeEvents() -> [String] { defer { events.removeAll() }; return events }
 
-    func toggleNap() { if sleeping { wake("he chose Wake") } else { fallAsleep("he chose Nap") } }
+    func toggleNap() { if sleeping { wake("the person chose Wake") } else { fallAsleep("the person chose Nap") } }
 
     /// The simulator puts her somewhere to start (on that screen's floor unless told).
     func simPlace(x px: CGFloat, y py: Double?) {

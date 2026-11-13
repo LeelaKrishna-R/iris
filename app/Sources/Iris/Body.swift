@@ -65,9 +65,9 @@ final class Body {
     var hovering = false
 
     // his hand on her: each touch plays the catalog
-    // clip whose "when" is that touch — giggle "he petted her", blow_kiss "affection",
-    // bow "thank you, greeting", shy "he looked at her for a long time", blush_hide
-    // "very embarrassed", getup "after falling", chase/pounce "chasing/catching his cursor"
+    // clip whose "when" is that touch — giggle "the person petted her", blow_kiss "affection",
+    // bow "thank you, greeting", shy "the person looked at her for a long time", blush_hide
+    // "very embarrassed", getup "after falling", chase/pounce "chasing/catching their cursor"
     var petTimes: [Date] = []              // pets in the last 20 s
     var hoverSince: Date?                  // his cursor resting on her since (once per hover)
     var flickTimes: [Date] = []            // fast passes of his cursor near her, last 8 s
@@ -80,7 +80,7 @@ final class Body {
 
     // what she knows about him right now
     // from his real last touch, not her launch. Started at launch, her 20:40 install made his 02:10
-    // return "he came back after 330 min away" when his hands had been idle since ~14:00.
+    // return "the person came back after 330 min away" when his hands had been idle since ~14:00.
     var lastInput = world.now.addingTimeInterval(-min(max(world.handsIdle, 0), 86_400))
     var keyTimes: [Date] = []
     var backspaces: [Date] = []
@@ -208,7 +208,7 @@ final class Body {
     func frame() {
         let now = world.now
         // never below 0. A wall clock stepping back made dt negative and settle()'s max(0, t - dt)
-        // brought every spent timer back for a frame: a wave "he came back after 678 min away" to an empty room.
+        // brought every spent timer back for a frame: a wave "the person came back after 678 min away" to an empty room.
         let dt = CGFloat(min(0.05, max(0, now.timeIntervalSince(lastTick))))
         lastTick = now
         clock += dt
@@ -229,7 +229,7 @@ final class Body {
             && dueToShow == nil {                  // a to-do come due waiting to be shown says more than a nod
             noddedFor = typingSince
             noddedAt = now
-            perform("nod", seconds: 1.4, own: true, why: String(format: "his typing stopped after %.0f s", burst))
+            perform("nod", seconds: 1.4, own: true, why: String(format: "their typing stopped after %.0f s", burst))
             ownMoment("typing_nod")
         }
         keysFromCounter()
@@ -294,14 +294,14 @@ final class Body {
         if riding && standingOn != nil && !held && !listening {
             if performing == "teeter" { performUntil = max(performUntil, now.addingTimeInterval(1)) }   // still moving: still wobbling
             else if performing.isEmpty || Body.catalog[performing]?["rig"] == "yes" {
-                perform("teeter", seconds: 1.6, own: true, why: "his window moved under her feet")
+                perform("teeter", seconds: 1.6, own: true, why: "their window moved under her feet")
             }
         }
         if let to = shooWalkTo {
             if targetX.map({ abs($0 - to) >= 1 }) == true || held { shooWalkTo = nil }      // another walk, or he picked her up
             else if targetX == nil && vy == 0 && launch == nil {
                 shooWalkTo = nil
-                perform("sulk", seconds: 4, own: true, why: "he told her to go away")
+                perform("sulk", seconds: 4, own: true, why: "the person told her to go away")
             }
         }
         if now < awaitingUntil && performing == "think"
@@ -319,14 +319,14 @@ final class Body {
             let alongFor = lastTyped.timeIntervalSince(since)
             // (a walk she just set off on waits for it, unless it's out of his way or to a corner for his call or film;
             // his carrying her, calling her over or shooing her ends the stretch she typed along, alongSince = nil)
-            let walkWaits = targetX == nil || (walkWhy != "out of his way" && !walkWhy.hasPrefix("corner"))
+            let walkWaits = targetX == nil || (walkWhy != "out of their way" && !walkWhy.hasPrefix("corner"))
             if Stages.stretches(alongFor: alongFor, keysRested: now.timeIntervalSince(lastTyped),
                                 sinceHerStretch: now.timeIntervalSince(herStretchAt), sinceFridayStretch: now.timeIntervalSince(fridayStretchAt)),
                walkWaits, !sleeping, !held, !listening, performing.isEmpty, vy == 0, launch == nil,
                now >= talkUntil, waveT <= 0, !watchingVideo, callSince == nil, now.timeIntervalSince(lastInput) < Stages.awayFor {
                 herStretchAt = now
                 perform("yoga", seconds: Body.yogaSeconds, own: true,
-                        why: String(format: "she typed along with him %.0f min and he stopped %.0f s ago", alongFor / 60,
+                        why: String(format: "she typed along with them %.0f min and the person stopped %.0f s ago", alongFor / 60,
                                     now.timeIntervalSince(lastTyped)))
             }
         }
@@ -341,7 +341,7 @@ final class Body {
                 noddedFor = typingSince              // in place of her nod at this stretch of his typing, not before it
                 let c = dayCardAt(d.card)
                 lookToward(CGPoint(x: c.midX, y: c.midY), snap: 1)
-                perform("sticky_note", seconds: Body.noteSeconds, own: true, why: "a to-do on his day card came due: " + d.title)
+                perform("sticky_note", seconds: Body.noteSeconds, own: true, why: "a to-do on their day card came due: " + d.title)
             }
         }
     }
@@ -362,7 +362,7 @@ final class Body {
         let noted = now.timeIntervalSince(fridayNoteAt) < Stages.alreadyToldWithin    // Friday's sticky note just played
         trace?("card_due", ["noted": noted, "asleep": sleeping])
         guard !noted else { return }
-        notice("a to-do on his day card came due: " + String(title.prefix(60)))
+        notice("a to-do on their day card came due: " + String(title.prefix(60)))
         dueToShow = (String(title.prefix(60)), now, card)
         if !sleeping && !held {
             let c = dayCardAt(card)
@@ -377,7 +377,7 @@ final class Body {
     func approvalAnswered(_ choice: String, what: String) {
         trace?("approval_answered", ["choice": choice, "asleep": sleeping])
         guard choice == "approve", !sleeping, !held, !listening, vy == 0 else { return }
-        perform("bow", seconds: 2.4, own: true, why: "he allowed \(Config.agentName)'s request: " + String(what.prefix(60)))
+        perform("bow", seconds: 2.4, own: true, why: "the person allowed \(Config.agentName)'s request: " + String(what.prefix(60)))
     }
 
     var lookUntil = Date.distantPast
@@ -395,7 +395,7 @@ final class Body {
 
     var myScreen: (id: UInt32, frame: CGRect)?
     /// poses.jsonl 09:03-09:08: she crossed between his screens every 1-2 min, back and forth, each time a
-    /// run "to the screen he's working on" (an invitation one way, out of his way the other). After a change of
+    /// run "to the screen they're working on" (an invitation one way, out of his way the other). After a change of
     /// screen she stays on the new one Body.crossGap before she crosses again of her own accord; carried or
     /// called over (Body.come) she goes at once as before.
     var crossedAt = Date.distantPast
@@ -492,7 +492,7 @@ final class Body {
     // a nap asked for (the agent's 60 s hold) used to end at the first touch of the mouse. A nap he
     // asked for holds until then; only his touch on her (touched) or Wake ends it sooner.
     var napUntil = Date.distantPast
-    // switching between apps, each with its text field somewhere else, sent her "out of his way" every
+    // switching between apps, each with its text field somewhere else, sent her "out of their way" every
     // minute or two: her clear spot for one field was in the way of the next.
     // Every field he used in the last 10 min counts when she picks where to be (inTheWayAt).
     var recentWays: [(CGRect, Date)] = []

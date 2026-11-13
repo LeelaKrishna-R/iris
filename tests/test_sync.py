@@ -115,6 +115,23 @@ def test_the_agent_name_in_her_words_is_the_configured_one():
         "guard let t = lastFridayContact else { return nil }"
 
 
+def test_her_sentences_are_about_whoever_is_at_the_mac():
+    from sync_from_friday import person_in_strings
+    assert person_in_strings('notice("he hovered his cursor over you")') == \
+        'notice("the person hovered their cursor over you")'
+    assert person_in_strings('events.append("he just came back to the Mac")') == \
+        'events.append("the person just came back to the Mac")'
+    assert person_in_strings('why: "he\'s carrying her"') == 'why: "they\'re carrying her"'
+    assert person_in_strings('String(format: "waiting for him: away %.0f min", hisIdle / 60)') == \
+        'String(format: "waiting for them: away %.0f min", hisIdle / 60)'
+
+
+def test_one_word_keys_and_code_stay():
+    from sync_from_friday import person_in_strings
+    line = 'if now < talkUntil { lookAtHim(); gazeMode = "him"; return }  // he looks'
+    assert person_in_strings(line) == line
+
+
 def test_a_leading_time_tag_goes():
     assert scrub_comments("        // 02:5x: after a power cut she crashed at launch") == \
         "        // after a power cut she crashed at launch"

@@ -211,12 +211,12 @@ extension Body {
         // performing keeps its own cause.
         // read here, once this frame's clip has ended or begun (above). Read before them, the frame her
         // wake_up began carried her last rest's cause (poses.jsonl "clip wake_up: woke: he came back
-        // to the Mac", idle_s 1695: his screen had woken her; "clip wake_up: settled while he
+        // to the Mac", idle_s 1695: their screen had woken her; "clip wake_up: settled while he
         // works"), and her stand after a clip carried the clip's.
         // "Why did you do that" is answered from that journal (core/iris_brains.why_asked).
-        f.why = held ? "he's carrying her" : listening ? "he's talking to her" : !performing.isEmpty ? actWhy
+        f.why = held ? "they're carrying her" : listening ? "they're talking to her" : !performing.isEmpty ? actWhy
             : now < talkUntil ? "\(Config.agentName) speaking through her" : sleeping ? sleepWhy : waveT > 0 ? waveWhy
-            : currentWalk > 0.05 ? walkWhy : workingAlong ? "typing along with him" : restWhy
+            : currentWalk > 0.05 ? walkWhy : workingAlong ? "typing along with them" : restWhy
         // deep asleep (Stages.deepSleepAfter): she snores, sitting up, instead of her sleep pose
         let snoring = performing.isEmpty && Stages.snoring(asleep: sleeping, asleepFor: now.timeIntervalSince(sleptAt))
         f.act = snoring ? "snore" : performing
@@ -294,7 +294,7 @@ extension Body {
         let bad = inTheWay(me)
         guard bad > 0.3 else { wayT = max(0, wayT - dt); return }
         wayT += dt
-        if sleeping { wake("in the way of his typing") }        // asleep on what he's typing in: she wakes and moves
+        if sleeping { wake("in the way of their typing") }        // asleep on what he's typing in: she wakes and moves
         soul.feelPlace(me.midX, me.minY, -0.6 * Double(dt) * bad)
         if wayT > 0.12 && targetX != nil && !inTheWayAt(targetX!) { speed = max(speed, 240) }   // crossing it: quickly
         if wayT > 0.12 && (targetX == nil || inTheWayAt(targetX!)) && now.timeIntervalSince(wayThoughtAt) > 1 {

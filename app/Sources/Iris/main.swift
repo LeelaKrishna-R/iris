@@ -50,7 +50,7 @@ final class App: NSObject, NSApplicationDelegate {
             self?.body.notePeeked()                 // a click on her is a look at what waited: her note cue ends
             if let f = self?.body.frameOnScreen { DayCard.shared.peek(near: f) }
         }
-        body.onDoublePetted = { DayCard.shared.unpeek("he double-clicked her") }
+        body.onDoublePetted = { DayCard.shared.unpeek("the person double-clicked her") }
         body.onHoverHint = { DayCard.shared.hint() }
         body.onDayCard = { [weak self] in if let f = self?.body.frameOnScreen { DayCard.shared.toggle(near: f) } }
         // "How Iris is" reads her ears and eyes when her menu opens; her settings act on them (an hour off, as
@@ -105,7 +105,7 @@ final class App: NSObject, NSApplicationDelegate {
     private func untaken(_ at: Date) {
         DispatchQueue.main.asyncAfter(deadline: .now() + Stages.askWaitS) { [weak self] in
             guard let self, self.ears.takeBack(at) else { return }
-            log("ears: \(Config.agentName) didn't take what he said in \(Int(Stages.askWaitS)) s; said so, and it's dropped")
+            log("ears: \(Config.agentName) didn't take what the person said in \(Int(Stages.askWaitS)) s; said so, and it's dropped")
             self.body.showing(Stages.fridayNotAnswering, seconds: 6)
         }
     }

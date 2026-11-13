@@ -17,5 +17,12 @@ please open an issue.
 `GET /health` (see [API.md](API.md)) includes a `permissions` object with `screen`, `accessibility` and
 `microphone`, each `true` or `false`, so an agent can tell what she can do before asking for it.
 
+## No microphone at all
+
+Separate from the permission: a Mac with no input device (a Mac mini with nothing plugged in, or a USB mic pulled
+out) gives her ears nothing to listen to. She doesn't stop or crash. Her ears' status in `GET /health` carries
+`"problem": "no_microphone"`, and she tries again every 10 seconds, so plugging a mic in brings her ears back
+without a restart. Changing audio devices while she runs restarts her ears on the new one.
+
 To change one later: System Settings → Privacy & Security → the permission's pane, then restart Iris. "Welcome…" in
 her menu shows the first-run explanations again.

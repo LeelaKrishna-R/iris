@@ -8,6 +8,7 @@
     iris listen [seconds]              prints what's said to her by name next (up to 25 s), or nothing
     iris busy                          exit 0 if you're on a call (Zoom, Meet, Discord with the mic in use, …), else 1
     iris ask [--wait 120] "Deploy?"    an Allow / Deny card beside her; exit 0 only if you click Allow in time
+    iris help                          this list
 
 Exit status: 0 done, 1 Iris said no (the reason is printed), 2 Iris isn't reachable, 64 usage.
 """
@@ -25,6 +26,8 @@ USAGE = __doc__.split("\n\n")[1]
 def run(argv: list[str]) -> tuple[int, str]:
     if not argv:
         return 64, USAGE
+    if argv[0] in ("help", "--help", "-h"):
+        return 0, USAGE                                   # asked for, so stdout and 0: `iris --help | less` works
     cmd, rest = argv[0], argv[1:]
     try:
         if cmd == "say" and rest:

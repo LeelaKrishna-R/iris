@@ -126,3 +126,12 @@ def test_ask_with_no_answer_is_a_no(iris, monkeypatch):
 def test_ask_usage(iris, argv):
     assert iris_cli.run(argv)[0] == 64
     assert iris == []
+
+
+@pytest.mark.parametrize("argv", [["help"], ["--help"], ["-h"]])
+def test_asking_for_help_is_not_an_error(argv, capsys):
+    assert iris_cli.run(argv) == (0, iris_cli.USAGE)
+    sys.argv = ["iris", *argv]
+    assert iris_cli.main() == 0
+    out = capsys.readouterr()
+    assert "iris say" in out.out and not out.err

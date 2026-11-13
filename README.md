@@ -100,6 +100,12 @@ python3 agents/voice_loop.py -- claude -p      # say "Iris, what's left on my to
 python3 agents/voice_loop.py -- codex exec     # or Codex, or any command that takes a prompt and prints a reply
 ```
 
+### Screen shares and recordings
+
+Iris and her speech bubble stay out of screen shares and recordings by default, so a call or a stream doesn't show
+her. To demo her, right-click her and pick **Show Me in Screen Shares**; it lasts until she quits and is never saved.
+Her day card (your agent's rows: bills, names, whatever it sends) stays out of shares either way.
+
 ## Roadmap
 
 1. **MCP server** for any agent: shipped (`agents/iris_mcp.py`, tests in `tests/`).

@@ -163,6 +163,7 @@ enum Sim {
         var asleepAt: [Double] = []          // frames' times she was asleep (sampled 1/s)
         var extra: [String: Double] = [:]
         var coming: (t: Double, x: Double)?    // "come here" / "other screen": when he asked, and where she set off for
+        var wokes: [(t: Double, why: String)] = []   // each wake and its cause (Body's "woke"), for her picture's wake_up rows
         body.trace = { kind, info in
             var e = info; e["t"] = (t * 100).rounded() / 100; e["kind"] = kind
             if kind == "window_left_her" { forcedHops += 1 }
@@ -187,6 +188,7 @@ enum Sim {
             if kind == "come", let x = info["x"] as? Double { extra["comes", default: 0] += 1; coming = (t, x) }   // he called her over
             // a wake with no cause of its own, journaled as the agent's ask
             if kind == "woke", (info["why"] as? String) == "woke: \(Config.agentName) asked" { extra["woke_friday_asked", default: 0] += 1 }
+            if kind == "woke", let why = info["why"] as? String { wokes.append((t, why)) }
             if kind == "notified" { extra[(info["busy"] as? Bool) == true ? "notices_busy" : "notices_cued", default: 0] += 1 }
             if kind == "act", let what = info["what"] as? String {
                 acts.append((t, what))
@@ -556,6 +558,29 @@ enum Sim {
             fs["view_clip_cuts"] = cuts
             fs["view_wake_snaps"] = wakeSnaps
             fs["view_laptop_away_back"] = laptopAway
+            // (poses.jsonl): the cause journaled with a pose is
+            // that pose's own. Her wake_up names what woke her (Body's "woke", within half a second), not her last
+            // rest's cause; her stand or sit after a clip Friday asked for doesn't carry that clip's cause.
+            var wakeUps = 0.0, wakeWrong = 0.0, restAsClip = 0.0
+            for r in rows {
+                let to = r["to"] as? String ?? "", why = r["why"] as? String ?? ""
+                let at = (r["at"] as? Double ?? t0) - t0
+                if to == "@wake_up" {
+                    wakeUps += 1
+                    if let c = wokes.min(by: { abs($0.t - at) < abs($1.t - at) }), abs(c.t - at) < 0.5,
+                       why != "clip wake_up: " + c.why {
+                        wakeWrong += 1
+                        if viewNotes.count < 60 { viewNotes.append(String(format: "%7.2fs VIEW WAKE CAUSE \"%@\", woken by \"%@\"", at, why, c.why)) }
+                    }
+                }
+                if ["@idle", "@sit"].contains(to), why.hasPrefix("standing: \(Config.agentName): ") || why.hasPrefix("sitting: \(Config.agentName): ") {
+                    restAsClip += 1
+                    if viewNotes.count < 60 { viewNotes.append(String(format: "%7.2fs VIEW REST NAMED FOR A CLIP \"%@\"", at, why)) }
+                }
+            }
+            fs["view_wake_ups"] = wakeUps
+            fs["view_wake_wrong_cause"] = wakeWrong
+            fs["view_rest_named_for_clip"] = restAsClip
         }
         // how alive and how varied: entropy of what she did, the most common share, irregular gaps
         if !acts.isEmpty {
@@ -816,6 +841,8 @@ final class Analyzer {
             c["s_talking"] = (c["s_talking"] ?? 0) + dt
             let dxh = hand.x - mid
             if abs(dxh) < 120 || (face.turn > 0.05) == (dxh > 0) { c["s_talking_facing_him"] = (c["s_talking_facing_him"] ?? 0) + dt }
+            // never her thinking pose under her voice (its pursed mouth is drawn over her visemes)
+            if (s["act"] as? String) == "think" { c["s_talking_thinking"] = (c["s_talking_thinking"] ?? 0) + dt }
         }
         if let b = s["bubble"] as? [Double], b.count == 4 {
             let r = CGRect(x: b[0], y: b[1], width: b[2], height: b[3])

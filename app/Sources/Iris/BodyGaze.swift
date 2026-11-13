@@ -166,14 +166,7 @@ extension Body {
         f.mouthOpen = f.talking ? (sin(Double(clock) * 9 + sin(Double(clock) * 2.3) * 2) > -0.1 ? 1 : 0) : 0
         f.hint = waveT > 0 ? "wave" : workingAlong ? "typing" :
             (watchingVideo && sit.target > 0.5 ? "watching" : (curiousT > 0 ? "curious" : ""))
-        // the cause of what she's doing, in the world (poses.jsonl's why)
-        // pose log: chase (his cursor flicking past her), sunset_watch, syntax_sparkles were logged
-        // "\(Config.agentName) speaking through her" because talking outranked the clip's own cause; a clip she is
-        // performing keeps its own cause.
         Body.lastPlace = placeNow                // for her pose journal's "where"
-        f.why = held ? "he's carrying her" : listening ? "he's talking to her" : !performing.isEmpty ? actWhy
-            : now < talkUntil ? "\(Config.agentName) speaking through her" : sleeping ? sleepWhy : waveT > 0 ? waveWhy
-            : currentWalk > 0.05 ? walkWhy : workingAlong ? "typing along with him" : restWhy
         f.hairSway = hairSway.value
         f.keys = keyCount
         // eyes: where she's looking, with the tiny darting movements real eyes make
@@ -212,6 +205,18 @@ extension Body {
                 sit.target = 1                       // she sits up out of it; standing is a choice for later
             }
         }
+        // the cause of what she's doing, in the world (poses.jsonl's why)
+        // pose log: chase (his cursor flicking past her), sunset_watch, syntax_sparkles were logged
+        // "\(Config.agentName) speaking through her" because talking outranked the clip's own cause; a clip she is
+        // performing keeps its own cause.
+        // read here, once this frame's clip has ended or begun (above). Read before them, the frame her
+        // wake_up began carried her last rest's cause (poses.jsonl "clip wake_up: woke: he came back
+        // to the Mac", idle_s 1695: his screen had woken her; "clip wake_up: settled while he
+        // works"), and her stand after a clip carried the clip's.
+        // "Why did you do that" is answered from that journal (core/iris_brains.why_asked).
+        f.why = held ? "he's carrying her" : listening ? "he's talking to her" : !performing.isEmpty ? actWhy
+            : now < talkUntil ? "\(Config.agentName) speaking through her" : sleeping ? sleepWhy : waveT > 0 ? waveWhy
+            : currentWalk > 0.05 ? walkWhy : workingAlong ? "typing along with him" : restWhy
         // deep asleep (Stages.deepSleepAfter): she snores, sitting up, instead of her sleep pose
         let snoring = performing.isEmpty && Stages.snoring(asleep: sleeping, asleepFor: now.timeIntervalSince(sleptAt))
         f.act = snoring ? "snore" : performing

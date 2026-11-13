@@ -171,8 +171,9 @@ final class DayCard: NSObject {
         }
     }
 
-    /// Her one line for his pointer resting on her (Stages.hoverHint), from these rows; nil before there are any.
-    func hint() -> String? { Stages.hoverHint(rows: rows.map { (key: $0.key, head: $0.head, text: $0.text, off: $0.off) }) }
+    /// Her one line for his pointer resting on her (Stages.hoverHint), from these rows; nil before there are any, and
+    /// while the card is on his screen (a peek, or pinned): it says the same line itself.
+    func hint() -> String? { Stages.hoverHint(rows: rows.map { (key: $0.key, head: $0.head, text: $0.text, off: $0.off) }, cardUp: panel != nil) }
 
     /// Show My Day / Hide My Day, from her menu.
     func toggle(near: CGRect) {

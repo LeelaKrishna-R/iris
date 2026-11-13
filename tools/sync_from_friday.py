@@ -79,12 +79,14 @@ def _edit_any(paths: list, *edits) -> None:
 _MD = r"(?:[1-9]|1[0-2])-[0-3]\d(?![\w%-])"
 _DATE = (r"(?<![\w:.-])" + _MD + r"(?:(?:\.\.|\s+to\s+)" + _MD + r")?(?:\s+\d{1,2}:\d{2}(?::\d{2})?)?"
          r"(?!\s*(?:s|ms|min|minutes?|seconds?|px|pt|h|hours?)\b)")
+_TIME_TAG = r"^\d{1,2}:\d[\dx](?::\d{2})?:\s+"                                    # "02:5x: ..." a diary time
 _OWNER = r"\bowner:?\s*(?:\"[^\"]*\"|(?=[,;)]|$))"                             # owner "mostly staring" / owner:
 
 
 def _undated(s: str) -> str:
     """s without its diary dates and the first user's quotes, its punctuation tidied."""
     s = re.sub(_OWNER, "", s)
+    s = re.sub(_TIME_TAG, "", s)
     s = re.sub(r"\bowner\s+(?=" + _DATE + ")", "", s)
     s = re.sub(_DATE + r"(?:\s+[a-z][\w-]*)?\s*:\s+", "", s)                 # "10-26 sim: ..."
     s = re.sub(_DATE, "", s)
@@ -107,7 +109,7 @@ def _paren(m: re.Match) -> str:
 
 
 def _scrub_note(body: str) -> str:
-    if not re.search(r"\bowner\b|" + _DATE, body):
+    if not re.search(r"\bowner\b|" + _DATE, body) and not re.match(_TIME_TAG, body):
         return body
     new = re.sub(r"\s*\(([^()]*)\)", lambda m: (" " if m.group(0)[0].isspace() else "") + _paren(m)
                  if _paren(m) else "", body)                                   # "(10-26, owner: ...)"
@@ -211,7 +213,8 @@ def sync(src: Path, dst: Path) -> None:
           (r"(NSScreenCaptureUsageDescription</key><string>)[^<]*", r"\1Iris looks at your screens to react to what you're doing (and, if you allow it, to tell your agent).", True))
     _edit(s_dst / "HerName.swift",
           (r"static let wakeWords = \[[^\]]*\]", "static var wakeWords: [String] { Config.wakeWords }", True),
-          ("for pat in [misheardName, misheardFriday] {",
+          # "Siri" heard as her name stays upstream's: someone else's "Hey Siri" is usually for Siri.
+          ("for pat in [misheardName, misheardFriday, misheardIris] {",
            'for pat in [misheardName] + (wakeWords.contains("friday") ? [misheardFriday] : []) {'))
     _edit(s_dst / "Ears.swift",
           (r"static let words = \[.*?\]\n",
@@ -219,8 +222,8 @@ def sync(src: Path, dst: Path) -> None:
            '        return names + names.flatMap { ["hey \\\\($0)", "okay \\\\($0)"] }\n'
            '            + ["what did I miss", "remind me", "come here", "go away", "be quiet", "go to sleep", "wake up", "dance", "sit"]\n'
            '    }\n', True),
-          ("low.range(of: HerName.misheardFriday, options: .regularExpression) != nil",
-           '(HerName.wakeWords.contains("friday") ? low.range(of: HerName.misheardFriday, options: .regularExpression) : nil) != nil'))
+          ('        // 11-11: and "Hey Iris" as "Hey Siri"; every mishearing her name knows (HerName.misheard)\n',
+           "        // every mishearing her name knows, for the wake words set (HerName.misheard)\n"))
     _edit(s_dst / "Ask.swift", ('f.placeholderString = "Ask Friday…"', 'f.placeholderString = "Ask \\(Config.agentName)…"'),
           ('f.setAccessibilityLabel("Ask Friday")', 'f.setAccessibilityLabel("Ask \\(Config.agentName)")'))
     _edit(s_dst / "Store.swift",

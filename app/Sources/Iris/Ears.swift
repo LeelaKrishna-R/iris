@@ -123,8 +123,9 @@ final class Ears: @unchecked Sendable {
         guard let rec = recognizer, rec.isAvailable else { problem = "recognizer_unavailable"; retry(); return }
         let input = engine.inputNode
         let fmt = input.outputFormat(forBus: 0)
-        // With no mic attached the node can report a rate and no channels; installTap on that raises an
-        // Objective-C exception Swift can't catch, so she'd crash at launch instead of running without ears.
+        // 02:5x: after a power cut the Mac came back with no microphone and she crashed at launch every 10 s:
+        // installTap on a format with no channels, or one whose rate isn't the hardware's, raises an Objective-C
+        // exception Swift can't catch. No such tap: "no_microphone", and she retries, alive, without ears.
         let hw = input.inputFormat(forBus: 0)
         guard fmt.sampleRate > 0, fmt.channelCount > 0, hw.channelCount > 0, hw.sampleRate == fmt.sampleRate else {
             problem = "no_microphone"; retry(); return
@@ -370,7 +371,8 @@ final class Ears: @unchecked Sendable {
         // the recognizer hears "Iris" as "I was" / "I will" ("Iris come here" → "I was come here"
         // in every on-device run of the bench; "I was" reached Friday as a fragment). At the start of
         // what he says and followed by one of her commands, that is her name.
-        if low.range(of: HerName.misheardName, options: .regularExpression) ?? (HerName.wakeWords.contains("friday") ? low.range(of: HerName.misheardFriday, options: .regularExpression) : nil) != nil,
+        // every mishearing her name knows, for the wake words set (HerName.misheard)
+        if HerName.misheard(low) != nil,
            !talking || ownLine.isEmpty {
             addressed = true; followUpWake = false
             wokeAt = Date()
@@ -560,13 +562,26 @@ final class Ears: @unchecked Sendable {
 
     /// Typed to her (her menu's "Ask \(Config.agentName)…"): meant for Friday, as if
     /// said with her name; Core answers it in her bubble, not out loud.
-    func typed(_ text: String) {
+    /// When it was queued (for takeBack); nil when there was nothing to send.
+    @discardableResult
+    func typed(_ text: String) -> Date? {
         let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !t.isEmpty else { return }
+        guard !t.isEmpty else { return nil }
         let heard = Heard(text: String(t.prefix(1000)), at: Date(), addressed: true, typed: true)
         Store.append(["at": heard.at.timeIntervalSince1970, "text": heard.text, "addressed": true, "typed": true],
                      to: "ears.jsonl")
         push(heard)
+        return heard.at
+    }
+
+    /// the ask queued at `at`, taken back when Friday hasn't taken it (Stages.askWaitS): true when it was
+    /// still waiting here (it leaves the queue), false when a poll of Friday's already has it.
+    func takeBack(_ at: Date) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        guard let i = queue.firstIndex(where: { $0.at == at }) else { return false }
+        queue.remove(at: i)
+        return true
     }
 
     /// "Stop listening" for `seconds`: no recognizer, the mic engine stopped (not just ignored), then back on.

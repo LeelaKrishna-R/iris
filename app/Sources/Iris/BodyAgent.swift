@@ -31,9 +31,13 @@ extension Body {
     }
 
     private func answerCame() {
-        guard world.now < awaitingUntil else { return }
+        // her thinking pose gives way to her voice whenever it comes, not only inside her own 8 s wait. Core
+        // keeps the pose on while a slow answer comes (core/iris_brains since, core/iris_answer._think_while), and
+        // past 8 s she spoke through pursed lips with her eyes away (SpriteView's "think" sets her mouth after her
+        // visemes) for as long as the pose had left.
+        let waiting = world.now < awaitingUntil
         awaitingUntil = .distantPast
-        if performing == "think" || performing == "tap_foot" { performUntil = world.now }   // her pose gives way to talking
+        if performing == "think" || (waiting && performing == "tap_foot") { performUntil = world.now }   // her pose gives way to talking
     }
 
     /// Friday's voice through her mouth (/mouth/play): she wakes if asleep, turns to him, and talks.
@@ -227,7 +231,7 @@ extension Body {
             m.addItem(withTitle: DayCard.shared.hidden ? "Show My Day" : "Hide My Day", action: #selector(Menu.day),
                       keyEquivalent: "").target = Menu.shared
         }
-        // out of screen shares unless you say so, for this launch only (Menu.screenShares)
+        // she is out of screen shares unless he says so, for this launch only (Menu.screenShares)
         let shares = m.addItem(withTitle: "Show Me in Screen Shares", action: #selector(Menu.screenShares), keyEquivalent: "")
         shares.target = Menu.shared
         shares.state = Menu.shared.inScreenShares ? .on : .off

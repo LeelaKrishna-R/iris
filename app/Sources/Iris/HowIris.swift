@@ -57,7 +57,7 @@ enum HowIris {
     static func cents(_ c: Double) -> String { String(format: "%.1f¢", c) }
 
     /// Core's word on her voice: {next: "friday" | "free", why_free, last: {voice: friday|kokoro|mac}, spent_cents
-    /// (nil when today's count can't be read), cap_cents}.
+    /// (nil when today's count can't be read), cap_cents, free: "kokoro" | "mac" (nil when not asked)}.
     static func voice(_ core: [String: Any]?, fresh: Bool) -> String {
         guard fresh, let v = core?["voice"] as? [String: Any] else { return "Voice: unknown (no word from \(Config.agentName) lately)" }
         let cap = v["cap_cents"] as? Double ?? 10
@@ -67,9 +67,15 @@ enum HowIris {
         let last = (v["last"] as? [String: Any])?["voice"] as? String
         let lastSaid = ["friday": "\(Config.agentName)'s voice", "kokoro": "Kokoro", "mac": "the Mac voice"][last ?? ""]
             .map { "; her last line here: \($0)" } ?? ""
-        if v["next"] as? String == "friday" { return "Voice: \(Config.agentName)'s voice\(lastSaid) · \(spend)" }
+        // Core asks her own voice server's /health with each status (core/iris_voice._fallback_up) and says which
+        // voice her free one would be: "mac" when it isn't answering (it had been down a week, unsaid)
+        let ownDown = v["free"] as? String == "mac"
+        if v["next"] as? String == "friday" {
+            return "Voice: \(Config.agentName)'s voice\(lastSaid)\(ownDown ? "; her own voice isn't running" : "") · \(spend)"
+        }
         let why = (v["why_free"] as? String).map { " (\(Config.agentName)'s voice: \($0))" } ?? ""
-        return "Voice: her free voice\(why)\(lastSaid) · \(spend)"
+        let free = ownDown ? "the Mac voice, her own isn't running" : "her free voice"
+        return "Voice: \(free)\(why)\(lastSaid) · \(spend)"
     }
 
     static func friday(lastContact: Date?, now: Date) -> String {

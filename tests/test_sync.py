@@ -113,3 +113,10 @@ def test_the_agent_name_in_her_words_is_the_configured_one():
     assert agent_in_strings('let x = ["friday": "Friday\'s voice"]') == 'let x = ["friday": "\\(Config.agentName)\'s voice"]'
     assert agent_in_strings("guard let t = lastFridayContact else { return nil }") == \
         "guard let t = lastFridayContact else { return nil }"
+
+
+def test_a_leading_time_tag_goes():
+    assert scrub_comments("        // 02:5x: after a power cut she crashed at launch") == \
+        "        // after a power cut she crashed at launch"
+    assert scrub_comments("        // 14:05: the tap failed") == "        // the tap failed"
+    assert scrub_comments("    let t = 3   // waits 02:30 at most") == "    let t = 3   // waits 02:30 at most"

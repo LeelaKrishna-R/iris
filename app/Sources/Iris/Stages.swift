@@ -182,6 +182,15 @@ enum Stages {
         return nil
     }
 
+    // MARK: an ask Friday didn't take
+
+    /// What he said to her (or typed) waits in her for Friday's next poll (core/iris_answer._loop asks /ears/next
+    /// again the moment the last one ends), so with Friday up it is taken within moments. Still in her queue after
+    /// this long (her 8 s of thinking, Body.awaitingAnswer), Friday isn't taking her words: she says so, and the ask
+    /// leaves the queue (Ears.takeBack), so it isn't answered aloud whenever Friday comes back.
+    static let askWaitS: Double = 8
+    static let fridayNotAnswering = "\(Config.agentName) isn't answering me right now."
+
     // MARK: her day card on demand
 
     /// His pointer this far outside her and the card is "well away": the peek goes.
@@ -201,9 +210,10 @@ enum Stages {
     /// The one line her bubble says when his pointer rests on her: from the card's own rows (core/iris_day_card),
     /// never a read of its own. The next thing today ("Next: Dentist at 2:00 PM"); with nothing next, what was kept
     /// for him ("3 kept for you"), else the top line as it is ("Nothing else today", or what couldn't be read). Nil
-    /// before the card has rows.
-    static func hoverHint(rows: [(key: String, head: String, text: String, off: Bool)]) -> String? {
-        guard let top = rows.first(where: { $0.key == "glance" }) else { return nil }
+    /// before the card has rows, and while the card itself is up beside her (`cardUp`): a click on her peeks
+    /// at it and leaves his pointer resting on her, and 2 s later her bubble said the card's own top line again.
+    static func hoverHint(rows: [(key: String, head: String, text: String, off: Bool)], cardUp: Bool = false) -> String? {
+        guard !cardUp, let top = rows.first(where: { $0.key == "glance" }) else { return nil }
         let first = String(top.text.split(separator: "\n").first ?? "").trimmingCharacters(in: .whitespaces)
         let plain = first.hasSuffix(".") ? String(first.dropLast()) : first
         if !top.off && !plain.isEmpty && plain != "Nothing else today" { return "Next: " + plain }

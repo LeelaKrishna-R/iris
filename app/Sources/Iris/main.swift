@@ -38,6 +38,7 @@ final class App: NSObject, NSApplicationDelegate {
         ears.onHeard = { [weak self] h in
             self?.body.bubble?.say("“\(h.text)”", for: 4)
             self?.body.awaitingAnswer()          // her thinking pose at once, not after Core's round trip
+            self?.untaken(h.at)
         }
         ears.onDone = { [weak self] in self?.body.setListening(false); self?.mouth.uncut() }
         ears.onVoice = { [weak self] in self?.body.heardVoice() }
@@ -76,8 +77,9 @@ final class App: NSObject, NSApplicationDelegate {
         ApprovalCard.shared.onDecided = { [weak self] choice, what in self?.body.approvalAnswered(choice, what: what) }
         body.onAsk = { [weak self] in
             AskBox.shared.show { text in
-                self?.ears.typed(text)
+                let at = self?.ears.typed(text)
                 self?.body.bubble?.say("“\(text)”", for: 4)
+                if let at { self?.untaken(at) }
             }
         }
         AskHotKey.register({ [weak self] in self?.body.onAsk?() }, talk: { [weak self] in self?.ears.listenNow() })
@@ -95,6 +97,17 @@ final class App: NSObject, NSApplicationDelegate {
         do { try link?.start() } catch { log("link failed: \(error)") }
         log("iris: awake")
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { Welcome.showIfFirstRun() }
+    }
+
+    /// his ask (spoken or typed) queued at `at`, looked at again after Stages.askWaitS: still in her queue,
+    /// Friday didn't take it (its watcher down or restarting). She says so in her bubble, and it is dropped, so it
+    /// isn't answered whenever Friday returns. Taken, as it is within moments while Friday is up: nothing.
+    private func untaken(_ at: Date) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + Stages.askWaitS) { [weak self] in
+            guard let self, self.ears.takeBack(at) else { return }
+            log("ears: \(Config.agentName) didn't take what he said in \(Int(Stages.askWaitS)) s; said so, and it's dropped")
+            self.body.showing(Stages.fridayNotAnswering, seconds: 6)
+        }
     }
 
     func applicationWillTerminate(_ n: Notification) { body.soul.save() }

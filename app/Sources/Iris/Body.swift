@@ -128,7 +128,7 @@ final class Body {
             w.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary, .ignoresCycle]
             w.hidesOnDeactivate = false
             w.contentView = v
-            w.sharingType = Menu.shared.sharing          // .none unless you switched her into shares (Menu)
+            w.sharingType = Menu.shared.sharing          // .none unless he switched her into shares (Menu)
             view = v; window = w; bubble = Bubble()
             bubble?.share(Menu.shared.sharing)
         }

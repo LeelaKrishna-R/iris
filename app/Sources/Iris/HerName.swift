@@ -17,6 +17,10 @@ enum HerName {
     static let misheardFriday = #"^\s*(?:hey|hi|okay|ok)\s+(?:friend|friends|fried|frida|fri day)\b"#
     /// "Iris" misheard, only at the start and only before one of her commands.
     static let misheardName = #"^\s*(?:hey\s+)?(?:i was|i will|i'll|irish|ires|iras)(?=\s+(?:come|dance|sit|sleep|wake|stop|go|wave|look|move|be quiet|hush|shh|nap|giggle|say hi))"#
+    /// "Iris" written "Siri" (her ears.jsonl held "Hey Siri" 20 times and "Siri" alone 5 in a month, none of
+    /// them taken as hers, with both recognizers told to expect "hey Iris"): at the start of what he says, alone or
+    /// after a greeting. Mid-sentence it is talk about Siri.
+    static let misheardIris = #"^\s*(?:(?:hey|hi|okay|ok)[\s,]+)?siri\b"#
     static let trim = CharacterSet(charactersIn: " ,.!?").union(.whitespaces)
 
     /// (production "…\(Config.agentName) is the moderator so we can know who is active", said to his
@@ -36,6 +40,14 @@ enum HerName {
         return after.range(of: aboutAfter, options: .regularExpression) != nil
     }
 
+    /// Her name as a recognizer is known to mishear it, at the start of `low` (his words, lowercased): where; nil: none.
+    static func misheard(_ low: String) -> Range<String.Index>? {
+        for pat in [misheardName] + (wakeWords.contains("friday") ? [misheardFriday] : []) {
+            if let r = low.range(of: pat, options: .regularExpression) { return r }
+        }
+        return nil
+    }
+
     /// Where her name (or a known mishearing of it) ends in `text`, the earliest one said to her; nil: not in it.
     static func end(in text: String) -> String.Index? {
         let low = text.lowercased()
@@ -50,9 +62,7 @@ enum HerName {
                 from = r.upperBound
             }
         }
-        for pat in [misheardName] + (wakeWords.contains("friday") ? [misheardFriday] : []) {
-            if let r = low.range(of: pat, options: .regularExpression), best == nil || r.lowerBound < best!.lowerBound { best = r }
-        }
+        if let r = misheard(low), best == nil || r.lowerBound < best!.lowerBound { best = r }
         guard let r = best else { return nil }
         return text.index(text.startIndex, offsetBy: low.distance(from: low.startIndex, to: r.upperBound),
                           limitedBy: text.endIndex) ?? text.endIndex

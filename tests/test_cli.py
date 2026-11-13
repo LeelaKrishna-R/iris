@@ -135,3 +135,29 @@ def test_asking_for_help_is_not_an_error(argv, capsys):
     assert iris_cli.main() == 0
     out = capsys.readouterr()
     assert "iris say" in out.out and not out.err
+
+
+def test_health_says_what_she_can_do(monkeypatch):
+    seen = []
+
+    def call(path, payload=None, method="POST", timeout=10):
+        seen.append((method, path))
+        return {"ok": True, "version": "0.1",
+                "permissions": {"screen": True, "accessibility": False, "microphone": True},
+                "ears": {"listening": False, "problem": "no_microphone"}}
+
+    monkeypatch.setattr(iris_mcp, "call", call)
+    code, out = iris_cli.run(["health"])
+    assert code == 0 and seen == [("GET", "/health")]
+    assert out.splitlines() == ["Iris 0.1 is running.",
+                                "Screen Recording: allowed. Accessibility: not allowed. Microphone: allowed.",
+                                "Ears: not listening (no_microphone)."]
+
+
+def test_health_when_she_is_not_running(tmp_path, monkeypatch):
+    def call(*a, **k):
+        raise iris_mcp.IrisUnreachable("Iris isn't answering; is she running?")
+
+    monkeypatch.setattr(iris_mcp, "call", call)
+    code, out = iris_cli.run(["health"])
+    assert code == 2 and "isn't answering" in out

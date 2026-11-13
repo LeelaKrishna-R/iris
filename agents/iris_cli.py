@@ -8,6 +8,7 @@
     iris listen [seconds]              prints what's said to her by name next (up to 25 s), or nothing
     iris busy                          exit 0 if you're on a call (Zoom, Meet, Discord with the mic in use, …), else 1
     iris ask [--wait 120] "Deploy?"    an Allow / Deny card beside her; exit 0 only if you click Allow in time
+    iris health                        whether she's running, which permissions she has, whether she can hear
     iris help                          this list
 
 Exit status: 0 done, 1 Iris said no (the reason is printed), 2 Iris isn't reachable, 64 usage.
@@ -58,6 +59,8 @@ def run(argv: list[str]) -> tuple[int, str]:
                 return 64, USAGE
             out = m.t_ask({"action": " ".join(rest), "title": "A script asks", "seconds": wait})
             return (0 if out.startswith("Allowed") else 1), out
+        if cmd == "health":
+            return 0, _health(m.call("/health", method="GET"))
         if cmd == "listen":
             out = m.t_listen({"seconds": float(rest[0]) if rest else 20})
             return 0, out
@@ -66,6 +69,21 @@ def run(argv: list[str]) -> tuple[int, str]:
     except (ValueError, IndexError):
         return 64, USAGE
     return 64, USAGE
+
+
+_PERMS = (("screen", "Screen Recording"), ("accessibility", "Accessibility"), ("microphone", "Microphone"))
+
+
+def _health(h: dict) -> str:
+    """GET /health in three lines: running, her macOS permissions, her ears."""
+    perms = h.get("permissions") or {}
+    said = [f"{name}: {'allowed' if perms.get(key) else 'not allowed'}." for key, name in _PERMS if key in perms]
+    ears = h.get("ears") or {}
+    hearing = "listening" if ears.get("listening") else "not listening"
+    if not ears.get("listening") and ears.get("problem"):
+        hearing += f" ({ears['problem']})"
+    return "\n".join([f"Iris {h.get('version', '')} is running.".replace("  ", " "),
+                      " ".join(said) or "Permissions: not reported.", f"Ears: {hearing}."])
 
 
 def main() -> int:

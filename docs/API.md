@@ -31,6 +31,7 @@ python3 agents/iris_cli.py come other_screen             # cursor (default) or o
 python3 agents/iris_cli.py listen 10                     # prints what's said to her by name next, up to 25 s
 python3 agents/iris_cli.py busy                          # exit 0 if you're on a call, 1 if not
 python3 agents/iris_cli.py ask "Deploy to production?"   # Allow / Deny card; exit 0 only on Allow (--wait 120 s)
+python3 agents/iris_cli.py health                        # running? her permissions, and whether she can hear
 ```
 
 `ask` puts the same card beside her that MCP agents get from `iris_ask`, titled "A script asks", and waits for your

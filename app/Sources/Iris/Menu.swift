@@ -28,6 +28,18 @@ final class Menu: NSObject {
         log("menu: she \(inScreenShares ? "can" : "can't") be seen in screen shares and recordings now")
     }
 
+    /// Whether something happening on a screen wakes her while nobody's at the Mac. Kept across launches and on by
+    /// default. Off: only their hands on the Mac wake her (BodyMind's sleeping
+    /// branch). Made a switch because editor work on a Mac nobody was watching kept waking her all night.
+    static let wakeForScreenKey = "wakeForScreen"
+    var wakeForScreen: Bool {
+        UserDefaults.standard.object(forKey: Menu.wakeForScreenKey) as? Bool ?? true
+    }
+    @objc func toggleWakeForScreen() {
+        UserDefaults.standard.set(!wakeForScreen, forKey: Menu.wakeForScreenKey)
+        log("menu: a busy screen \(wakeForScreen ? "wakes" : "doesn't wake") her now")
+    }
+
     /// A setting from "How Iris is" (HowIris.toggles): "ears_off" / "ears_on" (an hour, or back on), "eyes_off" /
     /// "eyes_on", "quiet" / "talk" (Core's: asked of it, CoreWord).
     @objc func setting(_ sender: NSMenuItem) {

@@ -49,7 +49,7 @@ extension Body {
             // 06:01-12:31: away all morning, a busy Discord woke her 26 times, each a sit, a fishing stint
             // and asleep again. Each time the screen woke her and the person didn't come, the next takes twice as
             // long a stretch of it (20 s, 40, 80 …); their own touch starts it over (touched()).
-            else if let since = screenMovingSince {
+            else if let since = screenMovingSince, Menu.shared.wakeForScreen {
                 let needs = Body.screenWakeAfter * pow(2, Double(min(screenWokeHer, 6)))
                 if now.timeIntervalSince(since) >= needs {
                     screenWokeHer += 1

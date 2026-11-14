@@ -106,6 +106,12 @@ Iris and her speech bubble stay out of screen shares and recordings by default, 
 her. To demo her, right-click her and pick **Show Me in Screen Shares**; it lasts until she quits and is never saved.
 Her day card (your agent's rows: bills, names, whatever it sends) stays out of shares either way.
 
+### When she wakes
+
+She naps when nothing's happening. A screen that keeps changing (a video, a build scrolling past) wakes her even when
+you're away; right-click her and untick **Wake for Screen Activity** if you'd rather only your own keyboard and mouse
+woke her. That one is remembered.
+
 ## Roadmap
 
 1. **MCP server** for any agent: shipped (`agents/iris_mcp.py`, tests in `tests/`).

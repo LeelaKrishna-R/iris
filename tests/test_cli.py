@@ -161,3 +161,19 @@ def test_health_when_she_is_not_running(tmp_path, monkeypatch):
     monkeypatch.setattr(iris_mcp, "call", call)
     code, out = iris_cli.run(["health"])
     assert code == 2 and "isn't answering" in out
+
+
+def test_snapshot_saves_her_picture(tmp_path, monkeypatch):
+    import base64
+    png = b"\x89PNG\r\n\x1a\nfake"
+    monkeypatch.setattr(iris_mcp, "call", lambda path, payload=None, method="POST", timeout=10:
+                        {"ok": True, "png": base64.b64encode(png).decode(), "iris": {}} if path == "/iris/snapshot" else {})
+    out_file = tmp_path / "iris.png"
+    code, out = iris_cli.run(["snapshot", str(out_file)])
+    assert code == 0 and out_file.read_bytes() == png and str(out_file) in out
+
+
+def test_snapshot_when_she_has_no_picture(tmp_path, monkeypatch):
+    monkeypatch.setattr(iris_mcp, "call", lambda *a, **k: {"ok": False, "reason": "no_image"})
+    code, out = iris_cli.run(["snapshot", str(tmp_path / "x.png")])
+    assert code == 1 and "no_image" in out and not (tmp_path / "x.png").exists()

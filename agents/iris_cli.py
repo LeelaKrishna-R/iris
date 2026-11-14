@@ -9,6 +9,7 @@
     iris busy                          exit 0 if you're on a call (Zoom, Meet, Discord with the mic in use, …), else 1
     iris ask [--wait 120] "Deploy?"    an Allow / Deny card beside her; exit 0 only if you click Allow in time
     iris health                        whether she's running, which permissions she has, whether she can hear
+    iris snapshot [file.png]           saves a picture of her as she looks right now (for a bug report)
     iris help                          this list
 
 Exit status: 0 done, 1 Iris said no (the reason is printed), 2 Iris isn't reachable, 64 usage.
@@ -59,6 +60,8 @@ def run(argv: list[str]) -> tuple[int, str]:
                 return 64, USAGE
             out = m.t_ask({"action": " ".join(rest), "title": "A script asks", "seconds": wait})
             return (0 if out.startswith("Allowed") else 1), out
+        if cmd == "snapshot":
+            return _snapshot(rest[0] if rest else "iris-snapshot.png")
         if cmd == "health":
             return 0, _health(m.call("/health", method="GET"))
         if cmd == "listen":
@@ -69,6 +72,16 @@ def run(argv: list[str]) -> tuple[int, str]:
     except (ValueError, IndexError):
         return 64, USAGE
     return 64, USAGE
+
+
+def _snapshot(path: str) -> tuple[int, str]:
+    """GET /iris/snapshot: her current picture, written to `path`; a reply without one says why and writes nothing."""
+    import base64
+    got = m.call("/iris/snapshot", method="GET")
+    if not got.get("ok") or not got.get("png"):
+        return 1, f"Iris has no picture to give right now ({got.get('reason') or 'no reason given'})."
+    Path(path).write_bytes(base64.b64decode(got["png"]))
+    return 0, f"Saved her picture to {path}."
 
 
 _PERMS = (("screen", "Screen Recording"), ("accessibility", "Accessibility"), ("microphone", "Microphone"))

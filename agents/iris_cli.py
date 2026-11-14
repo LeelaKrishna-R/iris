@@ -2,6 +2,7 @@
 """`iris` from a terminal, a script or any agent that can run a command.
 
     iris say "Build finished"          aloud (macOS voice) with her lips moving; --bubble for her speech bubble only
+    make 2>&1 | tail -1 | iris say -   "-" says what comes in on stdin
     iris notice "tests failed"         a glance and a small "!", no words
     iris react giggle                  one of her animations (`iris animations` lists them)
     iris come [cursor|other_screen]    she comes over
@@ -25,7 +26,7 @@ import iris_mcp as m  # noqa: E402
 USAGE = __doc__.split("\n\n")[1]
 
 
-def run(argv: list[str]) -> tuple[int, str]:
+def run(argv: list[str], stdin=None) -> tuple[int, str]:
     if not argv:
         return 64, USAGE
     if argv[0] in ("help", "--help", "-h"):
@@ -35,6 +36,10 @@ def run(argv: list[str]) -> tuple[int, str]:
         if cmd == "say" and rest:
             bubble = "--bubble" in rest
             text = " ".join(a for a in rest if a != "--bubble")
+            if text == "-":
+                text = " ".join((stdin or sys.stdin).read().split())
+                if not text:
+                    return 64, "Nothing to say: nothing came in on stdin."
             out = m.t_say({"text": text, "speak": not bubble})
             return (0 if out.startswith("Iris said") or out.startswith("Iris showed") else 1), out
         if cmd == "notice" and rest:

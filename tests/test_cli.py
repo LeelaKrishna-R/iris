@@ -177,3 +177,11 @@ def test_snapshot_when_she_has_no_picture(tmp_path, monkeypatch):
     monkeypatch.setattr(iris_mcp, "call", lambda *a, **k: {"ok": False, "reason": "no_image"})
     code, out = iris_cli.run(["snapshot", str(tmp_path / "x.png")])
     assert code == 1 and "no_image" in out and not (tmp_path / "x.png").exists()
+
+
+def test_say_dash_reads_stdin(iris, monkeypatch):
+    import io
+    code, out = iris_cli.run(["say", "--bubble", "-"], stdin=io.StringIO("3 passed,\n 1 failed\n"))
+    assert (code, out) == (0, "Iris showed it in her bubble.")
+    assert iris[-1] == ("POST", "/mouth/show", {"text": "3 passed, 1 failed", "seconds": 6.0})
+    assert iris_cli.run(["say", "-"], stdin=io.StringIO("  \n")) == (64, "Nothing to say: nothing came in on stdin.")

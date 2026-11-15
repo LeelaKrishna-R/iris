@@ -201,3 +201,16 @@ def test_health_json_for_scripts(monkeypatch):
         "running": True, "version": "0.1", "permissions": {"screen": True, "microphone": False},
         "listening": False, "ears_problem": "no_microphone"}
     assert iris_cli.run(["health", "--yaml"])[0] == 64
+
+
+def test_ask_json_says_the_decision_as_one_word(iris, monkeypatch):
+    import json
+    from test_mcp import DECISIONS
+    monkeypatch.setattr(iris_mcp, "POLL_S", 0)
+    monkeypatch.setattr(iris_mcp.os, "urandom", lambda n: b"\x02" * n)
+    DECISIONS[:] = [[{"id": "mcp-020202020202", "choice": "approve"}]]
+    code, out = iris_cli.run(["ask", "--json", "Deploy?"])
+    assert code == 0 and json.loads(out) == {"decision": "allowed", "said": "Allowed: go ahead."}
+    DECISIONS[:] = [[{"id": "mcp-020202020202", "choice": "reject"}]]
+    code, out = iris_cli.run(["ask", "Drop", "it", "--json"])
+    assert code == 1 and json.loads(out)["decision"] == "denied"

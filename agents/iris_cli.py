@@ -9,6 +9,7 @@
     iris listen [seconds]              prints what's said to her by name next (up to 25 s), or nothing
     iris busy                          exit 0 if you're on a call (Zoom, Meet, Discord with the mic in use, …), else 1
     iris ask [--wait 120] "Deploy?"    an Allow / Deny card beside her; exit 0 only if you click Allow in time
+                                       (--json prints {"decision": "allowed"|"denied"|"no_answer"|"not_shown", ...})
     iris health [--json]               whether she's running, which permissions she has, whether she can hear
     iris snapshot [file.png]           saves a picture of her as she looks right now (for a bug report)
     iris help                          this list
@@ -59,12 +60,15 @@ def run(argv: list[str], stdin=None) -> tuple[int, str]:
         if cmd == "ask":
             # iris ask "Deploy to production?" && ./deploy.sh — Deny, no answer, or a card she couldn't show is 1
             wait = 120.0
+            as_json = "--json" in rest
+            rest = [a for a in rest if a != "--json"]
             if rest[:1] == ["--wait"]:
                 wait, rest = float(rest[1]), rest[2:]          # a missing or non-number value is usage (64)
             if not rest:
                 return 64, USAGE
             out = m.t_ask({"action": " ".join(rest), "title": "A script asks", "seconds": wait})
-            return (0 if out.startswith("Allowed") else 1), out
+            code = 0 if out.startswith("Allowed") else 1
+            return code, (_ask_json(out) if as_json else out)
         if cmd == "snapshot":
             return _snapshot(rest[0] if rest else "iris-snapshot.png")
         if cmd == "health":
@@ -93,6 +97,14 @@ def _snapshot(path: str) -> tuple[int, str]:
 
 
 _PERMS = (("screen", "Screen Recording"), ("accessibility", "Accessibility"), ("microphone", "Microphone"))
+
+
+def _ask_json(said: str) -> str:
+    """An ask's outcome for a script: the decision as one word, and her sentence as she said it."""
+    import json
+    decision = ("allowed" if said.startswith("Allowed") else "denied" if said.startswith("Denied")
+                else "no_answer" if said.startswith("No answer") else "not_shown")
+    return json.dumps({"decision": decision, "said": said})
 
 
 def _health_json(h: dict) -> str:

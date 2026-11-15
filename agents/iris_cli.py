@@ -9,7 +9,7 @@
     iris listen [seconds]              prints what's said to her by name next (up to 25 s), or nothing
     iris busy                          exit 0 if you're on a call (Zoom, Meet, Discord with the mic in use, …), else 1
     iris ask [--wait 120] "Deploy?"    an Allow / Deny card beside her; exit 0 only if you click Allow in time
-    iris health                        whether she's running, which permissions she has, whether she can hear
+    iris health [--json]               whether she's running, which permissions she has, whether she can hear
     iris snapshot [file.png]           saves a picture of her as she looks right now (for a bug report)
     iris help                          this list
 
@@ -68,7 +68,10 @@ def run(argv: list[str], stdin=None) -> tuple[int, str]:
         if cmd == "snapshot":
             return _snapshot(rest[0] if rest else "iris-snapshot.png")
         if cmd == "health":
-            return 0, _health(m.call("/health", method="GET"))
+            h = m.call("/health", method="GET")
+            if rest == ["--json"]:
+                return 0, _health_json(h)
+            return (64, USAGE) if rest else (0, _health(h))
         if cmd == "listen":
             out = m.t_listen({"seconds": float(rest[0]) if rest else 20})
             return 0, out
@@ -90,6 +93,18 @@ def _snapshot(path: str) -> tuple[int, str]:
 
 
 _PERMS = (("screen", "Screen Recording"), ("accessibility", "Accessibility"), ("microphone", "Microphone"))
+
+
+def _health_json(h: dict) -> str:
+    """The same three facts for a script: {"running", "version", "permissions", "listening", "ears_problem"}.
+    A permission she didn't report is left out, never guessed."""
+    import json
+    perms = h.get("permissions") or {}
+    ears = h.get("ears") or {}
+    return json.dumps({"running": True, "version": h.get("version"),
+                       "permissions": {k: bool(perms[k]) for k, _ in _PERMS if k in perms},
+                       "listening": bool(ears.get("listening")),
+                       "ears_problem": None if ears.get("listening") else ears.get("problem")})
 
 
 def _health(h: dict) -> str:

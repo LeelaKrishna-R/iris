@@ -185,3 +185,19 @@ def test_say_dash_reads_stdin(iris, monkeypatch):
     assert (code, out) == (0, "Iris showed it in her bubble.")
     assert iris[-1] == ("POST", "/mouth/show", {"text": "3 passed, 1 failed", "seconds": 6.0})
     assert iris_cli.run(["say", "-"], stdin=io.StringIO("  \n")) == (64, "Nothing to say: nothing came in on stdin.")
+
+
+def test_health_json_for_scripts(monkeypatch):
+    import json
+
+    def call(path, payload=None, method="POST", timeout=10):
+        return {"ok": True, "version": "0.1",
+                "permissions": {"screen": True, "microphone": False},
+                "ears": {"listening": False, "problem": "no_microphone"}}
+
+    monkeypatch.setattr(iris_mcp, "call", call)
+    code, out = iris_cli.run(["health", "--json"])
+    assert code == 0 and json.loads(out) == {
+        "running": True, "version": "0.1", "permissions": {"screen": True, "microphone": False},
+        "listening": False, "ears_problem": "no_microphone"}
+    assert iris_cli.run(["health", "--yaml"])[0] == 64

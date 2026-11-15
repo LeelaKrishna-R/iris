@@ -214,3 +214,26 @@ def test_ask_json_says_the_decision_as_one_word(iris, monkeypatch):
     DECISIONS[:] = [[{"id": "mcp-020202020202", "choice": "reject"}]]
     code, out = iris_cli.run(["ask", "Drop", "it", "--json"])
     assert code == 1 and json.loads(out)["decision"] == "denied"
+
+
+def test_wait_free_returns_when_the_call_ends(iris, monkeypatch):
+    seen = {"ok": True, "front_app": "zoom.us", "front_title": "Zoom Meeting", "windows": [], "mic_others": True}
+    answers = [True, True, False]
+
+    def call(path, payload=None, method="POST", timeout=10):
+        on = answers.pop(0)
+        return dict(seen, front_app="zoom.us" if on else "Code", front_title="Zoom Meeting" if on else "main.py",
+                    mic_others=on)
+    monkeypatch.setattr(iris_mcp, "call", call)
+    monkeypatch.setattr(iris_cli, "WAIT_FREE_POLL_S", 0)
+    assert iris_cli.run(["wait-free"]) == (0, "Not on a call.") and answers == []
+
+
+def test_wait_free_gives_up_at_its_limit_and_when_she_cant_tell(iris, monkeypatch):
+    seen = {"ok": True, "front_app": "zoom.us", "front_title": "Zoom Meeting", "windows": [], "mic_others": True}
+    monkeypatch.setattr(iris_mcp, "call", lambda path, payload=None, method="POST", timeout=10: dict(seen))
+    monkeypatch.setattr(iris_cli, "WAIT_FREE_POLL_S", 0)
+    code, out = iris_cli.run(["wait-free", "0"])
+    assert code == 1 and out.startswith("Still on a call: ") and out.endswith("after 0 s.")
+    seen.update(ok=False, reason="paused")
+    assert iris_cli.run(["wait-free", "30"]) == (1, "Iris can't tell: paused.")

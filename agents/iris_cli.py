@@ -8,6 +8,7 @@
     iris come [cursor|other_screen]    she comes over
     iris listen [seconds]              prints what's said to her by name next (up to 25 s), or nothing
     iris busy                          exit 0 if you're on a call (Zoom, Meet, Discord with the mic in use, …), else 1
+    iris wait-free [600]               waits until you're off a call (up to 600 s): `iris wait-free && iris say done`
     iris ask [--wait 120] "Deploy?"    an Allow / Deny card beside her; exit 0 only if you click Allow in time
                                        (--json prints {"decision": "allowed"|"denied"|"no_answer"|"not_shown", ...})
     iris health [--json]               whether she's running, which permissions she has, whether she can hear
@@ -19,6 +20,7 @@ Exit status: 0 done, 1 Iris said no (the reason is printed), 2 Iris isn't reacha
 from __future__ import annotations
 
 import sys
+import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -57,6 +59,20 @@ def run(argv: list[str], stdin=None) -> tuple[int, str]:
         if cmd == "busy":
             out = m.t_busy({})
             return (0 if out.startswith("On a call") else 1), out
+        if cmd == "wait-free":
+            # exit 0 as soon as you're off a call; 1 if you're still on one when the time is up, or she can't tell
+            # (paused, not running): waiting on an answer that isn't coming would only hold the script up
+            limit = float(rest[0]) if rest else 600.0     # a non-number is usage (64)
+            start = time.monotonic()
+            while True:
+                out = m.t_busy({})
+                if out.startswith("Not on a call"):
+                    return 0, out
+                if not out.startswith("On a call"):
+                    return 1, out
+                if time.monotonic() - start >= limit:
+                    return 1, f"Still {out[0].lower()}{out[1:]} after {limit:g} s."
+                time.sleep(WAIT_FREE_POLL_S)
         if cmd == "ask":
             # iris ask "Deploy to production?" && ./deploy.sh — Deny, no answer, or a card she couldn't show is 1
             wait = 120.0
@@ -97,6 +113,9 @@ def _snapshot(path: str) -> tuple[int, str]:
 
 
 _PERMS = (("screen", "Screen Recording"), ("accessibility", "Accessibility"), ("microphone", "Microphone"))
+
+
+WAIT_FREE_POLL_S = 5.0
 
 
 def _ask_json(said: str) -> str:

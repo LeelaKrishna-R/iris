@@ -30,6 +30,7 @@ python3 agents/iris_cli.py animations                    # lists them
 python3 agents/iris_cli.py come other_screen             # cursor (default) or other_screen
 python3 agents/iris_cli.py listen 10                     # prints what's said to her by name next, up to 25 s
 python3 agents/iris_cli.py busy                          # exit 0 if you're on a call, 1 if not
+python3 agents/iris_cli.py wait-free 600                 # waits until you're off a call; exit 1 if still on one
 python3 agents/iris_cli.py ask "Deploy to production?"   # Allow / Deny card; exit 0 only on Allow (--wait 120 s)
 python3 agents/iris_cli.py health                        # running? her permissions, and whether she can hear
 python3 agents/iris_cli.py snapshot iris.png             # a picture of her right now, for a bug report

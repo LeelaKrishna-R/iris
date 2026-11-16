@@ -7,7 +7,7 @@
     iris react giggle                  one of her animations (`iris animations` lists them)
     iris come [cursor|other_screen]    she comes over
     iris listen [seconds]              prints what's said to her by name next (up to 25 s), or nothing
-    iris busy                          exit 0 if you're on a call (Zoom, Meet, Discord with the mic in use, …), else 1
+    iris busy [--json]                 exit 0 if you're on a call (Zoom, Meet, Discord with the mic in use, …), else 1
     iris wait-free [600]               waits until you're off a call (up to 600 s): `iris wait-free && iris say done`
     iris ask [--wait 120] "Deploy?"    an Allow / Deny card beside her; exit 0 only if you click Allow in time
                                        (--json prints {"decision": "allowed"|"denied"|"no_answer"|"not_shown", ...})
@@ -58,7 +58,8 @@ def run(argv: list[str], stdin=None) -> tuple[int, str]:
             return (0 if out.startswith("Iris is on her way") else 1), out
         if cmd == "busy":
             out = m.t_busy({})
-            return (0 if out.startswith("On a call") else 1), out
+            code = 0 if out.startswith("On a call") else 1
+            return code, (_busy_json(out) if "--json" in rest else out)
         if cmd == "wait-free":
             # exit 0 as soon as you're off a call; 1 if you're still on one when the time is up, or she can't tell
             # (paused, not running): waiting on an answer that isn't coming would only hold the script up
@@ -116,6 +117,15 @@ _PERMS = (("screen", "Screen Recording"), ("accessibility", "Accessibility"), ("
 
 
 WAIT_FREE_POLL_S = 5.0
+
+
+def _busy_json(said: str) -> str:
+    """For a script: {"on_call": true | false | null, "app": what the call is in or null, "said": her sentence}.
+    null when she can't tell (paused, not running): unknown is never said as "not on a call"."""
+    import json
+    if said.startswith("On a call: "):
+        return json.dumps({"on_call": True, "app": said[len("On a call: "):].rstrip("."), "said": said})
+    return json.dumps({"on_call": False if said.startswith("Not on a call") else None, "app": None, "said": said})
 
 
 def _ask_json(said: str) -> str:

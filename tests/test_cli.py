@@ -237,3 +237,17 @@ def test_wait_free_gives_up_at_its_limit_and_when_she_cant_tell(iris, monkeypatc
     assert code == 1 and out.startswith("Still on a call: ") and out.endswith("after 0 s.")
     seen.update(ok=False, reason="paused")
     assert iris_cli.run(["wait-free", "30"]) == (1, "Iris can't tell: paused.")
+
+
+def test_busy_json_says_unknown_as_null(iris, monkeypatch):
+    import json
+    seen = {"ok": True, "front_app": "Code", "front_title": "main.py",
+            "windows": [{"app": "Discord", "title": "#general - Discord"}], "mic_others": True}
+    monkeypatch.setattr(iris_mcp, "call", lambda path, payload=None, method="POST", timeout=10: dict(seen))
+    code, out = iris_cli.run(["busy", "--json"])
+    assert code == 0 and json.loads(out) == {"on_call": True, "app": "Discord", "said": "On a call: Discord."}
+    seen["mic_others"] = False
+    assert json.loads(iris_cli.run(["busy", "--json"])[1])["on_call"] is False
+    seen.update(ok=False, reason="paused")
+    code, out = iris_cli.run(["busy", "--json"])
+    assert code == 1 and json.loads(out)["on_call"] is None

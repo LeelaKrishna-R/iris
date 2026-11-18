@@ -96,8 +96,8 @@ extension Body {
     /// Every frame: their cursor resting on her, or darting about near her.
     func touchReactions(_ now: Date, cursor c: CGPoint, me: CGPoint, dist: CGFloat) {
         // resting on her 2 s: one line of their day in her bubble, from their day card's rows (DayCard.hint:
-        // "Next: Dentist at 2:00 PM", "3 kept for you"), never spoken; a curious look up at them. (owner: "iris
-        // needs improvement"): her shy and blush-hide here were a reaction with nothing for them in it
+        // "Next: Dentist at 2:00 PM", "3 kept for you"), never spoken; a curious look up at them.
+        // her shy and blush-hide here were a reaction with nothing for them in it
         if let hs = hoverSince, now.timeIntervalSince(hs) >= 2, now >= touchUntil {
             hoverSince = nil                                    // once per hover
             if !held && !sleeping {

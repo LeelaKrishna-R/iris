@@ -81,11 +81,13 @@ _DATE = (r"(?<![\w:.-])" + _MD + r"(?:(?:\.\.|\s+to\s+)" + _MD + r")?(?:\s+\d{1,
          r"(?!\s*(?:s|ms|min|minutes?|seconds?|px|pt|h|hours?)\b)")
 _TIME_TAG = r"^\d{1,2}:\d[\dx](?::\d{2})?:\s+"                                    # "02:5x: ..." a diary time
 _OWNER = r"\bowner:?\s*(?:\"[^\"]*\"|(?=[,;)]|$))"                             # owner "mostly staring" / owner:
+_PROD = r"\bprod(?:uction)?\b(?:\s+\d{1,2}:\d{2}(?:-\d{1,2}:\d{2})?)?,?\s*"         # "(prod, after a reboot)", "prod 18:40"
 
 
 def _undated(s: str) -> str:
     """s without its diary dates and the first user's quotes, its punctuation tidied."""
     s = re.sub(_OWNER, "", s)
+    s = re.sub(_PROD, "", s)
     s = re.sub(_TIME_TAG, "", s)
     s = re.sub(r"\bowner\s+(?=" + _DATE + ")", "", s)
     s = re.sub(_DATE + r"(?:\s+[a-z][\w-]*)?\s*:\s+", "", s)                 # "10-26 sim: ..."
@@ -102,14 +104,14 @@ def _undated(s: str) -> str:
 
 def _paren(m: re.Match) -> str:
     inner = m.group(1)
-    if not re.search(r"\bowner\b|" + _DATE, inner):
+    if not re.search(r"\bowner\b|\bprod\b|" + _DATE, inner):
         return m.group(0)
     kept = _undated(re.sub(r'["“][^"”]*["”]', "", inner)).strip(" ,;:")      # a quote dated so is the first user's
     return f"({kept})" if re.search(r"[A-Za-z]{3}", kept) else ""
 
 
 def _scrub_note(body: str) -> str:
-    if not re.search(r"\bowner\b|" + _DATE, body) and not re.match(_TIME_TAG, body):
+    if not re.search(r"\bowner\b|\bprod\b|" + _DATE, body) and not re.match(_TIME_TAG, body):
         return body
     new = re.sub(r"\s*\(([^()]*)\)", lambda m: (" " if m.group(0)[0].isspace() else "") + _paren(m)
                  if _paren(m) else "", body)                                   # "(10-26, owner: ...)"
@@ -141,11 +143,18 @@ def _comment_at(ln: str) -> int:
 def scrub_comments(text: str) -> str:
     """Comments without the first user's quotes or dated diary tags, whole-line and after code alike."""
     out = []
+    in_quote = False                                     # an owner: "… quote that runs on to the next comment line
     for ln in text.split("\n"):
         at = _comment_at(ln)
         if at >= 0:
             m = re.match(r"(///?\s?)(.*)$", ln[at:])
             pre, body = m.groups()
+            if in_quote:                                 # the rest of the quote, up to its close (and a ")")
+                end = re.search(r'["”]\)?', body)
+                body, in_quote = (body[end.end():].lstrip(" ,;:") if end else ""), not end
+            q = re.search(r'\(?\bowner:?\s*["“][^"”]*$', body)
+            if q:                                        # opens here, closes on a later line
+                body, in_quote = body[:q.start()].rstrip(), True
             new = _scrub_note(body)
             code = ln[:at]
             if new.strip():

@@ -222,8 +222,8 @@ final class Body {
         if screenMoving { screenMovedAt = now; if screenMovingSince == nil { screenMovingSince = now } } else { screenMovingSince = nil }
         // the person stopped after a real stretch of typing (20 s or more, quiet 3 s): she nods, once per stretch
         let burst = lastTyped.timeIntervalSince(typingSince)
-        // 30 of these nods in 3 h, then one each half hour; (owner: "no
-        // reactions"): at most one each Body.nodEveryS (10 min), once per stretch of their typing
+        // 30 of these nods in 3 h, then one each half hour;
+        // at most one each Body.nodEveryS (10 min), once per stretch of their typing
         if burst > 20 && now.timeIntervalSince(lastTyped) > 3 && noddedFor != typingSince && !sleeping && !held && !listening
             && performing.isEmpty && targetX == nil && now.timeIntervalSince(noddedAt) > Body.nodEveryS && ambientFree(now)
             && dueToShow == nil {                  // a to-do come due waiting to be shown says more than a nod

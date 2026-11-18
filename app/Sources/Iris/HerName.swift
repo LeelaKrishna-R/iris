@@ -23,7 +23,7 @@ enum HerName {
     static let misheardIris = #"^\s*(?:(?:hey|hi|okay|ok)[\s,]+)?siri\b"#
     static let trim = CharacterSet(charactersIn: " ,.!?").union(.whitespaces)
 
-    /// (production "…\(Config.agentName) is the moderator so we can know who is active", said to their
+    /// ("…\(Config.agentName) is the moderator so we can know who is active", said to their
     /// Discord, answered aloud): her name said about her, or the weekday, is not said to her.
     static let greetingOnly = #"^\s*(?:(?:hey|hi|hello|okay|ok|yo|oh)[\s,]*)*$"#
     static let weekdayBefore = #"\b(?:on|this|next|last|every|by|until|till|since|before|after|from)\s+$"#

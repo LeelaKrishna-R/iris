@@ -44,6 +44,7 @@ final class App: NSObject, NSApplicationDelegate {
         ears.onVoice = { [weak self] in self?.body.heardVoice() }
         ears.start()
         body.onTalk = { [weak self] in self?.ears.listenNow() }
+        ears.onCantHear = { [weak self] said in self?.body.bubble?.say(said, for: 6) }
         // a click on her peeks at their day card; a double-click (a bow) leaves none up; their pointer resting on
         // her, one line of it in her bubble
         body.onPetted = { [weak self] in

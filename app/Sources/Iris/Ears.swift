@@ -4,7 +4,7 @@ import CoreAudio
 import os
 @preconcurrency import Speech        // its results are immutable once handed over
 
-/// Her ears: the default microphone (their Blue Yeti), heard on this Mac by
+/// Her ears: the default microphone, heard on this Mac by
 /// Apple's on-device recognizer, always on and free. "\(Config.agentName) …" or "Iris …"
 /// — or anything said within a few seconds of Friday answering — is meant
 /// for her and queued for Friday Core. Muted while Friday speaks, so she
@@ -47,6 +47,8 @@ final class Ears: @unchecked Sendable {
     private var mutedUntil = Date.distantPast
     /// What she is saying right now, lowercased: her own words heard back are not their.
     private var ownLine = ""
+    /// What she said in the last minute (her own line heard back as their follow-up; OwnVoice.isEcho).
+    private var recentLines: [(at: Date, end: Date, line: String)] = []
     private var silenceTimer: Timer?
     // (owner: = off for an hour): the mic engine stops, then starts again on its own
     private(set) var offUntil = Date.distantPast
@@ -57,6 +59,7 @@ final class Ears: @unchecked Sendable {
     // heard). Only the current task's handler acts, and a real failure backs off.
     private var generation = 0
     private var failures = 0
+    private var noMicTries = 0          // begin() found no usable input this many times in a row
     private var lastFailure = ""
     private(set) var running = false
     private(set) var onDevice = false
@@ -113,23 +116,70 @@ final class Ears: @unchecked Sendable {
                         self.off(for: off.at - Date().timeIntervalSince1970)
                         return
                     }
-                    self.begin()
+                    self.whenMicAnswers { self.begin() }
                 }
             }
+        }
+    }
+
+    // (after a reboot): CoreAudio hung opening a new USB microphone's input, and `engine.inputNode`
+    // on her main thread hung with it: her body, bubble and link to Friday froze, not just her ears. The mic is
+    // asked first on a background thread by a throwaway engine; only once it has answered does her own engine
+    // touch it, on main. Not answering in MIC_ANSWER_S: "microphone_not_answering", said in her log, and her ears
+    // start by themselves when the probe finally returns. Her main thread never waits on CoreAudio.
+    static let micAnswerS = 5.0
+    private var probing = false
+
+    private func whenMicAnswers(_ then: @escaping () -> Void) {
+        guard !probing else { return }                    // one probe at a time; its answer starts her ears
+        probing = true
+        let answered = OSAllocatedUnfairLock(initialState: false)
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            // may block in CoreAudio: never on main. The engine is held until the read is done (a
+            // temporary AVAudioEngine() was freed under its own inputNode and she crashed at launch, SIGSEGV in AUI())
+            let probe = AVAudioEngine()
+            withExtendedLifetime(probe) { _ = probe.inputNode.inputFormat(forBus: 0) }
+            answered.withLock { $0 = true }
+            DispatchQueue.main.async {
+                guard let self else { return }
+                self.probing = false
+                if self.problem == "microphone_not_answering" {
+                    log("ears: the microphone answers again")
+                    self.problem = nil
+                }
+                then()
+            }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + Ears.micAnswerS) { [weak self] in
+            guard let self, !answered.withLock({ $0 }), self.problem != "microphone_not_answering" else { return }
+            self.problem = "microphone_not_answering"
+            log("ears: the microphone isn't answering (CoreAudio); her ears wait for it")
         }
     }
 
     private func begin() {
         guard let rec = recognizer, rec.isAvailable else { problem = "recognizer_unavailable"; retry(); return }
         let input = engine.inputNode
-        let fmt = input.outputFormat(forBus: 0)
         // 02:5x: after a power cut the Mac came back with no microphone and she crashed at launch every 10 s:
         // installTap on a format with no channels, or one whose rate isn't the hardware's, raises an Objective-C
         // exception Swift can't catch. No such tap: "no_microphone", and she retries, alive, without ears.
-        let hw = input.inputFormat(forBus: 0)
-        guard fmt.sampleRate > 0, fmt.channelCount > 0, hw.channelCount > 0, hw.sampleRate == fmt.sampleRate else {
-            problem = "no_microphone"; retry(); return
+        // (after a reboot): a new USB microphone ran at 96 kHz, 1 channel, and she said
+        // "no_microphone" for good: the engine's output format and the hardware's disagreed on the rate, so the
+        // check refused a real mic. The tap now takes the hardware's own input format (Apple's rule for tapping
+        // the input node), so its rate is the hardware's by construction; only a device with no input is refused.
+        let fmt = input.inputFormat(forBus: 0)
+        guard fmt.sampleRate > 0, fmt.channelCount > 0 else {
+            // with no microphone at launch she never watched for one, and her retry asked the same
+            // engine, which keeps the absent device: a microphone plugged back in wasn't heard until a restart. Watch the
+            // default input from here too (watchMic sets each observer once); retry() resets the engine.
+            noMicTries += 1
+            if noMicTries == 1 || noMicTries % 30 == 0 {         // said once, then every ~5 min, never every 10 s
+                log("ears: no usable microphone (\(Int(fmt.sampleRate)) Hz, \(fmt.channelCount) ch); trying again")
+            }
+            problem = "no_microphone"; watchMic(); retry(); return
         }
+        noMicTries = 0
+        log("ears: microphone at \(Int(fmt.sampleRate)) Hz, \(fmt.channelCount) ch")
         input.removeTap(onBus: 0)
         voice = VoiceGate(rate: fmt.sampleRate)          // only the tap touches it from here on
         input.installTap(onBus: 0, bufferSize: 2048, format: fmt) { [weak self] buf, _ in
@@ -207,16 +257,23 @@ final class Ears: @unchecked Sendable {
         restartedAt = Date()
         sleepEars()
         silenceTimer?.invalidate(); silenceTimer = nil
-        engine.inputNode.removeTap(onBus: 0)
-        engine.stop()
         running = false
-        begin()
+        // the engine is touched only once the mic answers (a hung device froze her main thread here)
+        whenMicAnswers { [weak self] in
+            guard let self else { return }
+            self.engine.inputNode.removeTap(onBus: 0)
+            self.engine.stop()
+            self.begin()
+        }
     }
 
     private func retry() {
         DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in
             guard let self, !self.running, self.offUntil <= Date() else { return }   // never back on while they have them off
-            self.begin()
+            self.whenMicAnswers {                          // never touch a hung device on main
+                self.engine.stop(); self.engine.reset()    // read the input device afresh, not the one it had
+                self.begin()
+            }
         }
     }
 
@@ -233,6 +290,10 @@ final class Ears: @unchecked Sendable {
     private var preroll: [AVAudioPCMBuffer] = []
     private var starting = false
     private var lastVoiceAt = Date.distantPast
+    private var voicedSeconds: [Double] = []        // under gate (the tap writes it): seconds voice was heard
+    /// His asks to her, [start, end] epoch seconds (main): talk to her isn't the room's (OwnVoice.roomBusy).
+    private var hisSpans: [[Double]] = []
+    private var busyToldAt = Date.distantPast
     private var voice: VoiceGate?                // the audio tap's own (created in begin)
     private var speechNow = false                // (under gate) for status()
     // 0.7 s, was 0.45. The gate opens on sound, then wake() waits for the main thread; a
@@ -241,6 +302,7 @@ final class Ears: @unchecked Sendable {
     // percentile, 1.3 s at worst, over 450 voiced clips in rooms in the offline bench), later than
     // raw sound did.
     static let prerollBuffers = 24          // ~1 s at 44.1/48 kHz with 2048-frame buffers
+    static let freshPrerollS = 0.35         // what a fresh task after her line starts with (inside her 0.6 s tail)
     static let quietStop = 3.0              // seconds of no speech and no words before the task stops
 
     /// Sound reached the mic: start hearing it, beginning with the half second before.
@@ -397,6 +459,20 @@ final class Ears: @unchecked Sendable {
                 return
             }
         }
+        // "stop", "wait", "hold on"
+        // said over her stop her too — their, when said more often than in her own line (OwnVoice.stopSaid). Nothing
+        // is sent to Friday: what was heard holds her line too. A fresh task hears what the person says next.
+        // review 36: against every line of hers this task has heard (Core sends an answer a sentence a clip, and one
+        // task runs across them: "…you'll have to wait a bit." then "The one after is at nine." stopped her)
+        let hersInTask = recentLines.filter { $0.end >= taskAt }.map(\.line).joined(separator: " ")
+        if talking && OwnVoice.stopSaid(low, ownLine: hersInTask + " " + ownLine) {
+            log("ears: the person said stop while she talked; she stops")
+            mutedUntil = Date()
+            conversationUntil = Date().addingTimeInterval(8)
+            DispatchQueue.main.async { self.onBargeIn?() }
+            newTask()
+            return
+        }
         if talking { return }                    // while she speaks, only her name is their
         if Date() < conversationUntil {          // a follow-up right after she answered
             addressed = true; followUpWake = true
@@ -451,7 +527,13 @@ final class Ears: @unchecked Sendable {
         let now = Date()
         let wasAddressed = addressed, followUp = followUpWake
         addressed = false
+        if wasAddressed && followUp && OwnVoice.isEcho(text, answer: lastAnswer(now)) {
+            log("ears: her own words heard back as a follow-up; not sent")       // never what was said
+            DispatchQueue.main.async { self.onDone?() }       // review 36: her listening pose ends, Mouth uncuts
+            return
+        }
         if wasAddressed {
+            hisSpans = Array((hisSpans + [[(firstWordAt ?? taskAt).timeIntervalSince1970, now.timeIntervalSince1970]]).suffix(30))
             var times = ["task_at": taskAt.timeIntervalSince1970, "last_word_at": lastPartialAt.timeIntervalSince1970]
             if let f = firstWordAt { times["first_word_at"] = f.timeIntervalSince1970 }
             if let w = wokeAt { times["wake_at"] = w.timeIntervalSince1970 }
@@ -591,8 +673,10 @@ final class Ears: @unchecked Sendable {
         Store.save(OffUntil(at: offUntil.timeIntervalSince1970), "ears_off.json")
         sleepEars()
         silenceTimer?.invalidate(); silenceTimer = nil
-        engine.inputNode.removeTap(onBus: 0)
-        engine.stop()
+        if running {                                      // a mic that never answered has no tap to remove
+            engine.inputNode.removeTap(onBus: 0)
+            engine.stop()
+        }
         running = false
         offTimer?.invalidate()
         offTimer = Timer.scheduledTimer(withTimeInterval: seconds, repeats: false) { [weak self] _ in self?.on() }
@@ -605,16 +689,31 @@ final class Ears: @unchecked Sendable {
         let wasOff = offUntil > .distantPast
         offUntil = .distantPast
         if wasOff { Store.save(OffUntil(at: 0), "ears_off.json") }
-        if !running { begin() }
+        if !running { whenMicAnswers { [weak self] in self?.begin() } }      // never a hung device on main
         if wasOff { log("ears: on again") }
     }
 
     /// Talk to her without the wake word (her menu's "Talk to \(Config.agentName)").
+    /// set by main: her line when the person asks her to listen and she can't hear (HowIris.cantHearSaid).
+    var onCantHear: ((String) -> Void)?
+
     func listenNow() {
         if !running && offUntil > Date() { on() }     // her menu turns her ears back on early
+        if let said = HowIris.cantHearSaid(problem) {  // no microphone: say so, never the listening pose over nothing
+            onCantHear?(said); return
+        }
         conversationUntil = Date().addingTimeInterval(8)
         if task == nil { newTask() }
         onWake?()
+    }
+
+    /// Her last answer, its clips joined in the order she said them: the run of her lines each begun within 2 s of
+    /// the one before ending, in the last minute (review 37: Core sends one clip a sentence).
+    private func lastAnswer(_ now: Date) -> String {
+        let recent = recentLines.filter { now.timeIntervalSince($0.at) < 60 }
+        guard var i = recent.indices.last else { return "" }
+        while i > recent.startIndex, recent[i].at.timeIntervalSince(recent[i - 1].end) < 2 { i -= 1 }
+        return recent[i...].map(\.line).joined(separator: " ")
     }
 
     /// Friday is about to speak for `seconds`: don't hear it; then, when it answers them (`listen`), listen for a
@@ -623,10 +722,41 @@ final class Ears: @unchecked Sendable {
     /// as said to her and answered aloud. Only an answer to them waits for their next words without her name.
     func mute(for seconds: Double, line: String = "", listen: Bool = true) {
         mutedUntil = Date().addingTimeInterval(seconds + 0.6)
-        if listen { conversationUntil = mutedUntil.addingTimeInterval(7) }
+        // in a room that's been talking, her answer opens no follow-up:
+        // what's next needs her name (OwnVoice.roomBusy)
+        gate.lock()
+        let heardVoice = voicedSeconds
+        gate.unlock()
+        let spans = recentLines.map { [$0.at.timeIntervalSince1970, $0.end.timeIntervalSince1970] } + hisSpans
+        let busy = OwnVoice.roomBusy(voiced: heardVoice, spans: spans, now: Date().timeIntervalSince1970)
+        if busy && Date().timeIntervalSince(busyToldAt) > 600 {
+            busyToldAt = Date()
+            log("ears: the room's been talking (TV or people); after she answers, her name is needed")
+        }
+        if listen && !busy { conversationUntil = mutedUntil.addingTimeInterval(7) }
         ownLine = line.lowercased()
         lastText = ""
         addressed = false
+        let now = Date()
+        recentLines = recentLines.filter { now.timeIntervalSince($0.at) < 60 } + [(at: now, end: mutedUntil, line: line)]
+        // one recognition task ran through her line, so its words held all of it; once the mute
+        // ended, the next guess was her whole line, taken as their follow-up and answered. When she has stopped (no
+        // later line extended the mute, and the person hasn't cut in), what is heard starts fresh: only what the person says next.
+        let until = mutedUntil
+        DispatchQueue.main.asyncAfter(deadline: .now() + seconds + 0.6) { [weak self] in
+            guard let self, self.mutedUntil == until, !self.addressed, self.task != nil else { return }
+            // review 36: the fresh task began with no preroll, so their first words in the moment she stopped were
+            // lost. The last ~0.5 s heard is after her line (the mute runs 0.6 s past it): it starts the new one.
+            self.gate.lock()
+            // review 38: by length, not count (the tap's buffer size is only asked for): ~0.35 s, inside her 0.6 s tail
+            var seed: [AVAudioPCMBuffer] = [], secs = 0.0
+            for b in self.taskAudio.reversed() where secs < Ears.freshPrerollS {
+                seed.insert(b, at: 0); secs += Double(b.frameLength) / max(1, b.format.sampleRate)
+            }
+            self.preroll = seed
+            self.gate.unlock()
+            self.newTask()
+        }
     }
 
     // MARK: Friday's queue — a long poll from Core takes the next thing the person said
@@ -691,7 +821,12 @@ final class Ears: @unchecked Sendable {
         levelDB = db
         if db > peakDB || Date().timeIntervalSince(peakAt) > 10 { peakDB = db; peakAt = Date() }
         floorDB = db < floorDB ? db : min(floorDB + 0.045, db)
-        if voiced { lastVoiceAt = Date() }
+        if voiced {
+            lastVoiceAt = Date()
+            // a second with voice in it, for OwnVoice.roomBusy (the TV talking); at most one a second
+            let t = Date().timeIntervalSince1970
+            if (voicedSeconds.last ?? 0) < floor(t) { voicedSeconds.append(floor(t)); if voicedSeconds.count > 180 { voicedSeconds.removeFirst() } }
+        }
         speechNow = voiced
         gate.unlock()
         return voiced

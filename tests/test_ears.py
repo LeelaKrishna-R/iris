@@ -10,6 +10,16 @@ def test_no_tap_without_input_channels():
     begin = EARS[EARS.index("private func begin()"):]
     begin = begin[:begin.index("input.installTap(")]
     assert "fmt.channelCount > 0" in begin, "a format with no channels must not reach installTap"
-    assert "hw.channelCount > 0" in begin and "hw.sampleRate == fmt.sampleRate" in begin, \
-        "the tap's format must match the hardware's"
-    assert 'problem = "no_microphone"; retry(); return' in begin
+    # the tap takes the hardware's own input format, so its rate matches by construction (a 96 kHz USB mic was
+    # refused when the engine's output format disagreed on the rate)
+    assert "let fmt = input.inputFormat(forBus: 0)" in begin, "the tap must use the hardware's input format"
+    assert "outputFormat(forBus" not in begin
+    assert 'problem = "no_microphone"; watchMic(); retry(); return' in begin
+
+
+def test_a_hung_microphone_never_freezes_her():
+    # the mic is asked first on a background thread by a throwaway engine, held alive while it's read
+    probe = EARS[EARS.index("private func whenMicAnswers"):]
+    probe = probe[:probe.index("\n    }\n")]
+    assert "DispatchQueue.global" in probe and "withExtendedLifetime(probe)" in probe
+    assert 'problem = "microphone_not_answering"' in probe

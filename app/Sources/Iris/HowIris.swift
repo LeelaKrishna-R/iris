@@ -40,6 +40,14 @@ enum HowIris {
         return p.replacingOccurrences(of: "_", with: " ")
     }
 
+    /// what she says when the person asks her to listen and her ears can't hear (no microphone, not allowed): said,
+    /// instead of her listening pose over a microphone that isn't there. nil when they can.
+    static func cantHearSaid(_ problem: String?) -> String? {
+        guard let p = problem, ["no_microphone", "microphone_not_allowed", "speech_recognition_not_allowed",
+                                "recognizer_unavailable"].contains(p) else { return nil }
+        return "I can't hear you: \(earsProblem(p)). Type to me with ⌃⌥Space."
+    }
+
     static func ears(_ s: [String: Any]?, now: Date) -> String {
         guard let s else { return "Ears: unknown (couldn't read them)" }
         if let off = s["off_until"] as? Double, off > now.timeIntervalSince1970 {

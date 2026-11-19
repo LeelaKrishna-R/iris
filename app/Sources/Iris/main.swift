@@ -206,6 +206,10 @@ final class App: NSObject, NSApplicationDelegate {
             let text = body["text"] as? String ?? ""
             let secs = (body["seconds"] as? Double) ?? 6
             let tone = Tone(body["tone"] as? String)                  // how much it matters (her bubble's colour)
+            // a line with no words is refused: she would wake, turn and move her lips over an empty bubble
+            guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                return reply(400, ["ok": false, "reason": "no_text"])
+            }
             main { self.body.showing(text, seconds: secs, tone: tone); return (200, ["ok": true]) }
         case "/hands/type":
             let text = body["text"] as? String ?? ""

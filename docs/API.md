@@ -54,7 +54,7 @@ command wasn't understood. So `make test || python3 agents/iris_cli.py notice "t
 
 | Request | Body | What she does |
 |---|---|---|
-| `POST /mouth/show` | `{"text": str, "seconds": number, "tone": str}` | Shows `text` in her thought bubble (default 6 s) |
+| `POST /mouth/show` | `{"text": str, "seconds": number, "tone": str}` | Shows `text` in her thought bubble (default 6 s); 400 `no_text` when `text` is empty |
 | `POST /mouth/play` | `{"b64": base64 audio, "text": str, "tone": str}` | Speaks the audio with her lips moving; replies `{"seconds": …}`, or 409 if she was interrupted |
 
 `tone` is optional and sets the bubble's colour by how much the line matters: `"calm"` (the default, cream),

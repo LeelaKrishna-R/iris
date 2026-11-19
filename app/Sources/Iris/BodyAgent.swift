@@ -84,6 +84,8 @@ extension Body {
 
     /// Her bubble: shown text, and when it's up (the simulator checks where it lands).
     func say(_ text: String, for seconds: Double, tone: Tone = .calm, voiced: Bool = false) {
+        // no words: no bubble, and none recorded as up (the simulator would read a bubble that isn't there)
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         bubble?.say(text, for: seconds, tone: tone, voiced: voiced)
         bubbleText = text
         bubbleUntil = world.now.addingTimeInterval(seconds + Double(text.count) * 0.03)

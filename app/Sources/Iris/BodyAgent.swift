@@ -41,21 +41,21 @@ extension Body {
     }
 
     /// Friday's voice through her mouth (/mouth/play): she wakes if asleep, turns to them, and talks.
-    func speaking(_ text: String, seconds: Double) {
+    func speaking(_ text: String, seconds: Double, tone: Tone = .calm) {
         answerCame()
         _ = soul.feel(.fridaySpoke)
         turnToHim()
         talkUntil = world.now.addingTimeInterval(seconds)
-        if !text.isEmpty { say(text, for: max(4, seconds + 1.5)) }
+        if !text.isEmpty { say(text, for: max(4, seconds + 1.5), tone: tone, voiced: true) }
         trace?("speaking", ["seconds": seconds, "voiced": true])
     }
 
     /// Friday's words shown without a voice (/mouth/show): the bubble, her face to them, and her lips
     /// moving for about as long as the words take to say (never the whole time the bubble stays up).
-    func showing(_ text: String, seconds: Double) {
+    func showing(_ text: String, seconds: Double, tone: Tone = .calm) {
         answerCame()
         turnToHim()
-        say(text, for: seconds)
+        say(text, for: seconds, tone: tone)
         talkUntil = world.now.addingTimeInterval(min(seconds, max(0.8, min(3.5, Double(text.count) / 14))))
         trace?("speaking", ["seconds": seconds, "voiced": false])
     }
@@ -83,8 +83,8 @@ extension Body {
     }
 
     /// Her bubble: shown text, and when it's up (the simulator checks where it lands).
-    func say(_ text: String, for seconds: Double) {
-        bubble?.say(text, for: seconds)
+    func say(_ text: String, for seconds: Double, tone: Tone = .calm, voiced: Bool = false) {
+        bubble?.say(text, for: seconds, tone: tone, voiced: voiced)
         bubbleText = text
         bubbleUntil = world.now.addingTimeInterval(seconds + Double(text.count) * 0.03)
     }

@@ -1,5 +1,6 @@
 import AppKit
 import AVFoundation
+import os
 
 /// Iris: Friday's body on their Mac — a chibi girl on their screens with eyes
 /// (both displays), ears (the Yeti), a mouth (the speakers) and hands
@@ -14,6 +15,8 @@ final class App: NSObject, NSApplicationDelegate {
     let eyes = Eyes()
     let ears = Ears()
     let mouth = Mouth()
+    /// The tone Core gave each line she's about to say, by its words (the HTTP thread writes, main takes it back).
+    let spokenTones = OSAllocatedUnfairLock<[String: Tone]>(initialState: [:])
     var link: Link?
     /// Her hands' own queue: typing and pressing, one after another, off her main thread.
     nonisolated static let handsQueue = DispatchQueue(label: "iris.hands")
@@ -86,8 +89,10 @@ final class App: NSObject, NSApplicationDelegate {
         AskHotKey.register({ [weak self] in self?.body.onAsk?() }, talk: { [weak self] in self?.ears.listenNow() })
 
         mouth.onStart = { [weak self] text, secs, listen in
-            self?.ears.mute(for: secs, line: text, listen: listen)
-            self?.body.speaking(text, seconds: secs)
+            guard let self else { return }
+            self.ears.mute(for: secs, line: text, listen: listen)
+            let tone = self.spokenTones.withLock { $0.removeValue(forKey: text) } ?? .calm
+            self.body.speaking(text, seconds: secs, tone: tone)
         }
         ears.onBargeIn = { [weak self] in self?.mouth.cut() }      // the rest of what the person cut off waits (Mouth.cut)
 
@@ -196,12 +201,15 @@ final class App: NSObject, NSApplicationDelegate {
             if mouth.isFull { return reply(429, ["ok": false, "reason": "busy"]) }
             // "listen": false from Core for a line she says on her own (core/iris._Speaker: no ask it answers)
             let listen = body["listen"] as? Bool ?? true
+            // its tone, kept by its words until the clip starts (Mouth.onStart: her bubble's colour)
+            if let t = body["tone"] as? String { spokenTones.withLock { $0[text] = Tone(t) } }
             guard let secs = mouth.play(data, text: text, listen: listen) else { return reply(422, ["ok": false, "reason": "unplayable"]) }
             reply(200, ["ok": true, "seconds": secs])
         case "/mouth/show":
             let text = body["text"] as? String ?? ""
             let secs = (body["seconds"] as? Double) ?? 6
-            main { self.body.showing(text, seconds: secs); return (200, ["ok": true]) }
+            let tone = Tone(body["tone"] as? String)                  // how much it matters (her bubble's colour)
+            main { self.body.showing(text, seconds: secs, tone: tone); return (200, ["ok": true]) }
         case "/hands/type":
             let text = body["text"] as? String ?? ""
             hands { Hands.type(text) ? (200, ["ok": true]) : (403, ["ok": false, "reason": "accessibility_not_allowed"]) }

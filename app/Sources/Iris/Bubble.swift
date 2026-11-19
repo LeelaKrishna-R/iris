@@ -64,6 +64,8 @@ final class Bubble {
 
     /// `voiced`: her voice is saying it now (the wave moves and the words keep her pace); otherwise they appear at once.
     func say(_ text: String, for seconds: Double, tone: Tone = .calm, voiced: Bool = false) {
+        // no words, no bubble (review an empty cloud was put up, smaller than its own puffs)
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         full = text
         shown = voiced ? 0 : text.count
         shownAt = Date()
@@ -243,11 +245,12 @@ final class BubbleView: NSView {
 
     /// How wide her words wrap: a line `length` points long (unwrapped), in lines `lineHeight` tall, wraps into as
     /// many lines as make the block about 3.4 times as wide as it is tall, so the cloud is a cloud and not a strip.
-    /// A tenth more than an even split, for where the words break; never past `most`. Pure, tested.
-    nonisolated static func wrapWidth(length: CGFloat, lineHeight: CGFloat, most: CGFloat) -> CGFloat {
+    /// A tenth more than an even split, for where the words break; never narrower than its `longest` word (an
+    /// email address was cut in two with room to spare: review); never past `most`. Pure, tested.
+    nonisolated static func wrapWidth(length: CGFloat, lineHeight: CGFloat, most: CGFloat, longest: CGFloat = 0) -> CGFloat {
         guard length > 0, lineHeight > 0 else { return most }
         let lines = max(1, (length / (3.4 * lineHeight)).squareRoot().rounded())
-        return min(most, max(72, (length / lines * 1.1).rounded(.up)))
+        return min(most, max(72, longest.rounded(.up), (length / lines * 1.1).rounded(.up)))
     }
 
     /// The bubble's size for the whole text (so it doesn't grow while typing).
@@ -260,11 +263,15 @@ final class BubbleView: NSView {
         }
         let one = block(.greatestFiniteMagnitude)
         let lineHeight = ("X" as NSString).size(withAttributes: attrs).height
+        let longest = text.split(whereSeparator: \.isWhitespace)
+            .map { (String($0) as NSString).size(withAttributes: attrs).width }.max() ?? 0
         // drawn in a box as wide as the widest line this gives, they break at the same words
         let r = block(BubbleView.wrapWidth(length: one.width, lineHeight: lineHeight,
-                                           most: BubbleView.maxW - BubbleView.waveW))
+                                           most: BubbleView.maxW - BubbleView.waveW, longest: longest))
+        // never smaller than its own puffs and trail, whatever the words
         return NSSize(width: max(96, ceil(r.width) + p.left + p.right + BubbleView.waveW),
-                      height: ceil(r.height) + p.top + p.bottom + BubbleView.trailH)
+                      height: max(BubbleView.trailH + 2 * BubbleView.puff + BubbleView.edge,
+                                  ceil(r.height) + p.top + p.bottom + BubbleView.trailH))
     }
 
     /// One round piece of her bubble: a puff of the cloud's edge, or one of the small bubbles of its trail.

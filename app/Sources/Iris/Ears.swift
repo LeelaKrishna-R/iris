@@ -31,7 +31,7 @@ final class Ears: @unchecked Sendable {
     var onVoice: (() -> Void)?
     private var voiceToldAt = Date.distantPast
 
-    private let engine = AVAudioEngine()
+    private let engine = SharedAudio.engine       // her voice plays through it too (echo cancellation)
     private let recognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))
     private var request: SFSpeechAudioBufferRecognitionRequest?
     private var task: SFSpeechRecognitionTask?
@@ -167,7 +167,34 @@ final class Ears: @unchecked Sendable {
         // "no_microphone" for good: the engine's output format and the hardware's disagreed on the rate, so the
         // check refused a real mic. The tap now takes the hardware's own input format (Apple's rule for tapping
         // the input node), so its rate is the hardware's by construction; only a device with no input is refused.
-        let fmt = input.inputFormat(forBus: 0)
+        // voice processing on the microphone — the echo
+        // canceller (her own voice, played through this engine, is taken out of what she hears), noise suppression (the
+        // TV, a fan) and level control. Its tap reads the processed output; anything that fails is the plain mic.
+        var processed = false
+        if SharedAudio.wanted, !SharedAudio.failedWithProcessing, input.inputFormat(forBus: 0).channelCount > 0 {
+            do {
+                // the output side is in the graph before the voice unit takes over both ends: joined after, its
+                // output wouldn't initialize (-10875, kAUInitialize on outputNode; the plain mic every start)
+                _ = engine.mainMixerNode
+                if !input.isVoiceProcessingEnabled { try input.setVoiceProcessingEnabled(true) }
+                // others' sound (their music, a video) is lowered as little as macOS allows while she listens
+                input.voiceProcessingOtherAudioDuckingConfiguration =
+                    AVAudioVoiceProcessingOtherAudioDuckingConfiguration(enableAdvancedDucking: false, duckingLevel: .min)
+                processed = SharedAudio.usable(input.outputFormat(forBus: 0))
+                if !processed {
+                    log("ears: voice processing gave a format her ears can't read; the plain microphone")
+                    try? input.setVoiceProcessingEnabled(false)
+                }
+            } catch {
+                log("ears: voice processing unavailable (\(error.localizedDescription)); the plain microphone")
+                try? input.setVoiceProcessingEnabled(false)
+            }
+        } else if input.isVoiceProcessingEnabled {
+            log("ears: voice processing off (\(SharedAudio.failedWithProcessing ? "the engine wouldn't start with it" : SharedAudio.wanted ? "no input channels" : "turned off"))")
+            try? input.setVoiceProcessingEnabled(false)
+        }
+        SharedAudio.processing = processed
+        let fmt = processed ? input.outputFormat(forBus: 0) : input.inputFormat(forBus: 0)
         guard fmt.sampleRate > 0, fmt.channelCount > 0 else {
             // with no microphone at launch she never watched for one, and her retry asked the same
             // engine, which keeps the absent device: a microphone plugged back in wasn't heard until a restart. Watch the
@@ -179,7 +206,7 @@ final class Ears: @unchecked Sendable {
             problem = "no_microphone"; watchMic(); retry(); return
         }
         noMicTries = 0
-        log("ears: microphone at \(Int(fmt.sampleRate)) Hz, \(fmt.channelCount) ch")
+        log("ears: microphone at \(Int(fmt.sampleRate)) Hz, \(fmt.channelCount) ch (voice processing: \(processed ? "on" : "off"))")
         input.removeTap(onBus: 0)
         voice = VoiceGate(rate: fmt.sampleRate)          // only the tap touches it from here on
         input.installTap(onBus: 0, bufferSize: 2048, format: fmt) { [weak self] buf, _ in
@@ -213,8 +240,15 @@ final class Ears: @unchecked Sendable {
                 sharp?.append(buf)
             }
         }
+        _ = engine.mainMixerNode                   // the output side runs too: her voice, and the canceller's reference
         engine.prepare()
-        do { try engine.start() } catch { problem = "audio_engine: \(error.localizedDescription)"; retry(); return }
+        do { try engine.start() } catch {
+            // said in her log (it wasn't: a start that failed left only `problem`, overwritten by the retry)
+            log("ears: the audio engine wouldn't start (voice processing: \(processed ? "on" : "off")): \(error)")
+            SharedAudio.processing = false
+            if processed { SharedAudio.failedWithProcessing = true }   // the retry starts on the plain microphone
+            problem = "audio_engine: \(error.localizedDescription)"; retry(); return
+        }
         running = true
         problem = nil
         onDevice = rec.supportsOnDeviceRecognition
@@ -257,6 +291,7 @@ final class Ears: @unchecked Sendable {
         restartedAt = Date()
         sleepEars()
         silenceTimer?.invalidate(); silenceTimer = nil
+        SharedAudio.processing = false                    // until begin() has the engine running again
         running = false
         // the engine is touched only once the mic answers (a hung device froze her main thread here)
         whenMicAnswers { [weak self] in
@@ -521,7 +556,7 @@ final class Ears: @unchecked Sendable {
     }
 
     private func finish() {
-        let text = lastText
+        var text = lastText
         lastText = ""
         guard !text.isEmpty else { return }
         let now = Date()
@@ -531,6 +566,11 @@ final class Ears: @unchecked Sendable {
             log("ears: her own words heard back as a follow-up; not sent")       // never what was said
             DispatchQueue.main.async { self.onDone?() }       // review 36: her listening pose ends, Mouth uncuts
             return
+        }
+        if wasAddressed && followUp {
+            // her answer's last words heard ahead of their ask ("Yes?" → "Yes, can you check …") go
+            let his = OwnVoice.withoutHerTail(text, answer: lastAnswer(now))
+            if his != text { log("ears: her own last words heard ahead of their; taken off"); text = his }
         }
         if wasAddressed {
             hisSpans = Array((hisSpans + [[(firstWordAt ?? taskAt).timeIntervalSince1970, now.timeIntervalSince1970]]).suffix(30))
@@ -677,6 +717,7 @@ final class Ears: @unchecked Sendable {
             engine.inputNode.removeTap(onBus: 0)
             engine.stop()
         }
+        SharedAudio.processing = false                    // her voice goes out as before while her ears are off
         running = false
         offTimer?.invalidate()
         offTimer = Timer.scheduledTimer(withTimeInterval: seconds, repeats: false) { [weak self] _ in self?.on() }
@@ -745,6 +786,10 @@ final class Ears: @unchecked Sendable {
         let until = mutedUntil
         DispatchQueue.main.asyncAfter(deadline: .now() + seconds + 0.6) { [weak self] in
             guard let self, self.mutedUntil == until, !self.addressed, self.task != nil else { return }
+            // how much of her own voice her ears heard while she talked (the echo canceller's measure): a
+            // count of words, never the words
+            log("ears: \(OwnVoice.words(self.lastText).count) words heard while she talked "
+                + "(voice processing: \(SharedAudio.processing ? "on" : "off"))")
             // review 36: the fresh task began with no preroll, so their first words in the moment she stopped were
             // lost. The last ~0.5 s heard is after her line (the mute runs 0.6 s past it): it starts the new one.
             self.gate.lock()
@@ -812,6 +857,7 @@ final class Ears: @unchecked Sendable {
     private func measure(_ buf: AVAudioPCMBuffer) -> Bool {
         guard let ch = buf.floatChannelData?[0], buf.frameLength > 0 else { return false }
         let n = Int(buf.frameLength)
+        channelLevels(buf)
         var mean: Float = 0
         vDSP_measqv(ch, 1, &mean, vDSP_Length(n))
         let db = 10 * log10(max(mean, 1e-16))
@@ -830,6 +876,29 @@ final class Ears: @unchecked Sendable {
         speechNow = voiced
         gate.unlock()
         return voiced
+    }
+
+    // (diagnosis): with voice processing on the microphone came as 4 channels, and their voice at the Mac was never
+    // heard while only channel 0 is read. Each channel's loudest level over 3 s, for the first 90 s after a start
+    // with voice processing on: levels only, never audio. (Tap thread; its own state, touched nowhere else.)
+    private var levelsSince = Date.distantPast, levelsMax: [Float] = [], levelsStartedAt = Date.distantPast
+    private func channelLevels(_ buf: AVAudioPCMBuffer) {
+        guard SharedAudio.processing, let data = buf.floatChannelData else { return }
+        let now = Date()
+        if levelsStartedAt == .distantPast { levelsStartedAt = now }
+        guard now.timeIntervalSince(levelsStartedAt) < 90 else { return }
+        let chans = Int(buf.format.channelCount), n = vDSP_Length(buf.frameLength)
+        if levelsMax.count != chans { levelsMax = Array(repeating: -160, count: chans) }
+        for c in 0..<chans {
+            var mean: Float = 0
+            vDSP_measqv(data[c], 1, &mean, n)
+            levelsMax[c] = max(levelsMax[c], 10 * log10(max(mean, 1e-16)))
+        }
+        if now.timeIntervalSince(levelsSince) >= 3 {
+            log("ears: channel peaks (dB, 3 s): " + levelsMax.map { String(Int($0.rounded())) }.joined(separator: " "))
+            levelsMax = Array(repeating: -160, count: chans)
+            levelsSince = now
+        }
     }
 
     func status() -> [String: Any] {

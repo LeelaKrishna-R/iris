@@ -61,6 +61,26 @@ enum OwnVoice {
         return Double(common) >= 0.75 * Double(w.count) && Double(common) >= 0.6 * Double(hers.count)
     }
 
+    /// What was heard with her own last words taken off its front: the end of her answer heard ahead of their ask.
+    /// the person said "\(Config.agentName)", she said "Yes?", and what came to Friday
+    /// was "Yes, can you check my emails and see which one needs a reply" — her "Yes?" first. When the first words
+    /// heard are her answer's last words and two or more of their follow, hers go. Unchanged otherwise.
+    static func withoutHerTail(_ heard: String, answer: String) -> String {
+        let tokens = heard.split(whereSeparator: { $0.isWhitespace }).map(String.init)
+        let said = tokens.map { words($0).joined(separator: " ") }
+        let hers = words(answer)
+        guard !hers.isEmpty, said.count >= 3 else { return heard }
+        // her question answered in her own words is their ("the second one please" to "…the first or the second one?");
+        // only her one- or two-word "Yes?" is taken off a question
+        if answer.trimmingCharacters(in: .whitespacesAndNewlines).hasSuffix("?") && hers.count > 2 { return heard }
+        for k in stride(from: min(hers.count, said.count - 2), through: 1, by: -1) {
+            if Array(said[0..<k]) == Array(hers[(hers.count - k)...]) {
+                return tokens[k...].joined(separator: " ")
+            }
+        }
+        return heard
+    }
+
     /// How many words both say in the same order, gaps allowed (longest common subsequence, by word).
     static func inOrder(_ a: [String], _ b: [String]) -> Int {
         guard !a.isEmpty, !b.isEmpty else { return 0 }

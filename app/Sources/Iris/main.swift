@@ -1,6 +1,5 @@
 import AppKit
 import AVFoundation
-import os
 
 /// Iris: Friday's body on their Mac — a chibi girl on their screens with eyes
 /// (both displays), ears (the Yeti), a mouth (the speakers) and hands
@@ -15,8 +14,6 @@ final class App: NSObject, NSApplicationDelegate {
     let eyes = Eyes()
     let ears = Ears()
     let mouth = Mouth()
-    /// The tone Core gave each line she's about to say, by its words (the HTTP thread writes, main takes it back).
-    let spokenTones = OSAllocatedUnfairLock<[String: Tone]>(initialState: [:])
     var link: Link?
     /// Her hands' own queue: typing and pressing, one after another, off her main thread.
     nonisolated static let handsQueue = DispatchQueue(label: "iris.hands")
@@ -88,11 +85,10 @@ final class App: NSObject, NSApplicationDelegate {
         }
         AskHotKey.register({ [weak self] in self?.body.onAsk?() }, talk: { [weak self] in self?.ears.listenNow() })
 
-        mouth.onStart = { [weak self] text, secs, listen in
+        mouth.onStart = { [weak self] text, secs, listen, tone in
             guard let self else { return }
             self.ears.mute(for: secs, line: text, listen: listen)
-            let tone = self.spokenTones.withLock { $0.removeValue(forKey: text) } ?? .calm
-            self.body.speaking(text, seconds: secs, tone: tone)
+            self.body.speaking(text, seconds: secs, tone: Tone(tone))      // its own tone, queued with the clip
         }
         ears.onBargeIn = { [weak self] in self?.mouth.cut() }      // the rest of what the person cut off waits (Mouth.cut)
 
@@ -201,9 +197,10 @@ final class App: NSObject, NSApplicationDelegate {
             if mouth.isFull { return reply(429, ["ok": false, "reason": "busy"]) }
             // "listen": false from Core for a line she says on her own (core/iris._Speaker: no ask it answers)
             let listen = body["listen"] as? Bool ?? true
-            // its tone, kept by its words until the clip starts (Mouth.onStart: her bubble's colour)
-            if let t = body["tone"] as? String { spokenTones.withLock { $0[text] = Tone(t) } }
-            guard let secs = mouth.play(data, text: text, listen: listen) else { return reply(422, ["ok": false, "reason": "unplayable"]) }
+            // its tone goes with the clip (Mouth hands it back when the clip starts: her bubble's colour).
+            // Review kept in a table by the line's words, a clip that never started left its entry for good
+            // and the same line queued twice lost its second tone.
+            guard let secs = mouth.play(data, text: text, listen: listen, tone: body["tone"] as? String ?? "") else { return reply(422, ["ok": false, "reason": "unplayable"]) }
             reply(200, ["ok": true, "seconds": secs])
         case "/mouth/show":
             let text = body["text"] as? String ?? ""

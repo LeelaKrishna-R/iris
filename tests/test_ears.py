@@ -9,12 +9,24 @@ EARS = (Path(__file__).resolve().parents[1] / "app" / "Sources" / "Iris" / "Ears
 def test_no_tap_without_input_channels():
     begin = EARS[EARS.index("private func begin()"):]
     begin = begin[:begin.index("input.installTap(")]
-    assert "fmt.channelCount > 0" in begin, "a format with no channels must not reach installTap"
+    assert "guard fmt.sampleRate > 0, fmt.channelCount > 0 else" in begin, "a format with no channels must not reach installTap"
     # the tap takes the hardware's own input format, so its rate matches by construction (a 96 kHz USB mic was
-    # refused when the engine's output format disagreed on the rate)
-    assert "let fmt = input.inputFormat(forBus: 0)" in begin, "the tap must use the hardware's input format"
-    assert "outputFormat(forBus" not in begin
+    # refused when the engine's output format disagreed on the rate); the output format only with voice processing
+    # on, and only one her ears can read
+    assert "let fmt = processed ? input.outputFormat(forBus: 0) : input.inputFormat(forBus: 0)" in begin
+    assert "processed = SharedAudio.usable(input.outputFormat(forBus: 0))" in begin
     assert 'problem = "no_microphone"; watchMic(); retry(); return' in begin
+
+
+def test_voice_processing_is_off_unless_turned_on_and_falls_back_to_the_plain_microphone():
+    shared = (Path(__file__).resolve().parents[1] / "app" / "Sources" / "Iris" / "SharedAudio.swift").read_text(encoding="utf-8")
+    assert 'UserDefaults.standard.object(forKey: "voiceProcessing") as? Bool ?? false' in shared
+    begin = EARS[EARS.index("private func begin()"):]
+    begin = begin[:begin.index("input.installTap(")]
+    # asked for, not failed before, and a microphone present; anything that goes wrong is the plain microphone
+    assert "if SharedAudio.wanted, !SharedAudio.failedWithProcessing, input.inputFormat(forBus: 0).channelCount > 0 {" in begin
+    assert begin.count("try? input.setVoiceProcessingEnabled(false)") >= 3
+    assert "SharedAudio.processing = processed" in begin
 
 
 def test_a_hung_microphone_never_freezes_her():

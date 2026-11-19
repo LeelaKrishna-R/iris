@@ -23,7 +23,7 @@ time she runs. Send these headers on every request:
 without writing a client:
 
 ```sh
-python3 agents/iris_cli.py say "Build finished"          # aloud, lips moving; --bubble for her speech bubble only
+python3 agents/iris_cli.py say "Build finished"          # aloud, lips moving; --bubble for her thought bubble only
 python3 agents/iris_cli.py notice "tests failed"         # a glance and a small "!", no words
 python3 agents/iris_cli.py react giggle                  # one of her animations
 python3 agents/iris_cli.py animations                    # lists them
@@ -54,8 +54,11 @@ command wasn't understood. So `make test || python3 agents/iris_cli.py notice "t
 
 | Request | Body | What she does |
 |---|---|---|
-| `POST /mouth/show` | `{"text": str, "seconds": number}` | Shows `text` in her speech bubble (default 6 s) |
-| `POST /mouth/play` | `{"b64": base64 audio, "text": str}` | Speaks the audio with her lips moving; replies `{"seconds": …}`, or 409 if she was interrupted |
+| `POST /mouth/show` | `{"text": str, "seconds": number, "tone": str}` | Shows `text` in her thought bubble (default 6 s) |
+| `POST /mouth/play` | `{"b64": base64 audio, "text": str, "tone": str}` | Speaks the audio with her lips moving; replies `{"seconds": …}`, or 409 if she was interrupted |
+
+`tone` is optional and sets the bubble's colour by how much the line matters: `"calm"` (the default, cream),
+`"notice"` (purple), `"needs_you"` (orange) or `"urgent"` (red). Anything else is calm.
 
 ## Body and mood
 
@@ -94,7 +97,7 @@ click answers it. Iris records the click and does nothing else; your agent acts 
 
 Iris only records a button click and shows it as pending; your agent does the work, says what happened
 (`/mouth/show`) and sends the card again. Act on a token once: one delivered again after a lost confirm is
-the same click. The card stays out of screen shares and recordings, always. Iris and her speech bubble stay out
+the same click. The card stays out of screen shares and recordings, always. Iris and her thought bubble stay out
 too, unless the person picks Show Me in Screen Shares in her menu; that lasts until she quits and is never saved.
 Her menu offers Show / Hide My Day only once an agent has sent a card.
 

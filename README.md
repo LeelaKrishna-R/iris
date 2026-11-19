@@ -38,7 +38,7 @@ Agents connect in several ways:
 
 | Tool | What she does |
 |---|---|
-| `iris_say` | Says a line aloud with her lips moving (macOS voice), or in her speech bubble |
+| `iris_say` | Says a line aloud with her lips moving (macOS voice), or in her thought bubble |
 | `iris_react` | Plays one of her animations (`think`, `nod`, `giggle`, `hopscotch` … 194 in all) |
 | `iris_animations` | Lists her animations |
 | `iris_notice` | Glances up at something that just happened, with a small "!" and no words |

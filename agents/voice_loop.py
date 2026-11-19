@@ -6,7 +6,7 @@ its reply comes back in her voice. Ctrl-C stops it.
 
     python3 voice_loop.py -- claude -p             # Claude Code, one-shot
     python3 voice_loop.py -- codex exec            # Codex
-    python3 voice_loop.py --bubble -- my-agent     # her speech bubble instead of her voice
+    python3 voice_loop.py --bubble -- my-agent     # her thought bubble instead of her voice
 
 The agent's reply is said as it printed it (up to 600 characters aloud), or shown in her bubble while you're on a
 call (`iris busy`); nothing is sent anywhere else.
@@ -45,7 +45,7 @@ def turn(agent: list[str], said: str, speak: bool, timeout: float = 180) -> str:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("--bubble", action="store_true", help="her speech bubble instead of her voice")
+    ap.add_argument("--bubble", action="store_true", help="her thought bubble instead of her voice")
     ap.add_argument("agent", nargs=argparse.REMAINDER, help="the agent command, after --")
     a = ap.parse_args(argv)
     agent = a.agent[1:] if a.agent[:1] == ["--"] else a.agent      # only the separator; the agent's own -- stay

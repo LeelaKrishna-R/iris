@@ -40,6 +40,15 @@ final class Menu: NSObject {
         log("menu: a busy screen \(wakeForScreen ? "wakes" : "doesn't wake") her now")
     }
 
+    /// Echo cancelling on her microphone (SharedAudio): a trial the person can switch on and back off themselves. On, she
+    /// doesn't hear the Mac's own sound (her voice, a video); whether she still hears them is what the trial is for.
+    var echoCancelling: Bool { SharedAudio.wanted }
+    @objc func toggleEchoCancelling() {
+        UserDefaults.standard.set(!SharedAudio.wanted, forKey: SharedAudio.wantedKey)
+        log("menu: echo cancelling \(SharedAudio.wanted ? "on" : "off") now (a trial)")
+        onSetting?("echo")
+    }
+
     /// A setting from "How Iris is" (HowIris.toggles): "ears_off" / "ears_on" (an hour, or back on), "eyes_off" /
     /// "eyes_on", "quiet" / "talk" (Core's: asked of it, CoreWord).
     @objc func setting(_ sender: NSMenuItem) {

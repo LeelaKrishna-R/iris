@@ -241,6 +241,10 @@ extension Body {
         let wakes = m.addItem(withTitle: "Wake for Screen Activity", action: #selector(Menu.toggleWakeForScreen), keyEquivalent: "")
         wakes.target = Menu.shared
         wakes.state = Menu.shared.wakeForScreen ? .on : .off
+        // echo cancelling on her microphone, for them to try and switch back (Menu.toggleEchoCancelling)
+        let echo = m.addItem(withTitle: "Echo Cancelling (Trial)", action: #selector(Menu.toggleEchoCancelling), keyEquivalent: "")
+        echo.target = Menu.shared
+        echo.state = Menu.shared.echoCancelling ? .on : .off
         m.addItem(.separator())
         m.addItem(withTitle: "Welcome…", action: #selector(Menu.welcome), keyEquivalent: "").target = Menu.shared
         m.addItem(withTitle: "Quit Iris", action: #selector(Menu.quit), keyEquivalent: "").target = Menu.shared

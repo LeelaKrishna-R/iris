@@ -66,6 +66,7 @@ final class App: NSObject, NSApplicationDelegate {
             case "ears_on": self.ears.on()
             case "eyes_off": self.eyes.pause(for: 3600)
             case "eyes_on": self.eyes.pause(for: 0)
+            case "echo": self.ears.voiceProcessingChanged()
             default: return
             }
             log("menu: \(what)")

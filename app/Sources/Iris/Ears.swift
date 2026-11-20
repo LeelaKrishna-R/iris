@@ -236,8 +236,9 @@ final class Ears: @unchecked Sendable {
                     if self.taskAudio.count > 1500 { self.taskAudio.removeFirst() }   // ~1 min
                 }
                 self.gate.unlock()
-                req?.append(buf)
-                sharp?.append(buf)
+                let heard = SharedAudio.forRecognizer(buf) ?? buf         // four channels: the first, as mono
+                req?.append(heard)
+                sharp?.append(heard)
             }
         }
         _ = engine.mainMixerNode                   // the output side runs too: her voice, and the canceller's reference
@@ -281,6 +282,13 @@ final class Ears: @unchecked Sendable {
         gate.lock(); let ago = Date().timeIntervalSince(lastAudioAt); gate.unlock()
         if !engine.isRunning { restartEngine("the audio engine had stopped") }
         else if ago > 2 * MicHealth.silentAfter { restartEngine("no audio from the microphone for \(Int(ago)) s") }
+    }
+
+    /// Echo cancelling was switched on or off in her menu: her ears start again with it, and one earlier failure
+    /// to start with it this run isn't held against the new try.
+    func voiceProcessingChanged() {
+        SharedAudio.failedWithProcessing = false
+        restartEngine("echo cancelling switched \(SharedAudio.wanted ? "on" : "off")")
     }
 
     /// The engine stopped and started again on the current default input (begin() reads its format again). Never
@@ -387,6 +395,7 @@ final class Ears: @unchecked Sendable {
     }
 
     private static func copy(_ buf: AVAudioPCMBuffer) -> AVAudioPCMBuffer? {
+        if let mono = SharedAudio.forRecognizer(buf) { return mono }      // four channels: the first, as mono
         guard let out = AVAudioPCMBuffer(pcmFormat: buf.format, frameCapacity: buf.frameLength) else { return nil }
         out.frameLength = buf.frameLength
         let n = Int(buf.frameLength)
@@ -862,6 +871,7 @@ final class Ears: @unchecked Sendable {
         vDSP_measqv(ch, 1, &mean, vDSP_Length(n))
         let db = 10 * log10(max(mean, 1e-16))
         let voiced = voice?.feed(ch, count: n) ?? false
+        gateLevels(voiced)
         gate.lock()
         // the levels under `gate` too — status() reads them on main while the tap writes them
         levelDB = db
@@ -895,10 +905,21 @@ final class Ears: @unchecked Sendable {
             levelsMax[c] = max(levelsMax[c], 10 * log10(max(mean, 1e-16)))
         }
         if now.timeIntervalSince(levelsSince) >= 3 {
-            log("ears: channel peaks (dB, 3 s): " + levelsMax.map { String(Int($0.rounded())) }.joined(separator: " "))
+            // … and what her voice gate made of it: the most a frame stood over the room's noise, the most it
+            // repeated at a pitch, and how many buffers it called voice (it opens at 6 dB and 0.8, VoiceGate.Tuning)
+            log("ears: channel peaks (dB, 3 s): " + levelsMax.map { String(Int($0.rounded())) }.joined(separator: " ")
+                + String(format: "; gate: over noise %.0f dB, pitch %.2f, voiced %d of %d", gateSNR, gatePitch, gateVoiced, gateSeen))
             levelsMax = Array(repeating: -160, count: chans)
             levelsSince = now
+            gateSNR = -160; gatePitch = 0; gateVoiced = 0; gateSeen = 0
         }
+    }
+
+    private var gateSNR: Float = -160, gatePitch: Float = 0, gateVoiced = 0, gateSeen = 0
+    private func gateLevels(_ voiced: Bool) {
+        guard SharedAudio.processing, let v = voice else { return }
+        gateSNR = max(gateSNR, v.snrDB); gatePitch = max(gatePitch, v.periodic)
+        gateSeen += 1; if voiced { gateVoiced += 1 }
     }
 
     func status() -> [String: Any] {

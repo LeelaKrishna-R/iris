@@ -88,6 +88,21 @@ def test_bubble_when_not_spoken(iris):
     assert iris[-1] == ("POST", "/mouth/show", {"text": "Tests passed.", "seconds": 6.0})
 
 
+def test_say_carries_its_tone_and_refuses_one_she_doesnt_have(iris):
+    text, err = tool("iris_say", text="Deploy waiting", speak=False, tone="needs_you")
+    assert not err and text == "Iris showed it in her bubble."
+    assert iris[-1] == ("POST", "/mouth/show", {"text": "Deploy waiting", "seconds": 6.0, "tone": "needs_you"})
+    before = len(iris)
+    text, _ = tool("iris_say", text="Deploy waiting", speak=False, tone="loud")
+    assert text.startswith("Iris didn't say it: tone must be one of calm, notice, needs_you, urgent")
+    assert len(iris) == before                           # nothing shown
+
+
+def test_the_say_tool_lists_its_tones():
+    schema = iris_mcp.TOOLS["iris_say"][2]
+    assert schema["tone"]["enum"] == ["calm", "notice", "needs_you", "urgent"]
+
+
 def test_react_and_an_unknown_animation(iris):
     assert tool("iris_react", animation="wave")[0] == "Iris played wave."
     assert "no animation called 'moonwalk'" in tool("iris_react", animation="moonwalk")[0]

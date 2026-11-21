@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """`iris` from a terminal, a script or any agent that can run a command.
 
-    iris say "Build finished"          aloud (macOS voice) with her lips moving; --bubble for her speech bubble only
+    iris say "Build finished"          aloud (macOS voice) with her lips moving; --bubble for her speech bubble only;
+                                       --tone notice|needs_you|urgent colours the bubble by how much it matters
     make 2>&1 | tail -1 | iris say -   "-" says what comes in on stdin
     iris notice "tests failed"         a glance and a small "!", no words
     iris react giggle                  one of her animations (`iris animations` lists them)
@@ -37,13 +38,18 @@ def run(argv: list[str], stdin=None) -> tuple[int, str]:
     cmd, rest = argv[0], argv[1:]
     try:
         if cmd == "say" and rest:
+            tone = "calm"
+            if "--tone" in rest:                          # a missing value is usage (64)
+                i = rest.index("--tone")
+                tone, rest = rest[i + 1], rest[:i] + rest[i + 2:]
+                m._tone({"tone": tone})                   # one that isn't a tone is usage too, before anything is said
             bubble = "--bubble" in rest
             text = " ".join(a for a in rest if a != "--bubble")
             if text == "-":
                 text = " ".join((stdin or sys.stdin).read().split())
                 if not text:
                     return 64, "Nothing to say: nothing came in on stdin."
-            out = m.t_say({"text": text, "speak": not bubble})
+            out = m.t_say({"text": text, "speak": not bubble, "tone": tone})
             return (0 if out.startswith("Iris said") or out.startswith("Iris showed") else 1), out
         if cmd == "notice" and rest:
             out = m.t_notice({"what": " ".join(rest)})

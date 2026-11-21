@@ -68,7 +68,19 @@ def call(path: str, payload: dict | None = None, method: str = "POST", timeout: 
         return {"ok": False, "reason": "unreadable_reply"}
 
 
-def _spoken(text: str) -> dict:
+TONES = ("calm", "notice", "needs_you", "urgent")
+
+
+def _tone(args: dict) -> str | None:
+    """The bubble's colour by how much the line matters, as /mouth/show and /mouth/play take it; None for calm.
+    Anything that isn't one of TONES raises ValueError rather than turning quietly calm."""
+    tone = str(args.get("tone") or "calm").strip().lower().replace("-", "_").replace(" ", "_")
+    if tone not in TONES:
+        raise ValueError(f"tone must be one of {', '.join(TONES)}, not {args.get('tone')!r}")
+    return None if tone == "calm" else tone
+
+
+def _spoken(text: str, tone: str | None = None) -> dict:
     """Her voice for `text`: macOS's own `say` to a file, played through her mouth (lips move with it)."""
     with tempfile.TemporaryDirectory() as d:
         out = Path(d) / "line.aiff"
@@ -78,8 +90,10 @@ def _spoken(text: str) -> dict:
             return {"ok": False, "reason": "no_voice"}      # no `say` here (not macOS): her bubble instead
         if done.returncode != 0 or not out.exists():
             return {"ok": False, "reason": "no_voice"}
-        return call("/mouth/play", {"b64": base64.b64encode(out.read_bytes()).decode(), "text": text[:600]},
-                    timeout=90)
+        body = {"b64": base64.b64encode(out.read_bytes()).decode(), "text": text[:600]}
+        if tone:
+            body["tone"] = tone
+        return call("/mouth/play", body, timeout=90)
 
 
 # ── tools ────────────────────────────────────────────────────────────────────
@@ -94,14 +108,21 @@ def t_say(args: dict) -> str:
     text = " ".join(str(args.get("text") or "").split())
     if not text:
         return "Nothing to say: text is empty."
+    try:
+        tone = _tone(args)
+    except ValueError as e:
+        return f"Iris didn't say it: {e}."
     busy = bool(args.get("speak", True)) and _busy()
     if args.get("speak", True) and not busy:
-        r = _spoken(text)
+        r = _spoken(text, tone)
         if r.get("ok"):
             return f"Iris said it aloud ({r.get('seconds', 0):.1f} s)."
         if r.get("reason") != "no_voice":
             return f"Iris didn't speak: {r.get('reason') or 'no reason given'}."
-    r = call("/mouth/show", {"text": text[:300], "seconds": float(args.get("seconds") or 6)})
+    body = {"text": text[:300], "seconds": float(args.get("seconds") or 6)}
+    if tone:
+        body["tone"] = tone
+    r = call("/mouth/show", body)
     if not r.get("ok"):
         return f"Iris didn't show it: {r.get('reason')}."
     return "Iris showed it in her bubble (you're on a call)." if busy else "Iris showed it in her bubble."
@@ -231,7 +252,10 @@ TOOLS = {
                         "natural.",
                  {"text": {"type": "string", "description": "What she says."},
                   "speak": {"type": "boolean", "description": "Aloud (default) or bubble only."},
-                  "seconds": {"type": "number", "description": "How long the bubble stays."}}, ["text"]),
+                  "seconds": {"type": "number", "description": "How long the bubble stays."},
+                  "tone": {"type": "string", "enum": list(TONES),
+                           "description": "How much it matters, as her bubble's colour: calm (default, cream), "
+                                          "notice (purple), needs_you (orange) or urgent (red)."}}, ["text"]),
     "iris_react": (t_react, "Play one of Iris's animations (a reaction such as think, nod or giggle). "
                             "Use iris_animations for the names.",
                    {"animation": {"type": "string"}, "seconds": {"type": "number"}}, ["animation"]),

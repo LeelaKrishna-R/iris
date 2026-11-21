@@ -30,6 +30,24 @@ def test_say_aloud_and_in_her_bubble(iris, monkeypatch):
     assert iris[-1] == ("POST", "/mouth/show", {"text": "Build finished", "seconds": 6.0})
 
 
+def test_say_with_a_tone_colours_her_bubble(iris, monkeypatch):
+    code, out = iris_cli.run(["say", "--bubble", "--tone", "urgent", "Disk", "full"])
+    assert (code, out) == (0, "Iris showed it in her bubble.")
+    assert iris[-1] == ("POST", "/mouth/show", {"text": "Disk full", "seconds": 6.0, "tone": "urgent"})
+    _fake_say(monkeypatch)
+    assert iris_cli.run(["say", "Review", "waiting", "--tone", "needs-you"])[0] == 0
+    assert iris[-1][1] == "/mouth/play" and iris[-1][2]["tone"] == "needs_you"
+    assert iris_cli.run(["say", "--tone", "calm", "--bubble", "ok"])[0] == 0
+    assert "tone" not in iris[-1][2]                     # calm is her default: nothing to send
+
+
+@pytest.mark.parametrize("argv", [["say", "--tone", "loud", "hi"], ["say", "hi", "--tone"]])
+def test_a_tone_she_doesnt_have_is_usage_and_says_nothing(iris, argv):
+    code, out = iris_cli.run(argv)
+    assert code == 64, (argv, out)
+    assert iris == []
+
+
 def test_notice_react_come_and_animations(iris):
     assert iris_cli.run(["notice", "tests", "failed"]) == (0, "Iris glanced up at it.")
     assert ("POST", "/iris/notice", {"title": "tests failed"}) in iris

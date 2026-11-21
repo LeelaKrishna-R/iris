@@ -41,6 +41,19 @@ def test_say_with_a_tone_colours_her_bubble(iris, monkeypatch):
     assert "tone" not in iris[-1][2]                     # calm is her default: nothing to send
 
 
+def test_say_seconds_keeps_her_bubble_up_that_long(iris):
+    assert iris_cli.run(["say", "--bubble", "--seconds", "15", "Tests", "passed"]) == (0, "Iris showed it in her bubble.")
+    assert iris[-1] == ("POST", "/mouth/show", {"text": "Tests passed", "seconds": 15.0})
+
+
+@pytest.mark.parametrize("argv", [["say", "--seconds", "soon", "hi"], ["say", "hi", "--seconds"],
+                                  ["say", "--seconds", "0", "hi"], ["say", "--seconds", "600", "hi"]])
+def test_seconds_that_isnt_a_bubble_length_is_usage_and_says_nothing(iris, argv):
+    code, out = iris_cli.run(argv)
+    assert code == 64, (argv, out)
+    assert iris == []
+
+
 @pytest.mark.parametrize("argv", [["say", "--tone", "loud", "hi"], ["say", "hi", "--tone"]])
 def test_a_tone_she_doesnt_have_is_usage_and_says_nothing(iris, argv):
     code, out = iris_cli.run(argv)

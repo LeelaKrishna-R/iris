@@ -81,6 +81,16 @@ def test_listen_prints_what_was_said_to_her(iris):
     assert iris[-1] == ("POST", "/ears/next", {"timeout": 5.0})
 
 
+def test_listen_json_gives_the_words_alone(iris, monkeypatch):
+    import json
+    code, out = iris_cli.run(["listen", "5", "--json"])
+    assert code == 0 and json.loads(out) == {"heard": "what's the weather", "typed": False,
+                                             "said": "Said to her: what's the weather"}
+    monkeypatch.setattr(iris_mcp, "call", lambda path, payload=None, **k: {"ok": True, "heard": None})
+    code, out = iris_cli.run(["listen", "--json", "3"])
+    assert code == 1 and json.loads(out)["heard"] is None and json.loads(out)["typed"] is None
+
+
 def test_listen_with_nothing_said_exits_1(monkeypatch):
     monkeypatch.setattr(iris_mcp, "call", lambda path, payload=None, **k: {"ok": True, "heard": None})
     assert iris_cli.run(["listen", "3"]) == (1, "Nothing was said to Iris in 3 s.")

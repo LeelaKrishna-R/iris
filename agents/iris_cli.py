@@ -8,7 +8,8 @@
     iris notice "tests failed"         a glance and a small "!", no words
     iris react giggle                  one of her animations (`iris animations` lists them)
     iris come [cursor|other_screen]    she comes over
-    iris listen [seconds]              prints what's said to her by name next (up to 25 s), or exits 1 on silence
+    iris listen [seconds] [--json]     prints what's said to her by name next (up to 25 s), or exits 1 on silence
+                                       (--json prints {"heard": the words or null, "typed": true|false|null, ...})
     iris busy [--json]                 exit 0 if you're on a call (Zoom, Meet, Discord with the mic in use, …), else 1
     iris wait-free [600]               waits until you're off a call (up to 600 s): `iris wait-free && iris say done`
     iris ask [--wait 120] "Deploy?"    an Allow / Deny card beside her; exit 0 only if you click Allow in time
@@ -108,8 +109,11 @@ def run(argv: list[str], stdin=None) -> tuple[int, str]:
             return (64, USAGE) if rest else (0, _health(h))
         if cmd == "listen":
             # silence is 1, so `if said=$(iris listen 10); then …` acts only on an answer
+            as_json = "--json" in rest
+            rest = [a for a in rest if a != "--json"]
             out = m.t_listen({"seconds": float(rest[0]) if rest else 20})
-            return (1 if out.startswith("Nothing was said") else 0), out
+            code = 1 if out.startswith("Nothing was said") else 0
+            return code, (_listen_json(out) if as_json else out)
     except m.IrisUnreachable as e:
         return 2, str(e)
     except (ValueError, IndexError):
@@ -140,6 +144,15 @@ def _busy_json(said: str) -> str:
     if said.startswith("On a call: "):
         return json.dumps({"on_call": True, "app": said[len("On a call: "):].rstrip("."), "said": said})
     return json.dumps({"on_call": False if said.startswith("Not on a call") else None, "app": None, "said": said})
+
+
+def _listen_json(said: str) -> str:
+    """What was heard, for a script: {"heard": the words or null, "typed": true / false (null when nothing was), "said"}."""
+    import json
+    for lead, typed in (("Said to her: ", False), ("Typed to her: ", True)):
+        if said.startswith(lead):
+            return json.dumps({"heard": said[len(lead):], "typed": typed, "said": said})
+    return json.dumps({"heard": None, "typed": None, "said": said})
 
 
 def _ask_json(said: str) -> str:

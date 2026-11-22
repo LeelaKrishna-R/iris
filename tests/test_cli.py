@@ -76,6 +76,13 @@ def test_an_animation_she_doesnt_have_is_a_no(iris):
     assert code == 1 and "no animation called 'backflip'" in out
 
 
+def test_screen_prints_what_she_sees(iris, monkeypatch):
+    assert iris_cli.run(["screen"]) == (0, "Front app: Code\nwindow: main.py\ndisplay 1: hi")
+    assert iris[-1][:2] == ("GET", "/eyes/now")
+    monkeypatch.setattr(iris_mcp, "call", lambda path, payload=None, **k: {"ok": False, "reason": "no_screen_recording"})
+    assert iris_cli.run(["screen"]) == (1, "Iris can't see the screen right now: no_screen_recording.")
+
+
 def test_listen_prints_what_was_said_to_her(iris):
     assert iris_cli.run(["listen", "5"]) == (0, "Said to her: what's the weather")
     assert iris[-1] == ("POST", "/ears/next", {"timeout": 5.0})

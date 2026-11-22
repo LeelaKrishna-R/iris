@@ -81,6 +81,11 @@ def test_listen_prints_what_was_said_to_her(iris):
     assert iris[-1] == ("POST", "/ears/next", {"timeout": 5.0})
 
 
+def test_listen_with_nothing_said_exits_1(monkeypatch):
+    monkeypatch.setattr(iris_mcp, "call", lambda path, payload=None, **k: {"ok": True, "heard": None})
+    assert iris_cli.run(["listen", "3"]) == (1, "Nothing was said to Iris in 3 s.")
+
+
 @pytest.mark.parametrize("argv", [[], ["say"], ["notice"], ["react"], ["dance"], ["listen", "soon"]])
 def test_usage(iris, argv):
     code, out = iris_cli.run(argv)

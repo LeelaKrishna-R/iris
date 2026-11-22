@@ -8,7 +8,7 @@
     iris notice "tests failed"         a glance and a small "!", no words
     iris react giggle                  one of her animations (`iris animations` lists them)
     iris come [cursor|other_screen]    she comes over
-    iris listen [seconds]              prints what's said to her by name next (up to 25 s), or nothing
+    iris listen [seconds]              prints what's said to her by name next (up to 25 s), or exits 1 on silence
     iris busy [--json]                 exit 0 if you're on a call (Zoom, Meet, Discord with the mic in use, …), else 1
     iris wait-free [600]               waits until you're off a call (up to 600 s): `iris wait-free && iris say done`
     iris ask [--wait 120] "Deploy?"    an Allow / Deny card beside her; exit 0 only if you click Allow in time
@@ -107,8 +107,9 @@ def run(argv: list[str], stdin=None) -> tuple[int, str]:
                 return 0, _health_json(h)
             return (64, USAGE) if rest else (0, _health(h))
         if cmd == "listen":
+            # silence is 1, so `if said=$(iris listen 10); then …` acts only on an answer
             out = m.t_listen({"seconds": float(rest[0]) if rest else 20})
-            return 0, out
+            return (1 if out.startswith("Nothing was said") else 0), out
     except m.IrisUnreachable as e:
         return 2, str(e)
     except (ValueError, IndexError):

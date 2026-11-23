@@ -249,6 +249,21 @@ def test_snapshot_when_she_has_no_picture(tmp_path, monkeypatch):
     assert code == 1 and "no_image" in out and not (tmp_path / "x.png").exists()
 
 
+def test_snapshot_to_a_folder_that_isnt_there_says_so(tmp_path, monkeypatch):
+    import base64
+    monkeypatch.setattr(iris_mcp, "call", lambda *a, **k: {"ok": True, "png": base64.b64encode(b"png").decode()})
+    target = tmp_path / "missing" / "iris.png"
+    code, out = iris_cli.run(["snapshot", str(target)])
+    assert code == 1 and out.startswith(f"Couldn't save her picture to {target}: ") and not target.exists()
+
+
+def test_snapshot_with_an_unreadable_picture_saves_nothing(tmp_path, monkeypatch):
+    monkeypatch.setattr(iris_mcp, "call", lambda *a, **k: {"ok": True, "png": "not base64!"})
+    code, out = iris_cli.run(["snapshot", str(tmp_path / "x.png")])
+    assert (code, out) == (1, "Iris sent a picture that couldn't be read; nothing was saved.")
+    assert not (tmp_path / "x.png").exists()
+
+
 def test_say_dash_reads_stdin(iris, monkeypatch):
     import io
     code, out = iris_cli.run(["say", "--bubble", "-"], stdin=io.StringIO("3 passed,\n 1 failed\n"))

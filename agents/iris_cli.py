@@ -143,7 +143,15 @@ def _snapshot(path: str) -> tuple[int, str]:
     got = m.call("/iris/snapshot", method="GET")
     if not got.get("ok") or not got.get("png"):
         return 1, f"Iris has no picture to give right now ({got.get('reason') or 'no reason given'})."
-    Path(path).write_bytes(base64.b64decode(got["png"]))
+    import binascii
+    try:
+        png = base64.b64decode(got["png"], validate=True)
+    except (binascii.Error, TypeError):
+        return 1, "Iris sent a picture that couldn't be read; nothing was saved."
+    try:
+        Path(path).write_bytes(png)
+    except OSError as e:                                  # no such folder, no permission: said, never a traceback
+        return 1, f"Couldn't save her picture to {path}: {e.strerror or e}."
     return 0, f"Saved her picture to {path}."
 
 

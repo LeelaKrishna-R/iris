@@ -67,8 +67,9 @@ def run(argv: list[str], stdin=None) -> tuple[int, str]:
         if cmd == "react" and rest:
             out = m.t_react({"animation": rest[0]})
             return (0 if out.startswith("Iris played") else 1), out
-        if cmd == "animations":
-            return 0, m.t_animations({})
+        if cmd == "animations":                           # 1 when she lists none, so a script can't loop over nothing
+            out = m.t_animations({})
+            return (0 if out.startswith("Her animations") else 1), out
         if cmd == "come":
             out = m.t_come({"to": rest[0] if rest else "cursor"})
             return (0 if out.startswith("Iris is on her way") else 1), out

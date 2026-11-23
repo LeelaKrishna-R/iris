@@ -71,6 +71,13 @@ def test_notice_react_come_and_animations(iris):
     assert iris_cli.run(["animations"]) == (0, "Her animations: think, wave.")
 
 
+def test_animations_she_cant_list_is_a_no_with_her_reason(iris, monkeypatch):
+    monkeypatch.setattr(iris_mcp, "call", lambda *a, **k: {"ok": False, "reason": "paused"})
+    assert iris_cli.run(["animations"]) == (1, "Iris didn't list her animations: paused.")
+    monkeypatch.setattr(iris_mcp, "call", lambda *a, **k: {"ok": True, "animations": []})
+    assert iris_cli.run(["animations"]) == (1, "Iris didn't list any animations.")
+
+
 def test_an_animation_she_doesnt_have_is_a_no(iris):
     code, out = iris_cli.run(["react", "backflip"])
     assert code == 1 and "no animation called 'backflip'" in out

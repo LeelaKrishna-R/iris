@@ -26,7 +26,7 @@ without writing a client:
 python3 agents/iris_cli.py say "Build finished"          # aloud, lips moving; --bubble for her thought bubble only
 python3 agents/iris_cli.py notice "tests failed"         # a glance and a small "!", no words
 python3 agents/iris_cli.py react giggle                  # one of her animations
-python3 agents/iris_cli.py animations                    # lists them
+python3 agents/iris_cli.py animations                    # lists them (exit 1 if she lists none, with why)
 python3 agents/iris_cli.py come other_screen             # cursor (default) or other_screen
 python3 agents/iris_cli.py listen 10                     # prints what's said to her by name next, up to 25 s (exit 1 if nothing)
 python3 agents/iris_cli.py listen 10 --json              # {"heard": "…" or null, "typed": true|false|null, "said": …}

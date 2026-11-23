@@ -149,6 +149,8 @@ def t_react(args: dict) -> str:
 
 def t_animations(args: dict) -> str:
     r = call("/iris/catalog", method="GET")
+    if not r.get("ok"):                                   # paused, or a reply she couldn't make: say why
+        return f"Iris didn't list her animations: {r.get('reason')}."
     names = sorted(a.get("id", "") for a in r.get("animations") or [] if a.get("id"))
     return ("Her animations: " + ", ".join(names) + ".") if names else "Iris didn't list any animations."
 

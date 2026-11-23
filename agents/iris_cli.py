@@ -212,8 +212,15 @@ def _health(h: dict) -> str:
 
 
 def main() -> int:
-    code, out = run(sys.argv[1:])
-    print(out, file=sys.stderr if code else sys.stdout)
+    argv = sys.argv[1:]
+    code, out = run(argv)
+    # --json is for a pipe (`iris busy --json | jq .on_call`): its answer goes to stdout whatever the exit code
+    # (1 is "not on a call" or "denied", an answer too), and Iris not running is JSON as well, never bare text
+    as_json = "--json" in argv and code != 64
+    if as_json and code == 2:
+        import json
+        out = json.dumps({"reachable": False, "reason": out})
+    print(out, file=sys.stdout if code == 0 or as_json else sys.stderr)
     return code
 
 

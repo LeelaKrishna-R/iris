@@ -39,6 +39,10 @@ python3 agents/iris_cli.py health                        # running? her permissi
 python3 agents/iris_cli.py snapshot iris.png             # a picture of her right now, for a bug report
 ```
 
+With `--json` the answer is on stdout whatever the exit code (`1` is an answer too: not on a call, denied, nothing
+heard), and when Iris isn't running it is `{"reachable": false, "reason": "…"}` with exit `2`, so a pipe into `jq`
+always gets JSON.
+
 `ask` puts the same card beside her that MCP agents get from `iris_ask`, titled "A script asks", and waits for your
 click (`--wait`, 5 to 300 seconds, 120 by default). Allow exits `0`; Deny, no answer in time (the card is closed) or
 a card she couldn't show exits `1`. So `python3 agents/iris_cli.py ask "Push to main?" && git push` only pushes on

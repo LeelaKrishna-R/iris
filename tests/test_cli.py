@@ -224,6 +224,27 @@ def test_health_says_what_she_can_do(monkeypatch):
                                 "Ears: not listening (no_microphone)."]
 
 
+def test_json_goes_to_stdout_whatever_the_exit_code(tmp_path, monkeypatch, capsys):
+    import json
+    monkeypatch.setattr(iris_cli, "run", lambda argv: (1, '{"on_call": false, "app": null, "said": "Not on a call."}'))
+    monkeypatch.setattr(sys, "argv", ["iris", "busy", "--json"])
+    assert iris_cli.main() == 1
+    out = capsys.readouterr()
+    assert json.loads(out.out)["on_call"] is False and out.err == ""
+
+
+def test_json_when_she_is_not_running_is_json(tmp_path, monkeypatch, capsys):
+    import json
+    key = tmp_path / "link.key"
+    key.write_bytes(b"k" * 32)
+    monkeypatch.setattr(iris_mcp, "URL", f"http://127.0.0.1:{_closed_port()}")
+    monkeypatch.setattr(iris_mcp, "KEY_FILE", key)
+    monkeypatch.setattr(sys, "argv", ["iris", "health", "--json"])
+    assert iris_cli.main() == 2
+    got = json.loads(capsys.readouterr().out)
+    assert got["reachable"] is False and "isn't answering" in got["reason"]
+
+
 def test_health_when_she_is_not_running(tmp_path, monkeypatch):
     def call(*a, **k):
         raise iris_mcp.IrisUnreachable("Iris isn't answering; is she running?")

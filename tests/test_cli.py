@@ -83,6 +83,16 @@ def test_screen_prints_what_she_sees(iris, monkeypatch):
     assert iris_cli.run(["screen"]) == (1, "Iris can't see the screen right now: no_screen_recording.")
 
 
+def test_screen_json_for_a_script(iris, monkeypatch):
+    import json
+    code, out = iris_cli.run(["screen", "--json"])
+    assert code == 0 and json.loads(out) == {"seen": True, "front_app": "Code", "window": "main.py",
+                                             "displays": [{"id": 1, "text": "hi"}]}
+    monkeypatch.setattr(iris_mcp, "call", lambda path, payload=None, **k: {"ok": False, "reason": "paused"})
+    code, out = iris_cli.run(["screen", "--json"])
+    assert code == 1 and json.loads(out) == {"seen": False, "reason": "paused"}
+
+
 def test_listen_prints_what_was_said_to_her(iris):
     assert iris_cli.run(["listen", "5"]) == (0, "Said to her: what's the weather")
     assert iris[-1] == ("POST", "/ears/next", {"timeout": 5.0})

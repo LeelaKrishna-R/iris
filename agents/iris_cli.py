@@ -15,7 +15,7 @@
     iris ask [--wait 120] "Deploy?"    an Allow / Deny card beside her; exit 0 only if you click Allow in time
                                        (--json prints {"decision": "allowed"|"denied"|"no_answer"|"not_shown", ...})
     iris health [--json]               whether she's running, which permissions she has, whether she can hear
-    iris screen                        the front app, its window title and the text she reads on each display
+    iris screen [--json]               the front app, its window title and the text she reads on each display
                                        (exit 1 if she can't see the screen: no Screen Recording, or paused)
     iris snapshot [file.png]           saves a picture of her as she looks right now (for a bug report)
     iris help                          this list
@@ -103,6 +103,14 @@ def run(argv: list[str], stdin=None) -> tuple[int, str]:
             code = 0 if out.startswith("Allowed") else 1
             return code, (_ask_json(out) if as_json else out)
         if cmd == "screen":
+            if "--json" in rest:                          # {"front_app", "window", "displays": [{"id", "text"}]}
+                import json
+                r = m.call("/eyes/now", method="GET", timeout=5)
+                if not r.get("ok"):
+                    return 1, json.dumps({"seen": False, "reason": r.get("reason")})
+                return 0, json.dumps({"seen": True, "front_app": r.get("front_app"), "window": r.get("front_title"),
+                                      "displays": [{"id": d.get("id"), "text": d.get("text") or ""}
+                                                   for d in r.get("displays") or []]})
             out = m.t_screen({})
             return (1 if out.startswith("Iris can't see the screen") else 0), out
         if cmd == "snapshot":

@@ -33,7 +33,7 @@ python3 agents/iris_cli.py listen 10 --json              # {"heard": "…" or nu
 python3 agents/iris_cli.py screen                        # front app, window title, the text on each display
 python3 agents/iris_cli.py screen --json                 # {"seen", "front_app", "window", "displays": [{"id", "text"}]}
 python3 agents/iris_cli.py busy                          # exit 0 if you're on a call, 1 if not
-python3 agents/iris_cli.py wait-free 600                 # waits until you're off a call; exit 1 if still on one
+python3 agents/iris_cli.py wait-free 600                 # waits until you're off a call (0 to 86400 s); exit 1 if still on one
 python3 agents/iris_cli.py ask "Deploy to production?"   # Allow / Deny card; exit 0 only on Allow (--wait 120 s)
 python3 agents/iris_cli.py health                        # running? her permissions, and whether she can hear
 python3 agents/iris_cli.py snapshot iris.png             # a picture of her right now, for a bug report

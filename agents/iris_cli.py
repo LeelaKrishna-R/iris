@@ -81,6 +81,8 @@ def run(argv: list[str], stdin=None) -> tuple[int, str]:
             # exit 0 as soon as you're off a call; 1 if you're still on one when the time is up, or she can't tell
             # (paused, not running): waiting on an answer that isn't coming would only hold the script up
             limit = float(rest[0]) if rest else 600.0     # a non-number is usage (64)
+            if not 0 <= limit <= 86400:                   # "nan" compared false forever and never gave up; "-5", "inf"
+                return 64, "wait-free waits 0 to 86400 seconds (0 checks once)."
             start = time.monotonic()
             while True:
                 out = m.t_busy({})

@@ -299,6 +299,12 @@ def test_wait_free_returns_when_the_call_ends(iris, monkeypatch):
     assert iris_cli.run(["wait-free"]) == (0, "Not on a call.") and answers == []
 
 
+@pytest.mark.parametrize("limit", ["nan", "inf", "-5", "90000"])
+def test_wait_free_limit_that_isnt_a_wait_is_usage_and_asks_nothing(iris, limit):
+    assert iris_cli.run(["wait-free", limit]) == (64, "wait-free waits 0 to 86400 seconds (0 checks once).")
+    assert iris == []
+
+
 def test_wait_free_gives_up_at_its_limit_and_when_she_cant_tell(iris, monkeypatch):
     seen = {"ok": True, "front_app": "zoom.us", "front_title": "Zoom Meeting", "windows": [], "mic_others": True}
     monkeypatch.setattr(iris_mcp, "call", lambda path, payload=None, method="POST", timeout=10: dict(seen))

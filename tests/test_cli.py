@@ -61,6 +61,14 @@ def test_a_tone_she_doesnt_have_is_usage_and_says_nothing(iris, argv):
     assert iris == []
 
 
+@pytest.mark.parametrize("argv", [["say", "--bubble"], ["say", "--seconds", "5"], ["say", "--tone", "urgent"],
+                                  ["say", "  "], ["notice", ""], ["notice", " ", " "]])
+def test_nothing_to_say_or_notice_is_usage_and_sends_nothing(iris, argv):
+    code, out = iris_cli.run(argv)
+    assert code == 64, (argv, out)
+    assert iris == []
+
+
 def test_notice_react_come_and_animations(iris):
     assert iris_cli.run(["notice", "tests", "failed"]) == (0, "Iris glanced up at it.")
     assert ("POST", "/iris/notice", {"title": "tests failed"}) in iris

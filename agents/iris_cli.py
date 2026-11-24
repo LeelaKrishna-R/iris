@@ -59,9 +59,13 @@ def run(argv: list[str], stdin=None) -> tuple[int, str]:
                 text = " ".join((stdin or sys.stdin).read().split())
                 if not text:
                     return 64, "Nothing to say: nothing came in on stdin."
+            if not text.strip():                          # only flags, or blanks: usage, as an empty stdin is
+                return 64, "Nothing to say: give her the words, or - to read them from stdin."
             out = m.t_say({"text": text, "speak": not bubble, "tone": tone, "seconds": seconds})
             return (0 if out.startswith("Iris said") or out.startswith("Iris showed") else 1), out
         if cmd == "notice" and rest:
+            if not " ".join(rest).strip():                # nothing to glance at: usage, and nothing is sent
+                return 64, USAGE
             out = m.t_notice({"what": " ".join(rest)})
             return (0 if out.startswith("Iris glanced") else 1), out
         if cmd == "react" and rest:

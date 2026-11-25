@@ -82,7 +82,7 @@ def test_only_the_separator_is_dropped(monkeypatch):
     monkeypatch.setattr(iris_mcp, "call", lambda path, payload=None, **k: next(heard) if path == "/ears/next" and
                         heard.__length_hint__() else (_ for _ in ()).throw(KeyboardInterrupt))
     seen = []
-    monkeypatch.setattr(voice_loop, "turn", lambda agent, said, speak: seen.append(agent) or "ok")
+    monkeypatch.setattr(voice_loop, "turn", lambda agent, said, speak, **k: seen.append(agent) or "ok")
     assert voice_loop.main(["--", "my-agent", "--", "--flag"]) == 0
     assert seen == [["my-agent", "--", "--flag"]]
 
@@ -100,3 +100,27 @@ def test_what_she_heard_reaches_the_agent_until_ctrl_c(monkeypatch, iris, capsys
     assert voice_loop.main(["--"] + PY + ["import sys; print(sys.argv[-1].upper())"]) == 0
     assert iris["said"] == [{"text": "HELLO", "speak": True}]
 
+
+
+def test_timeout_is_given_to_each_turn(iris, monkeypatch):
+    seen = []
+    monkeypatch.setattr(voice_loop, "turn", lambda agent, said, speak, timeout: seen.append(timeout) or "ok")
+    heard = iter([{"heard": {"text": "hi"}}])
+
+    def call(path, payload=None, **k):
+        if path == "/ears/next":
+            try:
+                return next(heard)
+            except StopIteration:
+                raise KeyboardInterrupt
+        return {}
+    monkeypatch.setattr(iris_mcp, "call", call)
+    assert voice_loop.main(["--timeout", "600", "--", "agent"]) == 0
+    assert seen == [600]
+
+
+@pytest.mark.parametrize("bad", ["0", "-5", "7200"])
+def test_a_timeout_out_of_range_is_refused(bad):
+    with pytest.raises(SystemExit) as e:
+        voice_loop.main(["--timeout", bad, "--", "agent"])
+    assert e.value.code == 2

@@ -98,6 +98,7 @@ notifications_command: "python3 /path/to/iris/agents/iris_cli.py notice 'Aider i
 ```sh
 python3 agents/voice_loop.py -- claude -p      # say "Iris, what's left on my todo?" and Claude Code answers in her voice
 python3 agents/voice_loop.py -- codex exec     # or Codex, or any command that takes a prompt and prints a reply
+python3 agents/voice_loop.py --timeout 600 -- claude -p   # a slow agent gets 10 minutes (default 180 s)
 ```
 
 ### Screen shares and recordings

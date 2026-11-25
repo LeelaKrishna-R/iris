@@ -7,6 +7,7 @@ its reply comes back in her voice. Ctrl-C stops it.
     python3 voice_loop.py -- claude -p             # Claude Code, one-shot
     python3 voice_loop.py -- codex exec            # Codex
     python3 voice_loop.py --bubble -- my-agent     # her thought bubble instead of her voice
+    python3 voice_loop.py --timeout 600 -- claude -p   # give a slow agent 10 minutes (default 180 s)
 
 The agent's reply is said as it printed it (up to 600 characters aloud), or shown in her bubble while you're on a
 call (`iris busy`); nothing is sent anywhere else.
@@ -24,10 +25,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import iris_mcp as m  # noqa: E402
 
 THINKING = "think"
+TIMEOUT_S = 180                 # how long an agent gets before she says it didn't answer in time
 RETRY_S = 5                     # how often it looks for Iris again while she's away
 
 
-def turn(agent: list[str], said: str, speak: bool, timeout: float = 180) -> str:
+def turn(agent: list[str], said: str, speak: bool, timeout: float = TIMEOUT_S) -> str:
     """One exchange: `said` to the agent, its reply to Iris. Returns what she was given to say."""
     m.call("/iris/act", {"id": THINKING, "seconds": 8})          # her thinking pose while the agent works
     try:
@@ -46,8 +48,12 @@ def turn(agent: list[str], said: str, speak: bool, timeout: float = 180) -> str:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--bubble", action="store_true", help="her thought bubble instead of her voice")
+    ap.add_argument("--timeout", type=float, default=TIMEOUT_S, metavar="SECONDS",
+                    help=f"how long the agent gets to answer (default {TIMEOUT_S})")
     ap.add_argument("agent", nargs=argparse.REMAINDER, help="the agent command, after --")
     a = ap.parse_args(argv)
+    if not 0 < a.timeout <= 3600:
+        ap.error(f"--timeout takes 1 to 3600 seconds, not {a.timeout:g}")
     agent = a.agent[1:] if a.agent[:1] == ["--"] else a.agent      # only the separator; the agent's own -- stay
     if not agent:
         ap.error("give the agent command after --, e.g.: -- claude -p")
@@ -62,7 +68,7 @@ def main(argv: list[str] | None = None) -> int:
                     away = False
                 if h and h.get("text"):
                     print(f"you: {h['text']}", file=sys.stderr)
-                    print(f"agent: {turn(agent, h['text'], speak=not a.bubble)}", file=sys.stderr)
+                    print(f"agent: {turn(agent, h['text'], speak=not a.bubble, timeout=a.timeout)}", file=sys.stderr)
             except m.IrisUnreachable as e:
                 if not away:                         # said once, not every few seconds
                     print(f"iris: {e} (waiting for her; Ctrl-C to stop)", file=sys.stderr)
